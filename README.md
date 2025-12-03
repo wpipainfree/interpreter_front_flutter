@@ -1,57 +1,57 @@
-# WPI Mobile App Guide (Flutter MVP)
+# WPI 모바일 앱 가이드 (Flutter MVP)
 
-This document consolidates the initial app plan into a single guide tailored for a Codex-driven workflow. It covers the MVP screen map, Play Store review considerations, and cross-platform setup for Android-first launch with iOS follow-up.
+코덱스 워크플로우에 맞춰 정리한 1차 작업 가이드입니다. MVP 화면 흐름, Google Play 심사 대비 사항, 안드로이드 우선 출시 후 iOS 확장을 위한 크로스플랫폼 설정, 그리고 레포에 포함된 Flutter 스켈레톤 구조를 한 곳에 모았습니다.
 
-## 1. Flutter Screen Map (MVP)
+## 1. Flutter 화면 지도 (MVP)
 
-### 1.1 User Flow
+### 1.1 사용자 흐름
 ```
-[Splash] → [Onboarding] → [Sign-up/Login]
+[스플래시] → [온보딩] → [회원가입/로그인]
      ↓
-[Home] → [Test Intro] → [Test]
+[홈] → [검사 안내] → [검사 진행]
      ↓
-[Result Summary] → [Existence Detail] → [My Page]
+[결과 요약] → [존재 구조 상세] → [마이페이지]
 ```
 
-### 1.2 Key Screens
-- **Splash**: Animated logo + progress indicator.
-- **Welcome**: Value proposition text and brief description.
-- **Entry**: CTA to start WPI test, link to login.
-- **Sign-up**: Email/password fields with validation, nickname, DOB picker, terms/ privacy checkboxes, submit button.
-- **Test Intro**: Cards for duration, question count, method; notice about honest answers; start button.
-- **Test**: Progress bar, current question indicator, 5-point Likert options with selection styling, previous/next navigation, exit dialog.
-- **Result Summary**: Gradient header with existence type, cards for core message, red/blue line indicators and gap analysis, emotional and body signals, button to existence detail.
-- **My Page**: Profile header, test history cards with timestamps, settings items (profile edit, notifications, help, logout).
+### 1.2 주요 화면 요약
+- **스플래시**: 아이콘 애니메이션 + 로딩 인디케이터.
+- **웰컴**: 가치 제안 문구와 설명.
+- **진입(Entry)**: 검사 시작 CTA, 로그인 이동 링크.
+- **회원가입**: 이메일/비밀번호 검증, 닉네임, 생년월일, 약관/개인정보 동의 체크박스, 가입 버튼.
+- **검사 안내**: 소요 시간·문항수·방법 카드, 주의 문구, 시작 버튼.
+- **검사 진행**: 진행률 바, 현재 문항 표시, 5점 리커트 선택, 이전/다음 이동, 종료 확인.
+- **결과 요약**: 존재 유형 그라디언트 헤더, 핵심 메시지 카드, 빨간선/파란선 지표와 Gap 분석, 감정·몸 신호, 존재 구조 상세 이동 버튼.
+- **마이페이지**: 프로필 헤더, 검사 이력 카드(타임스탬프 포함), 설정 항목(프로필 수정, 알림, 도움말, 로그아웃).
 
-## 2. Google Play Review Readiness
+## 2. Google Play 심사 대비
 
-### 2.1 Strengths
-- Fits **Health & Fitness** or **Lifestyle** category; explicitly not medical diagnosis.
-- Clear theoretical basis (Existential Psychology by Dr. Hwang).
-- Material Design–aligned Flutter UI with responsive layouts.
-- Privacy measures: policy URL, consent flows, encryption, GDPR/CCPA readiness.
-- Good UX: onboarding, progress feedback, visualized results, history.
+### 2.1 강점
+- **카테고리 적합성**: 건강·피트니스 또는 라이프스타일, 의료 진단이 아님을 명시.
+- **이론적 근거**: 황박사 존재심리학 기반.
+- **UI/UX**: Material Design 정렬, 반응형 레이아웃.
+- **개인정보**: 정책 URL, 동의 플로우, 암호화, GDPR/CCPA 대응.
+- **경험**: 온보딩, 진행 피드백, 결과 시각화, 이력 관리.
 
-### 2.2 Required Notices & Safeguards
-- **Medical disclaimer**: “본 검사는 의학적 진단이나 치료를 대체하지 않습니다. 심리적 어려움이 있으신 경우 전문가의 도움을 받으시기 바랍니다.”
-- **Age gate**: Recommend 13+ and youth protection language.
-- **Content rating**: All users or 12+, flag mental-health topic.
-- **Permissions**: Keep minimal (INTERNET, ACCESS_NETWORK_STATE) and disclose usage.
+### 2.2 필수 고지·주의
+- **의료 면책**: “본 검사는 의학적 진단이나 치료를 대체하지 않습니다. 심리적 어려움이 있으신 경우 전문가의 도움을 받으시기 바랍니다.”
+- **연령 제한**: 13세 이상 권장 및 청소년 보호 문구.
+- **콘텐츠 등급**: 전체/12세 이상, 정신건강 주제 표시.
+- **권한 최소화**: INTERNET, ACCESS_NETWORK_STATE 정도로 한정하고 용도 안내.
 
-### 2.3 Submission Checklist
-- App description explaining purpose/method; 5–8 screenshots; feature graphic; promo video (optional).
-- targetSdkVersion ≥ 33, 64-bit, Android App Bundle (.aab), ProGuard/R8 enabled.
-- Privacy policy URL, terms of service, data safety form, advertising ID disclosure.
-- Testing across devices, network failure handling, zero crash reports, ANR mitigation.
+### 2.3 제출 체크리스트
+- 앱 설명(목적·방법), 스크린샷 5–8장, 피처 그래픽, 프로모션 영상(선택).
+- `targetSdkVersion ≥ 33`, 64비트, Android App Bundle(.aab), ProGuard/R8 활성화.
+- 개인정보처리방침 URL, 이용약관, 데이터 보안 섹션, 광고 ID 사용 여부 명시.
+- 다기기 테스트, 네트워크 오류 처리, 크래시 0건, ANR 방지.
 
-### 2.4 Launch Strategy
-1. **Pre-launch testing**: Internal (≤25), closed (≈100), open beta (500+), incorporate feedback.
-2. **Staged rollout**: 10% → 50% → 100% after stability.
-3. **Ongoing**: Respond to reviews, regular updates, monitor crashes/ANR and performance.
+### 2.4 출시 전략
+1. **사전 테스트**: 내부(≤25명) → 비공개(≈100명) → 오픈 베타(500+명) 후 피드백 반영.
+2. **단계적 출시**: 10% → 50% → 100% 순으로 안정화 확인.
+3. **지속 개선**: 리뷰 대응, 정기 업데이트, 크래시/ANR 및 성능 모니터링.
 
-## 3. Cross-Platform Setup (Flutter)
+## 3. 크로스플랫폼 설정 (Flutter)
 
-### 3.1 Project Creation
+### 3.1 프로젝트 생성 예시
 ```bash
 flutter create wpi_app \
   --org com.yourcompany \
@@ -61,7 +61,7 @@ flutter create wpi_app \
   -i swift
 ```
 
-### 3.2 Recommended Dependencies (extract)
+### 3.2 권장 의존성 예시
 ```yaml
 flutter: ^3.16.0
 provider: ^6.1.1
@@ -79,80 +79,77 @@ firebase_analytics: ^10.7.4
 firebase_crashlytics: ^3.4.8
 ```
 
-### 3.3 Android Focus (initial release)
+### 3.3 안드로이드 우선 포커스
 - `compileSdkVersion 34`, `minSdkVersion 21`, `targetSdkVersion 34`.
-- Enable multidex, R8/proguard, resource shrinking; sign release builds.
-- Manifest: INTERNET, ACCESS_NETWORK_STATE permissions only; cleartext traffic off.
-- Material 3 theming and Google Play Console setup.
+- 멀티덱스, R8/ProGuard, 리소스 축소, 릴리스 서명 설정.
+- 매니페스트 권한 최소화, HTTP cleartext 비활성화.
+- Material 3 테마 적용, Play Console 준비.
 
-### 3.4 iOS Prep (follow-up)
-- `Info.plist`: display name, bundle ID, version, light mode, camera/photos usage descriptions, ATS disabled for arbitrary loads, portrait orientation.
-- Plan for Apple Developer account, TestFlight beta, CocoaPods resolution, real-device tests.
+### 3.4 iOS 준비 사항
+- `Info.plist`: 표시 이름, 번들 ID, 버전, Light 모드, 카메라/사진 권한 설명, ATS 기본(임의 로드 비활성), 세로 고정.
+- Apple Developer 계정, TestFlight 베타, CocoaPods 의존성 해결, 실기기 테스트 계획.
 
-### 3.5 Adaptive UI & Navigation (concepts)
-- Provide `AdaptiveButton`, `AdaptiveProgressIndicator`, and platform-aware dialogs (Cupertino on iOS, Material on Android).
-- `AdaptiveNavigator` for platform-specific routes; shared business logic via services (e.g., `WPIService` for API and local storage).
-- Conditional imports for platform utilities; handle permissions and notifications per OS policies.
+### 3.5 적응형 UI/네비게이션 개념
+- `AdaptiveButton`, `AdaptiveProgressIndicator`, 플랫폼별 다이얼로그(Cupertino/Material) 제공.
+- `AdaptiveNavigator`로 라우트 분기, `WPIService` 등 서비스 레이어에 공통 비즈니스 로직 배치.
+- 조건부 import로 플랫폼 유틸 관리, OS별 권한·알림 정책을 분리 처리.
 
-## 4. Release Plans & Checklists
+## 4. 출시 준비 체크리스트
 
-### Android Before Launch
-- Min SDK confirmed, signing keys secured, ProGuard rules set, 64-bit AAB build.
+### Android
+- 최소 SDK 확인, 서명키 보관, ProGuard 규칙 적용, 64비트 AAB 빌드.
 
-### iOS Readiness
-- Bundle ID reserved, iOS 12+ minimum, App Store Connect metadata, platform-specific icons/splash assets.
+### iOS
+- 번들 ID 예약, iOS 12+ 설정, App Store Connect 메타데이터, 전용 아이콘/스플래시 자산 준비.
 
-### Common Items
-- Korean/English localization, privacy policy and terms URLs, store assets (icons, screenshots), and data safety disclosures.
+### 공통
+- 한/영 로컬라이징, 개인정보처리방침·이용약관 URL, 스토어용 아이콘·스크린샷, 데이터 세이프티 기입.
 
-## 5. Monetization & Post-MVP Ideas
-- Premium subscription (월 9,900원), one-off detailed analysis (19,900원), counselor matching fee (10–20%), B2B licensing.
-- Future features: result sharing, counselor matching, educational content, premium analyses.
+## 5. 수익화 및 포스트 MVP 아이디어
+- 구독(월 9,900원), 단건 상세 분석(19,900원), 상담사 매칭 수수료(10–20%), B2B 라이선스.
+- 향후 기능: 결과 공유, 상담사 연결, 교육 콘텐츠, 프리미엄 분석.
 
-## 6. Effort Estimates
-- **Phase 1 (4–6 weeks)**: UI/UX (2w), API/logic (2w), testing/bugfix (1w), store prep (1w).
-- **Phase 2 (2–3 weeks)**: Feedback-driven improvements, performance optimization, added features.
-- **Phase 3 (1–2 weeks)**: Store review, marketing, full launch.
+## 6. 예상 일정
+- **Phase 1 (4–6주)**: UI/UX(2주), API/로직(2주), 테스트/버그픽스(1주), 스토어 준비(1주).
+- **Phase 2 (2–3주)**: 피드백 반영, 성능 개선, 기능 추가.
+- **Phase 3 (1–2주)**: 심사, 마케팅, 정식 출시.
 
----
-By adhering to the notices, privacy requirements, and staged rollout above, the current plan should have a strong chance (≈85–90%) of passing Google Play review.
+## 7. 포함된 Flutter 스켈레톤
+레포에는 위 MVP 흐름을 따르는 최소한의 앱 뼈대가 포함되어 있습니다:
+- `lib/main.dart`: Material 3 테마의 앱 엔트리.
+- `lib/screens/`: 스플래시, 웰컴, 진입, 회원가입/로그인, 검사 안내·진행, 결과 요약, 존재 구조 상세, 마이페이지 화면과 네비게이션.
+- `lib/models/wpi_result.dart`: 모의 분석 결과 전달을 위한 간단한 모델.
+- 모든 문구·모의 데이터는 로컬에 내장되어 있어 백엔드 없이 UI를 바로 확인할 수 있습니다. 기본 시스템 폰트를 사용해 폰트 자산 누락 문제를 피했습니다.
 
-## 7. Flutter Skeleton Code
-The repository now includes a minimal Flutter scaffold that matches the above MVP flow:
-- `lib/main.dart`: App entry with Material 3 theme.
-- `lib/screens/`: Splash, welcome, entry, sign-up/login, test intro, test, result summary, existence detail, and my page screens wired with navigation.
-- `lib/models/wpi_result.dart`: Simple model used to pass mock analysis results.
-- All copy and mock data are embedded locally so you can run the UI without a backend. The theme now uses the default platform font to avoid missing-font asset errors on a fresh clone.
+## 8. 로컬에서 화면 확인하기
+이 컨테이너에는 Flutter SDK/에뮬레이터가 없으므로, 로컬 개발 환경(Flutter 3.16+ 권장)에서 실행하세요.
 
-## 8. How to See the Screens Locally
-The repo is ready to run as a stock Flutter app. Because this container does not include the Flutter SDK or emulators, you need Flutter installed on your machine (3.16+ recommended) to preview the UI.
+1) **사전 준비**
+   - Flutter SDK 설치: https://docs.flutter.dev/get-started/install
+   - 에뮬레이터 또는 USB 디바이스 디버깅 준비.
 
-1) **Install prerequisites**
-   - Flutter SDK: https://docs.flutter.dev/get-started/install
-   - An emulator or a physical device connected with debugging enabled.
-
-2) **Fetch dependencies**
+2) **의존성 설치**
 ```bash
 flutter pub get
 ```
 
-3) **Choose a device**
+3) **디바이스 선택**
 ```bash
 flutter devices
-# Pick the desired device ID from the list (Android emulator or iOS simulator/USB device)
+# 목록에서 기기 ID 확인 (안드로이드 에뮬레이터 또는 iOS 시뮬레이터/실기기)
 ```
 
-4) **Run the app**
+4) **앱 실행**
 ```bash
 flutter run -d <device_id>
 ```
-   - The app will start at the splash screen, then the welcome → entry screens.
-   - Tap through: "WPI 검사 시작하기" → onboarding/auth → 검사 안내 → 검사 진행 → 결과 요약 → 존재구조 상세 → 마이페이지.
+   - 스플래시 → 웰컴 → 진입 화면 순으로 시작합니다.
+   - "WPI 검사 시작하기"를 눌러 온보딩/인증 → 검사 안내 → 검사 진행 → 결과 요약 → 존재 구조 상세 → 마이페이지 순서로 탐색할 수 있습니다.
 
-5) **Hot reload/hot restart**
+5) **Hot reload/Hot restart**
 ```bash
-r   # hot reload in the flutter run terminal
+r   # hot reload (flutter run 터미널)
 R   # hot restart
 ```
 
-If you prefer web preview, you can also run `flutter run -d chrome`, though the layout was primarily designed for mobile portrait.
+웹 미리보기를 원하면 `flutter run -d chrome`을 사용할 수 있으나, 기본 설계는 모바일 세로 화면에 맞춰져 있습니다.
