@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 import 'screens/splash_screen.dart';
+import 'services/notification_service.dart';
+import 'utils/app_theme.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // 알림 서비스 초기화
+  await NotificationService().initialize();
+  
   runApp(const WpiApp());
 }
 
@@ -12,13 +19,7 @@ class WpiApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'WPI 마음읽기',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0F4C81),
-          brightness: Brightness.light,
-        ),
-      ),
+      theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
       home: const SplashScreen(),
     );

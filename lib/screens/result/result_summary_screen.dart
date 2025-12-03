@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../models/wpi_result.dart';
+import '../../models/wpi_result.dart';
 import 'existence_detail_screen.dart';
-import 'my_page_screen.dart';
+import '../dashboard_screen.dart';
 
 class ResultSummaryScreen extends StatelessWidget {
   final WpiResult result;
@@ -181,10 +181,11 @@ class ResultSummaryScreen extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const MyPageScreen()),
+                      onPressed: () => Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const DashboardScreen()),
+                        (route) => false,
                       ),
-                      child: const Text('마이페이지로 이동'),
+                      child: const Text('대시보드로 이동'),
                     ),
                   ),
                 ],

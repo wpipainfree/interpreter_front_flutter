@@ -1,6 +1,6 @@
 name: wpi_app
 publish_to: 'none'
-description: Simple Flutter skeleton for WPI test flow
+description: WPI 심리 검사 애플리케이션
 version: 0.1.0+1
 
 environment:
@@ -10,6 +10,19 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.6
+  
+  # 로컬 알림
+  flutter_local_notifications: ^17.2.4
+  
+  # 시간대 처리
+  timezone: ^0.9.4
+  
+  # 로컬 저장소 (알림 설정 저장)
+  shared_preferences: ^2.2.2
+  
+  # 이미지 캡처 및 저장
+  path_provider: ^2.1.2
+  share_plus: ^7.2.1
 
 dev_dependencies:
   flutter_test:
