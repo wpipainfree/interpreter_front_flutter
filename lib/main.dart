@@ -18,7 +18,7 @@ class WpiApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'WPI 마음읽기',
+      title: 'WPI 한국심리상담검사센터',
       theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
       home: const SplashScreen(),

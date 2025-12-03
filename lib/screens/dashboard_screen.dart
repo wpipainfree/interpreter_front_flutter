@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/constants.dart';
 import '../utils/helpers.dart';
+import '../widgets/wpi_logo.dart';
 import 'test/test_intro_screen.dart';
 import 'result/test_history_detail_screen.dart';
 import 'profile/my_page_screen.dart';
@@ -44,20 +45,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // 상단 앱바
+  // 상단 앱바 - WPI 웹사이트 스타일
   SliverAppBar _buildAppBar(UserInfo? user) {
     return SliverAppBar(
-      expandedHeight: 180,
+      expandedHeight: 220,
       pinned: true,
       backgroundColor: AppColors.primary,
       automaticallyImplyLeading: false,
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [AppColors.primary, AppColors.primaryLight],
+              colors: [
+                AppColors.primary,
+                AppColors.secondary,
+              ],
             ),
           ),
           child: SafeArea(
@@ -69,36 +73,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '안녕하세요,',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppColors.textOnDark.withOpacity(0.8),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${user?.nickname ?? '사용자'}님 👋',
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textOnDark,
-                            ),
-                          ),
-                        ],
+                      const WpiLogo(
+                        fontSize: 20,
+                        showSubtitle: true,
                       ),
                       _buildProfileButton(user),
                     ],
                   ),
                   const Spacer(),
                   Text(
-                    '오늘도 마음을 읽어볼까요?',
+                    '안녕하세요, ${user?.nickname ?? '사용자'}님',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.white70,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '마음의 목소리에 귀 기울여 보세요',
                     style: TextStyle(
-                      fontSize: 15,
-                      color: AppColors.textOnDark.withOpacity(0.9),
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Whang\'s Personal Identity를 통해 진정한 자아를 탐색합니다',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white.withOpacity(0.85),
                     ),
                   ),
                 ],
@@ -136,95 +141,113 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // 검사 시작 카드
+  // 검사 시작 카드 - WPI 웹사이트 스타일
   SliverToBoxAdapter _buildStartTestSection() {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [AppColors.secondary, AppColors.secondaryLight],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.secondary.withOpacity(0.3),
-                blurRadius: 15,
-                offset: const Offset(0, 8),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // WPI 검사 카드
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.primary.withOpacity(0.9),
+                    AppColors.secondary.withOpacity(0.9),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'WPI 검사하기',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textOnDark,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.psychology,
+                      size: 48,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'WPI 검사',
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Whang\'s Personal Identity',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.white.withOpacity(0.9),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '약 1-2분 소요 · ${AppConstants.sampleQuestionCount}문항',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '약 1-2분 소요 · ${AppConstants.sampleQuestionCount}문항 (샘플)',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textOnDark.withOpacity(0.85),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
                       onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const TestIntroScreen()),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.backgroundWhite,
-                        foregroundColor: AppColors.secondary,
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppColors.primary,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '검사 시작',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                          SizedBox(width: 8),
-                          Icon(Icons.arrow_forward_rounded, size: 20),
-                        ],
+                      child: const Text(
+                        '검사 시작하기',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 16),
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: AppColors.textOnDark.withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.psychology_outlined,
-                  size: 48,
-                  color: AppColors.textOnDark,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -281,7 +304,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildHistoryCard(TestHistory history) {
     final typeColor = AppColors.getTypeColor(history.existenceType);
-    
+
     return GestureDetector(
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(
@@ -289,98 +312,127 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: AppColors.cardBackground,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: typeColor.withOpacity(0.2),
+            width: 1,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: typeColor.withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Row(
           children: [
-            // 유형 아이콘
+            // 유형 아이콘 - 그라데이션 적용
             Container(
-              width: 56,
-              height: 56,
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
-                color: typeColor.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(14),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    typeColor.withOpacity(0.8),
+                    typeColor,
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: typeColor.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Center(
                 child: Text(
                   history.existenceType[0],
-                  style: TextStyle(
-                    fontSize: 24,
+                  style: const TextStyle(
+                    fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: typeColor,
+                    color: Colors.white,
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 16),
-            
+            const SizedBox(width: 18),
+
             // 정보
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text(
+                    history.existenceType,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
                   Row(
                     children: [
-                      Text(
-                        history.existenceType,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: typeColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
+                          gradient: LinearGradient(
+                            colors: [
+                              typeColor.withOpacity(0.15),
+                              typeColor.withOpacity(0.08),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           '${history.questionCount}문항',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             color: typeColor,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                           ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.access_time_rounded,
+                        size: 14,
+                        color: Colors.grey.shade500,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        Helpers.formatRelativeDate(history.testDate),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    Helpers.formatRelativeDate(history.testDate),
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
                 ],
               ),
             ),
-            
+
             // 화살표
             Container(
-              width: 36,
-              height: 36,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: AppColors.backgroundLight,
-                borderRadius: BorderRadius.circular(10),
+                color: typeColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.arrow_forward_ios_rounded,
-                size: 16,
-                color: AppColors.textTertiary,
+                size: 18,
+                color: typeColor,
               ),
             ),
           ],

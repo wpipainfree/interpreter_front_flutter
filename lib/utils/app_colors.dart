@@ -5,34 +5,36 @@ class AppColors {
   AppColors._();
 
   // ============================================
-  // 브랜드 컬러
+  // 브랜드 컬러 (WPI 웹사이트 디자인 매칭)
   // ============================================
-  
-  /// 메인 블루 (Primary)
-  static const Color primary = Color(0xFF0F4C81);
-  static const Color primaryLight = Color(0xFF1A5A9E);
-  static const Color primaryDark = Color(0xFF0A3A63);
-  
-  /// 서브 그린 (Secondary - 검사 관련)
-  static const Color secondary = Color(0xFF2E7D32);
-  static const Color secondaryLight = Color(0xFF43A047);
-  
-  /// 액센트 오렌지 (결과/강조)
-  static const Color accent = Color(0xFFF57C00);
-  static const Color accentLight = Color(0xFFFF9800);
+
+  /// 메인 블루 (Primary) - WPI 웹사이트 스타일
+  static const Color primary = Color(0xFF4A90E2);
+  static const Color primaryLight = Color(0xFF64A8F5);
+  static const Color primaryDark = Color(0xFF3478C6);
+
+  /// 서브 퍼플 (Secondary - 검사 관련)
+  static const Color secondary = Color(0xFF8B5CF6);
+  static const Color secondaryLight = Color(0xFFA78BFA);
+
+  /// 액센트 컬러
+  static const Color accent = Color(0xFFFFB800);
+  static const Color accentLight = Color(0xFFFFCA28);
 
   // ============================================
   // 배경 컬러
   // ============================================
-  
+
   /// 다크 배경 (온보딩, 스플래시)
   static const Color backgroundDark = Color(0xFF1A1A2E);
   static const Color backgroundDarkLight = Color(0xFF252542);
-  
-  /// 라이트 배경 (일반 화면)
-  static const Color backgroundLight = Color(0xFFF5F7FA);
+
+  /// 라이트 배경 (일반 화면) - WPI 웹사이트 스타일
+  static const Color backgroundLight = Color(0xFFF8F9FA);
   static const Color backgroundWhite = Colors.white;
-  
+  static const Color backgroundBlueLight = Color(0xFFE3F2FD);
+  static const Color backgroundPurpleLight = Color(0xFFF3E5F5);
+
   /// 카드 배경
   static const Color cardBackground = Colors.white;
 
