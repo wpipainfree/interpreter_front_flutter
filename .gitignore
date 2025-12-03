@@ -1,11 +1,24 @@
 # Miscellaneous
 *.class
-*.lock
 *.log
 *.pyc
 *.swp
 .buildlog/
 .history
+.DS_Store
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.code-workspace
+
+# Platform folders (generated per environment)
+macos/
+windows/
+linux/
+android/
+ios/
 
 
 
