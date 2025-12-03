@@ -1,77 +1,77 @@
 import 'package:flutter/material.dart';
 
-/// 앱 전역 색상 상수
+/// 앱 전역 색상 상수 (알폰스 무하 아르누보 스타일)
 class AppColors {
   AppColors._();
 
   // ============================================
-  // 브랜드 컬러
+  // 브랜드 컬러 (무하 스타일)
   // ============================================
-  
-  /// 메인 블루 (Primary)
-  static const Color primary = Color(0xFF0F4C81);
-  static const Color primaryLight = Color(0xFF1A5A9E);
-  static const Color primaryDark = Color(0xFF0A3A63);
-  
-  /// 서브 그린 (Secondary - 검사 관련)
-  static const Color secondary = Color(0xFF2E7D32);
-  static const Color secondaryLight = Color(0xFF43A047);
-  
-  /// 액센트 오렌지 (결과/강조)
-  static const Color accent = Color(0xFFF57C00);
-  static const Color accentLight = Color(0xFFFF9800);
+
+  /// 메인 라벤더 (Primary) - 무하의 대표 색상
+  static const Color primary = Color(0xFF9B7EBD);
+  static const Color primaryLight = Color(0xFFB8A5D0);
+  static const Color primaryDark = Color(0xFF7D5BA6);
+
+  /// 서브 피치/로즈 (Secondary) - 부드럽고 따뜻한 느낌
+  static const Color secondary = Color(0xFFE8B4B8);
+  static const Color secondaryLight = Color(0xFFF5D4D6);
+
+  /// 액센트 골드 (결과/강조) - 무하의 황금 장식
+  static const Color accent = Color(0xFFD4AF37);
+  static const Color accentLight = Color(0xFFE6C86E);
 
   // ============================================
-  // 배경 컬러
+  // 배경 컬러 (무하 스타일)
   // ============================================
-  
-  /// 다크 배경 (온보딩, 스플래시)
-  static const Color backgroundDark = Color(0xFF1A1A2E);
-  static const Color backgroundDarkLight = Color(0xFF252542);
-  
-  /// 라이트 배경 (일반 화면)
-  static const Color backgroundLight = Color(0xFFF5F7FA);
-  static const Color backgroundWhite = Colors.white;
-  
-  /// 카드 배경
-  static const Color cardBackground = Colors.white;
+
+  /// 다크 배경 (온보딩, 스플래시) - 깊은 자주색
+  static const Color backgroundDark = Color(0xFF4A3C57);
+  static const Color backgroundDarkLight = Color(0xFF5E4D6D);
+
+  /// 라이트 배경 (일반 화면) - 크림/아이보리 톤
+  static const Color backgroundLight = Color(0xFFFAF7F2);
+  static const Color backgroundWhite = Color(0xFFFFFBF5);
+
+  /// 카드 배경 - 부드러운 아이보리
+  static const Color cardBackground = Color(0xFFFFFBF5);
 
   // ============================================
-  // 텍스트 컬러
+  // 텍스트 컬러 (무하 스타일)
   // ============================================
-  
-  static const Color textPrimary = Color(0xFF1A1A2E);
-  static const Color textSecondary = Color(0xFF424242);
-  static const Color textTertiary = Color(0xFF666666);
-  static const Color textHint = Color(0xFF999999);
-  static const Color textOnDark = Colors.white;
-  static const Color textOnPrimary = Colors.white;
+
+  static const Color textPrimary = Color(0xFF4A3C57);
+  static const Color textSecondary = Color(0xFF6B5B73);
+  static const Color textTertiary = Color(0xFF9B8AA1);
+  static const Color textHint = Color(0xFFC4B5CC);
+  static const Color textOnDark = Color(0xFFFAF7F2);
+  static const Color textOnPrimary = Color(0xFFFFFBF5);
 
   // ============================================
-  // 존재 유형별 컬러
+  // 존재 유형별 컬러 (무하 스타일)
   // ============================================
-  
-  static const Color typeHarmony = Color(0xFF4CAF50);    // 조화형
-  static const Color typeChallenge = Color(0xFFF57C00);  // 도전형
-  static const Color typeStability = Color(0xFF2196F3); // 안정형
-  static const Color typeExplorer = Color(0xFF9C27B0);  // 탐구형
-  static const Color typeEmotional = Color(0xFFE91E63); // 감성형
+
+  static const Color typeHarmony = Color(0xFF9CC5A1);    // 조화형 - 세이지 그린
+  static const Color typeChallenge = Color(0xFFE8B4B8);  // 도전형 - 로즈
+  static const Color typeStability = Color(0xFF8ABED4); // 안정형 - 파스텔 블루
+  static const Color typeExplorer = Color(0xFFA98FBC);  // 탐구형 - 라일락
+  static const Color typeEmotional = Color(0xFFF5C6CB); // 감성형 - 핑크
 
   // ============================================
-  // 빨간선 / 파란선
+  // 빨간선 / 파란선 (무하 스타일)
   // ============================================
-  
-  static const Color redLine = Color(0xFFE53935);
-  static const Color blueLine = Color(0xFF1E88E5);
+
+  static const Color redLine = Color(0xFFD88B95);
+  static const Color blueLine = Color(0xFF8ABED4);
 
   // ============================================
-  // 상태 컬러
+  // 상태 컬러 (무하 스타일)
   // ============================================
-  
-  static const Color success = Color(0xFF4CAF50);
-  static const Color warning = Color(0xFFFF9800);
-  static const Color error = Color(0xFFE53935);
-  static const Color info = Color(0xFF2196F3);
+
+  static const Color success = Color(0xFF9CC5A1);
+  static const Color warning = Color(0xFFE6C86E);
+  static const Color error = Color(0xFFD88B95);
+  static const Color info = Color(0xFF8ABED4);
 
   // ============================================
   // 소셜 로그인 컬러
@@ -84,24 +84,24 @@ class AppColors {
   static const Color facebook = Color(0xFF1877F2);
 
   // ============================================
-  // 기타
+  // 기타 (무하 스타일)
   // ============================================
-  
-  static const Color divider = Color(0xFFE0E0E0);
-  static const Color border = Color(0xFFDDDDDD);
-  static const Color disabled = Color(0xFFBDBDBD);
-  static const Color teal = Color(0xFF00897B);
-  
+
+  static const Color divider = Color(0xFFE8D5E0);
+  static const Color border = Color(0xFFD4C5D0);
+  static const Color disabled = Color(0xFFC4B5CC);
+  static const Color teal = Color(0xFF9CC5A1);
+
   /// 감정 신호 배경
-  static const Color emotionalSignalBg = Color(0xFFFFE0EC);
-  static const Color emotionalSignalText = Color(0xFF880E4F);
-  
+  static const Color emotionalSignalBg = Color(0xFFFDE9ED);
+  static const Color emotionalSignalText = Color(0xFF9B7EBD);
+
   /// 몸 신호
-  static const Color bodySignal = Color(0xFF4CAF50);
-  
+  static const Color bodySignal = Color(0xFF9CC5A1);
+
   /// Gap 분석 배경
-  static const Color gapAnalysisBg = Color(0xFFFFF9C4);
-  static const Color gapAnalysisText = Color(0xFF795548);
+  static const Color gapAnalysisBg = Color(0xFFFFF8E7);
+  static const Color gapAnalysisText = Color(0xFF9B8AA1);
 
   // ============================================
   // 유틸리티 메서드

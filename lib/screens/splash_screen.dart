@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../utils/app_colors.dart';
 import '../utils/constants.dart';
+import '../widgets/mucha_gradient_background.dart';
 import 'welcome_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -39,26 +40,39 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ScaleTransition(
-              scale: Tween<double>(begin: 0.9, end: 1.1).animate(
-                CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+      body: MuchaDarkGradientBackground(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ScaleTransition(
+                scale: Tween<double>(begin: 0.9, end: 1.1).animate(
+                  CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        AppColors.accent.withOpacity(0.2),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.psychology,
+                    size: 96,
+                    color: AppColors.accent,
+                  ),
+                ),
               ),
-              child: const Icon(
-                Icons.psychology,
-                size: 96,
-                color: AppColors.primary,
+              const SizedBox(height: 24),
+              const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.accent),
               ),
-            ),
-            const SizedBox(height: 24),
-            const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -1,71 +1,80 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
-/// 앱 전역 텍스트 스타일
+/// 앱 전역 텍스트 스타일 (알폰스 무하 아르누보 스타일)
 class AppTextStyles {
   AppTextStyles._();
 
   // ============================================
-  // 헤딩 (Heading)
+  // 헤딩 (Heading) - 우아하고 장식적인 느낌
   // ============================================
-  
+
   static const TextStyle h1 = TextStyle(
     fontSize: 32,
-    fontWeight: FontWeight.bold,
+    fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
-    height: 1.3,
+    height: 1.4,
+    letterSpacing: 0.5,
   );
 
   static const TextStyle h2 = TextStyle(
     fontSize: 26,
-    fontWeight: FontWeight.bold,
+    fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
-    height: 1.3,
+    height: 1.4,
+    letterSpacing: 0.4,
   );
 
   static const TextStyle h3 = TextStyle(
     fontSize: 22,
-    fontWeight: FontWeight.bold,
+    fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
-    height: 1.4,
+    height: 1.5,
+    letterSpacing: 0.3,
   );
 
   static const TextStyle h4 = TextStyle(
     fontSize: 20,
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
-    height: 1.4,
+    height: 1.5,
+    letterSpacing: 0.3,
   );
 
   static const TextStyle h5 = TextStyle(
     fontSize: 18,
-    fontWeight: FontWeight.bold,
+    fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
+    height: 1.5,
+    letterSpacing: 0.2,
   );
 
   // ============================================
-  // 본문 (Body)
+  // 본문 (Body) - 부드럽고 읽기 편안한 스타일
   // ============================================
-  
+
   static const TextStyle bodyLarge = TextStyle(
     fontSize: 17,
-    fontWeight: FontWeight.normal,
+    fontWeight: FontWeight.w400,
     color: AppColors.textSecondary,
-    height: 1.6,
+    height: 1.7,
+    letterSpacing: 0.2,
   );
 
   static const TextStyle bodyMedium = TextStyle(
     fontSize: 15,
-    fontWeight: FontWeight.normal,
+    fontWeight: FontWeight.w400,
     color: AppColors.textSecondary,
-    height: 1.6,
+    height: 1.7,
+    letterSpacing: 0.2,
   );
 
   static const TextStyle bodySmall = TextStyle(
     fontSize: 14,
-    fontWeight: FontWeight.normal,
+    fontWeight: FontWeight.w400,
     color: AppColors.textSecondary,
-    height: 1.5,
+    height: 1.6,
+    letterSpacing: 0.1,
   );
 
   // ============================================
