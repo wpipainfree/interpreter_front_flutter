@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/app_colors.dart';
+import 'design_variations_screen.dart';
 import 'onboarding/onboarding_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
@@ -100,7 +101,38 @@ class WelcomeScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                
+
+                const SizedBox(height: 12),
+
+                // 디자인 시안 보기 버튼
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const DesignVariationsScreen(),
+                        ),
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.primary),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      '디자인 시안 보기 (무하 & 웹)',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textOnDark,
+                      ),
+                    ),
+                  ),
+                ),
+
                 const SizedBox(height: 32),
               ],
             ),
