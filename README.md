@@ -137,7 +137,7 @@ git clone <repository-url>
 cd interpreter_front
 
 # 또는 프로젝트 폴더로 이동
-cd /path/to/interpreter_front
+cd /path/to/interpreter_front_flutter
 ```
 
 ### 4단계: 의존성 설치
