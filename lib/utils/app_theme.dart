@@ -100,7 +100,7 @@ class AppTheme {
       ),
       
       // Card 테마 (무하 스타일 - 우아한 곡선)
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 3,
         shadowColor: AppColors.primary.withOpacity(0.15),
         shape: RoundedRectangleBorder(
