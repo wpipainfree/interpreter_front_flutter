@@ -4,6 +4,26 @@
 
 ---
 
+## 📌 Flutter 버전 호환성
+
+| 항목 | 버전 |
+|------|------|
+| **최소 지원 버전** | Flutter 3.24.0 |
+| **권장 버전** | Flutter 3.38.x (최신 stable) |
+| **Dart 버전** | 3.5.0 이상 |
+
+### ⚠️ 버전 관련 주의사항
+
+이 프로젝트는 **Flutter 3.24.5**를 기준으로 작성되었습니다. 최신 Flutter 버전(3.38.x)에서는 일부 API 변경이 있을 수 있습니다.
+
+**주요 변경 사항 (Flutter 3.38.x):**
+- `CardTheme` → `CardThemeData`로 변경
+- Material 3 테마 관련 클래스 이름 통일 (`~Theme` → `~ThemeData`)
+
+최신 버전 사용 시 위와 같은 타입 에러가 발생하면 해당 클래스 이름을 변경해주세요.
+
+---
+
 ## 사전 준비
 
 Flutter SDK가 이미 설치되어 있다면 [3단계](#3단계-프로젝트-실행)로 바로 이동하세요.
@@ -12,7 +32,17 @@ Flutter SDK가 이미 설치되어 있다면 [3단계](#3단계-프로젝트-실
 
 ## 1단계: Flutter SDK 설치 (최초 1회)
 
-### macOS
+### macOS (Homebrew 권장) ⭐
+
+```bash
+# Homebrew로 설치 (가장 간편한 방법)
+brew install --cask flutter
+
+# 설치 확인
+flutter --version
+```
+
+### macOS (수동 설치)
 
 ```bash
 # 터미널에서 실행
@@ -113,6 +143,37 @@ flutter run -d web-server --web-port=3000 --web-hostname=localhost
 ```bash
 flutter clean
 flutter pub get
+```
+
+### ❌ 타입 에러 (CardTheme, etc.)
+
+최신 Flutter 버전(3.38.x)에서 아래와 같은 에러가 발생할 수 있습니다:
+
+```
+The argument type 'CardTheme' can't be assigned to the parameter type 'CardThemeData?'
+```
+
+**해결 방법:** 해당 파일에서 `CardTheme`을 `CardThemeData`로 변경
+
+```dart
+// 변경 전 (Flutter 3.24.x)
+cardTheme: CardTheme(...)
+
+// 변경 후 (Flutter 3.38.x)
+cardTheme: CardThemeData(...)
+```
+
+### ❌ Flutter 버전 확인
+
+```bash
+# 현재 설치된 Flutter 버전 확인
+flutter --version
+
+# Flutter 업그레이드 (최신 stable)
+flutter upgrade
+
+# 특정 버전으로 다운그레이드 (필요시)
+flutter downgrade 3.24.5
 ```
 
 ---
