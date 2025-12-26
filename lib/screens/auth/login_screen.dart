@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
-import '../dashboard_screen.dart';
+import '../../utils/app_config.dart';
+import '../main_shell.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -75,7 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _navigateToDashboard() {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const DashboardScreen()),
+      MaterialPageRoute(builder: (_) => const MainShell()),
     );
   }
 
@@ -89,6 +90,10 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (AppConfig.freeNavigation) ...[
+                _DevBypassBanner(onBypass: _navigateToDashboard),
+                const SizedBox(height: 20),
+              ],
               const _LoginHeader(),
               const SizedBox(height: 28),
               _SocialButton(
@@ -338,6 +343,45 @@ class _ErrorBanner extends StatelessWidget {
             child: Text(
               message,
               style: AppTextStyles.bodySmall.copyWith(color: Colors.red.shade700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DevBypassBanner extends StatelessWidget {
+  final VoidCallback onBypass;
+  const _DevBypassBanner({required this.onBypass});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('개발 모드', style: AppTextStyles.labelMedium),
+          const SizedBox(height: 4),
+          Text(
+            '로그인/권한 없이 전체 화면 탐색 가능합니다.',
+            style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: onBypass,
+            child: Text(
+              '바로 입장',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.secondary,
+                decoration: TextDecoration.underline,
+              ),
             ),
           ),
         ],

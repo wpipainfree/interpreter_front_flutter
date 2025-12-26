@@ -40,7 +40,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      // Removed nested bottom nav; MainShell handles tabs.
     );
   }
 
