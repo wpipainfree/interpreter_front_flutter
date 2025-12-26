@@ -9,41 +9,41 @@ class AppColors {
   // ============================================
   
   /// 메인 블루 (Primary)
-  static const Color primary = Color(0xFF0F4C81);
-  static const Color primaryLight = Color(0xFF1A5A9E);
-  static const Color primaryDark = Color(0xFF0A3A63);
+  static const Color primary = Color(0xFFA5192B);
+  static const Color primaryLight = Color(0xFFC43A4C);
+  static const Color primaryDark = Color(0xFF7F121F);
   
   /// 서브 그린 (Secondary - 검사 관련)
-  static const Color secondary = Color(0xFF2E7D32);
-  static const Color secondaryLight = Color(0xFF43A047);
+  static const Color secondary = Color(0xFF1B2B3A);
+  static const Color secondaryLight = Color(0xFF24384A);
   
   /// 액센트 오렌지 (결과/강조)
-  static const Color accent = Color(0xFFF57C00);
-  static const Color accentLight = Color(0xFFFF9800);
+  static const Color accent = Color(0xFF24384A);
+  static const Color accentLight = Color(0xFF3A4C5E);
 
   // ============================================
   // 배경 컬러
   // ============================================
   
   /// 다크 배경 (온보딩, 스플래시)
-  static const Color backgroundDark = Color(0xFF1A1A2E);
-  static const Color backgroundDarkLight = Color(0xFF252542);
+  static const Color backgroundDark = Color(0xFF1B2B3A);
+  static const Color backgroundDarkLight = Color(0xFF223446);
   
   /// 라이트 배경 (일반 화면)
-  static const Color backgroundLight = Color(0xFFF5F7FA);
-  static const Color backgroundWhite = Colors.white;
+  static const Color backgroundLight = Color(0xFFF9F8F4);
+  static const Color backgroundWhite = Color(0xFFFFFEFA);
   
   /// 카드 배경
-  static const Color cardBackground = Colors.white;
+  static const Color cardBackground = Color(0xFFFFFEFA);
 
   // ============================================
   // 텍스트 컬러
   // ============================================
   
-  static const Color textPrimary = Color(0xFF1A1A2E);
-  static const Color textSecondary = Color(0xFF424242);
-  static const Color textTertiary = Color(0xFF666666);
-  static const Color textHint = Color(0xFF999999);
+  static const Color textPrimary = Color(0xFF1B2B3A);
+  static const Color textSecondary = Color(0xFF2F3F4D);
+  static const Color textTertiary = Color(0xFF4F5A67);
+  static const Color textHint = Color(0xFF77808C);
   static const Color textOnDark = Colors.white;
   static const Color textOnPrimary = Colors.white;
 
@@ -87,10 +87,10 @@ class AppColors {
   // 기타
   // ============================================
   
-  static const Color divider = Color(0xFFE0E0E0);
-  static const Color border = Color(0xFFDDDDDD);
-  static const Color disabled = Color(0xFFBDBDBD);
-  static const Color teal = Color(0xFF00897B);
+  static const Color divider = Color(0xFFE6E1D9);
+  static const Color border = Color(0xFFD8D2C7);
+  static const Color disabled = Color(0xFFB7BEC7);
+  static const Color teal = Color(0xFF5A7C8A);
   
   /// 감정 신호 배경
   static const Color emotionalSignalBg = Color(0xFFFFE0EC);

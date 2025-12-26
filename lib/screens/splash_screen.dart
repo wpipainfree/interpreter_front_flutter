@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_text_styles.dart';
 import '../utils/constants.dart';
 import 'welcome_screen.dart';
 
@@ -39,27 +40,70 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ScaleTransition(
-              scale: Tween<double>(begin: 0.9, end: 1.1).animate(
-                CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+      backgroundColor: AppColors.backgroundLight,
+      body: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Spacer(),
+              ScaleTransition(
+                scale: Tween<double>(begin: 0.9, end: 1.05).animate(
+                  CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+                ),
+                child: const _SplashMark(),
               ),
-              child: const Icon(
-                Icons.psychology,
-                size: 96,
-                color: AppColors.primary,
+              const SizedBox(height: 20),
+              Text(
+                'WPI Structure',
+                style: AppTextStyles.h4,
               ),
-            ),
-            const SizedBox(height: 24),
-            const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-            ),
-          ],
+              const Spacer(),
+              const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.secondary),
+                ),
+              ),
+              const SizedBox(height: 32),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _SplashMark extends StatelessWidget {
+  const _SplashMark();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 140,
+      height: 140,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 88,
+            height: 88,
+            decoration: const BoxDecoration(
+              color: AppColors.primary,
+              shape: BoxShape.circle,
+            ),
+          ),
+          Container(
+            width: 140,
+            height: 10,
+            decoration: BoxDecoration(
+              color: AppColors.secondary,
+              borderRadius: BorderRadius.circular(5),
+            ),
+          ),
+        ],
       ),
     );
   }
