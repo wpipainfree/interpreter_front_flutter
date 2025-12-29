@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
-import '../entry_screen.dart';
+import '../main_shell.dart';
 import 'onboarding_page1.dart';
 import 'onboarding_page2.dart';
 import 'onboarding_page3.dart';
@@ -22,18 +22,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         const OnboardingPage1(),
         const OnboardingPage2(),
         const OnboardingPage3(),
-        OnboardingPage4(onStart: _goToEntry),
+        OnboardingPage4(onStart: _goToMain),
       ];
 
   void _skipOnboarding() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const EntryScreen()),
-    );
+    _goToMain();
   }
 
-  void _goToEntry() {
+  void _goToMain() {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const EntryScreen()),
+      MaterialPageRoute(builder: (_) => const MainShell()),
     );
   }
 
