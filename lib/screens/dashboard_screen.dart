@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/constants.dart';
 import '../utils/helpers.dart';
+import 'auth/login_screen.dart';
 import 'test/test_intro_screen.dart';
 import 'result/test_history_detail_screen.dart';
 
@@ -141,9 +142,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const TestIntroScreen()),
-                      ),
+                      onPressed: () async {
+                        if (!_authService.isLoggedIn) {
+                          final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
+                            MaterialPageRoute(
+                              fullscreenDialog: true,
+                              builder: (_) => const LoginScreen(),
+                            ),
+                          );
+                          if (ok != true || !mounted) return;
+                        }
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const TestIntroScreen()),
+                        );
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.backgroundWhite,
                         foregroundColor: AppColors.secondary,

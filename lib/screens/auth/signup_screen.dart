@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
-import '../../utils/app_config.dart';
-import '../main_shell.dart';
 import 'login_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -32,34 +30,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
-  Future<void> _handleSocialSignUp(String provider) async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    final result = await _authService.loginWithSocial(provider);
-
-    setState(() => _isLoading = false);
-
-    if (result.isSuccess) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Welcome, ${result.user!.nickname}!'),
-          backgroundColor: AppColors.secondary,
-        ),
-      );
-      _navigateToDashboard();
-    } else {
-      setState(() => _errorMessage = result.errorMessage);
-    }
-  }
-
   Future<void> _handleEmailSignUp() async {
     if (!_formKey.currentState!.validate()) return;
     if (!_agreed) {
-      setState(() => _errorMessage = '약관에 동의해주세요.');
+      setState(() => _errorMessage = '약관에 동의해야 진행됩니다.');
       return;
     }
 
@@ -77,98 +51,84 @@ class _SignUpScreenState extends State<SignUpScreen> {
     setState(() => _isLoading = false);
 
     if (result.isSuccess) {
-      _navigateToDashboard();
-    } else {
-      setState(() => _errorMessage = result.errorMessage);
+      _completeAuth(success: true);
+      return;
     }
+    setState(() => _errorMessage = result.errorMessage);
   }
 
-  void _navigateToDashboard() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MainShell()),
-    );
+  void _completeAuth({required bool success}) {
+    Navigator.of(context, rootNavigator: true).pop(success);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (AppConfig.freeNavigation) ...[
-                _DevBypassBanner(onBypass: _navigateToDashboard),
-                const SizedBox(height: 20),
-              ],
-              const _Header(),
-              const SizedBox(height: 28),
-              _SocialButton(
-                label: '카카오로 3초 만에 시작하기',
-                backgroundColor: const Color(0xFFFEE500),
-                textColor: const Color(0xFF191919),
-                icon: Icons.chat_bubble_outline_rounded,
-                onPressed: () => _handleSocialSignUp('kakao'),
-              ),
-              const SizedBox(height: 12),
-              _SocialButton(
-                label: 'Apple로 계속하기',
-                backgroundColor: Colors.black,
-                textColor: Colors.white,
-                icon: Icons.apple,
-                onPressed: () => _handleSocialSignUp('apple'),
-              ),
-              const SizedBox(height: 12),
-              _SocialButton(
-                label: 'Google로 가입하기',
-                backgroundColor: Colors.white,
-                textColor: AppColors.textPrimary,
-                icon: Icons.public,
-                borderColor: AppColors.border,
-                onPressed: () => _handleSocialSignUp('google'),
-              ),
-              const SizedBox(height: 20),
-              if (_errorMessage != null) _ErrorBanner(message: _errorMessage!),
-              const SizedBox(height: 12),
-              Center(
-                child: Text(
-                  '또는 이메일로 가입',
-                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.textHint),
-                ),
-              ),
-              const SizedBox(height: 12),
-              _EmailForm(
-                formKey: _formKey,
-                emailController: _emailController,
-                passwordController: _passwordController,
-                nicknameController: _nicknameController,
-                isLoading: _isLoading,
-                agreed: _agreed,
-                onAgreedChanged: (v) => setState(() => _agreed = v),
-                onSubmit: _handleEmailSignUp,
-              ),
-              const SizedBox(height: 20),
-              Center(
-                child: TextButton(
-                  onPressed: _isLoading
-                      ? null
-                      : () {
-                          Navigator.of(context).pushReplacement(
-                            MaterialPageRoute(builder: (_) => const LoginScreen()),
-                          );
-                        },
+    return WillPopScope(
+      onWillPop: () async {
+        _completeAuth(success: false);
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.backgroundLight,
+        appBar: AppBar(
+          backgroundColor: AppColors.backgroundLight,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => _completeAuth(success: false),
+          ),
+        ),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const _Header(),
+                const SizedBox(height: 28),
+                if (_errorMessage != null) _ErrorBanner(message: _errorMessage!),
+                const SizedBox(height: 12),
+                Center(
                   child: Text(
-                    '이미 계정이 있나요? 로그인',
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.secondary,
-                      decoration: TextDecoration.underline,
+                    '이메일로 가입을 완료해 주세요.',
+                    style: AppTextStyles.bodySmall.copyWith(color: AppColors.textHint),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _EmailForm(
+                  formKey: _formKey,
+                  emailController: _emailController,
+                  passwordController: _passwordController,
+                  nicknameController: _nicknameController,
+                  isLoading: _isLoading,
+                  agreed: _agreed,
+                  onAgreedChanged: (v) => setState(() => _agreed = v),
+                  onSubmit: _handleEmailSignUp,
+                ),
+                const SizedBox(height: 20),
+                Center(
+                  child: TextButton(
+                    onPressed: _isLoading
+                        ? null
+                        : () {
+                            Navigator.of(context, rootNavigator: true).pushReplacement(
+                              MaterialPageRoute(
+                                fullscreenDialog: true,
+                                builder: (_) => const LoginScreen(),
+                              ),
+                            );
+                          },
+                    child: Text(
+                      '이미 계정이 있으신가요? 로그인',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.secondary,
+                        decoration: TextDecoration.underline,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -191,58 +151,11 @@ class _Header extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          '마음의 구조를 기록하기 위한 첫 걸음',
+          '당신의 이야기를 구조적으로 쌓아갈 계정을 만들어 주세요.',
           style: AppTextStyles.bodySmall.copyWith(color: AppColors.textHint),
           textAlign: TextAlign.center,
         ),
       ],
-    );
-  }
-}
-
-class _SocialButton extends StatelessWidget {
-  final String label;
-  final Color backgroundColor;
-  final Color textColor;
-  final IconData icon;
-  final Color? borderColor;
-  final VoidCallback onPressed;
-
-  const _SocialButton({
-    required this.label,
-    required this.backgroundColor,
-    required this.textColor,
-    required this.icon,
-    required this.onPressed,
-    this.borderColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
-      child: ElevatedButton.icon(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor,
-          foregroundColor: textColor,
-          elevation: 0,
-          minimumSize: const Size.fromHeight(52),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-            side: borderColor != null ? BorderSide(color: borderColor!) : BorderSide.none,
-          ),
-        ),
-        icon: Icon(icon, size: 20, color: textColor),
-        label: Text(
-          label,
-          style: AppTextStyles.buttonMedium.copyWith(
-            color: textColor,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
     );
   }
 }
@@ -315,7 +228,7 @@ class _EmailForm extends StatelessWidget {
             controlAffinity: ListTileControlAffinity.leading,
             contentPadding: EdgeInsets.zero,
             title: Text(
-              '이용약관 및 개인정보 처리에 동의합니다',
+              '이용약관 및 개인정보 처리방침에 동의합니다.',
               style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
             ),
           ),
@@ -335,7 +248,7 @@ class _EmailForm extends StatelessWidget {
                       ),
                     )
                   : Text(
-                      '가입하기',
+                      '회원가입',
                       style: AppTextStyles.buttonMedium,
                     ),
             ),
@@ -368,45 +281,6 @@ class _ErrorBanner extends StatelessWidget {
             child: Text(
               message,
               style: AppTextStyles.bodySmall.copyWith(color: Colors.red.shade700),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DevBypassBanner extends StatelessWidget {
-  final VoidCallback onBypass;
-  const _DevBypassBanner({required this.onBypass});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('개발 모드', style: AppTextStyles.labelMedium),
-          const SizedBox(height: 4),
-          Text(
-            '로그인/권한 없이 전체 화면 탐색 가능합니다.',
-            style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: 8),
-          TextButton(
-            onPressed: onBypass,
-            child: Text(
-              '바로 입장',
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.secondary,
-                decoration: TextDecoration.underline,
-              ),
             ),
           ),
         ],

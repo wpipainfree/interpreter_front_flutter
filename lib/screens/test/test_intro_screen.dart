@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../services/auth_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/constants.dart';
+import '../auth/login_screen.dart';
 import 'test_screen.dart';
 
 class TestIntroScreen extends StatelessWidget {
@@ -71,7 +73,17 @@ class TestIntroScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
+                    final auth = AuthService();
+                    if (!auth.isLoggedIn) {
+                      final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
+                        MaterialPageRoute(
+                          fullscreenDialog: true,
+                          builder: (_) => const LoginScreen(),
+                        ),
+                      );
+                      if (ok != true || !context.mounted) return;
+                    }
                     Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const TestScreen()),
                     );

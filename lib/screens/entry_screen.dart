@@ -3,6 +3,7 @@ import 'auth/login_screen.dart';
 import 'auth/signup_screen.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_text_styles.dart';
+import 'main_shell.dart';
 
 class EntryScreen extends StatelessWidget {
   const EntryScreen({super.key});
@@ -27,10 +28,18 @@ class EntryScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const SignUpScreen()),
+                  onPressed: () async {
+                    final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
+                      MaterialPageRoute(
+                        fullscreenDialog: true,
+                        builder: (_) => const SignUpScreen(),
+                      ),
                     );
+                    if (ok == true && context.mounted) {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(builder: (_) => const MainShell()),
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -56,10 +65,18 @@ class EntryScreen extends StatelessWidget {
               const SizedBox(height: 12),
               Center(
                 child: TextButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  onPressed: () async {
+                    final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
+                      MaterialPageRoute(
+                        fullscreenDialog: true,
+                        builder: (_) => const LoginScreen(),
+                      ),
                     );
+                    if (ok == true && context.mounted) {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(builder: (_) => const MainShell()),
+                      );
+                    }
                   },
                   child: Text(
                     '이미 계정이 있으신가요? 로그인',

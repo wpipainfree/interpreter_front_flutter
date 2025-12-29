@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
-import '../../utils/app_config.dart';
-import '../main_shell.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -40,17 +38,10 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (result.isSuccess) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Welcome, ${result.user!.nickname}!'),
-          backgroundColor: AppColors.secondary,
-        ),
-      );
-      _navigateToDashboard();
-    } else {
-      setState(() => _errorMessage = result.errorMessage);
+      _completeAuth(success: true);
+      return;
     }
+    setState(() => _errorMessage = result.errorMessage);
   }
 
   Future<void> _handleEmailLogin() async {
@@ -68,110 +59,132 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (result.isSuccess) {
-      _navigateToDashboard();
-    } else {
-      setState(() => _errorMessage = result.errorMessage);
+      _completeAuth(success: true);
+      return;
     }
+    setState(() => _errorMessage = result.errorMessage);
   }
 
-  void _navigateToDashboard() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MainShell()),
-    );
+  Future<void> _handleGuestLogin() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    await _authService.loginAsGuest();
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    _completeAuth(success: true);
+  }
+
+  void _completeAuth({required bool success}) {
+    Navigator.of(context, rootNavigator: true).pop(success);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (AppConfig.freeNavigation) ...[
-                _DevBypassBanner(onBypass: _navigateToDashboard),
+    return WillPopScope(
+      onWillPop: () async {
+        _completeAuth(success: false);
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.backgroundLight,
+        appBar: AppBar(
+          backgroundColor: AppColors.backgroundLight,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => _completeAuth(success: false),
+          ),
+        ),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const _LoginHeader(),
+                const SizedBox(height: 28),
+                _SocialButton(
+                  label: 'Н1\'Н1\'Н~Йнo 3Н\'^ ЙOН-? Н<oНz`б~И,°',
+                  backgroundColor: const Color(0xFFFEE500),
+                  textColor: const Color(0xFF191919),
+                  icon: Icons.chat_bubble_outline_rounded,
+                  onPressed: () => _handleSocialLogin('kakao'),
+                ),
+                const SizedBox(height: 12),
+                _SocialButton(
+                  label: 'AppleЙнo И3,Н+?б~И,°',
+                  backgroundColor: Colors.black,
+                  textColor: Colors.white,
+                  icon: Icons.apple,
+                  onPressed: () => _handleSocialLogin('apple'),
+                ),
+                const SizedBox(height: 12),
+                _SocialButton(
+                  label: 'GoogleЙнo ЙнoИ·,Н?,',
+                  backgroundColor: Colors.white,
+                  textColor: AppColors.textPrimary,
+                  icon: Icons.public,
+                  borderColor: AppColors.border,
+                  onPressed: () => _handleSocialLogin('google'),
+                ),
                 const SizedBox(height: 20),
-              ],
-              const _LoginHeader(),
-              const SizedBox(height: 28),
-              _SocialButton(
-                label: '카카오로 3초 만에 시작하기',
-                backgroundColor: const Color(0xFFFEE500),
-                textColor: const Color(0xFF191919),
-                icon: Icons.chat_bubble_outline_rounded,
-                onPressed: () => _handleSocialLogin('kakao'),
-              ),
-              const SizedBox(height: 12),
-              _SocialButton(
-                label: 'Apple로 계속하기',
-                backgroundColor: Colors.black,
-                textColor: Colors.white,
-                icon: Icons.apple,
-                onPressed: () => _handleSocialLogin('apple'),
-              ),
-              const SizedBox(height: 12),
-              _SocialButton(
-                label: 'Google로 로그인',
-                backgroundColor: Colors.white,
-                textColor: AppColors.textPrimary,
-                icon: Icons.public,
-                borderColor: AppColors.border,
-                onPressed: () => _handleSocialLogin('google'),
-              ),
-              const SizedBox(height: 20),
-              if (_errorMessage != null) _ErrorBanner(message: _errorMessage!),
-              const SizedBox(height: 12),
-              Center(
-                child: Text(
-                  '또는 이메일로 로그인',
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.textHint,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              _EmailForm(
-                formKey: _formKey,
-                emailController: _emailController,
-                passwordController: _passwordController,
-                isLoading: _isLoading,
-                onSubmit: _handleEmailLogin,
-              ),
-              const SizedBox(height: 20),
-              Center(
-                child: TextButton(
-                  onPressed: _isLoading
-                      ? null
-                      : () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const SignUpScreen()),
-                          );
-                        },
+                if (_errorMessage != null) _ErrorBanner(message: _errorMessage!),
+                const SizedBox(height: 12),
+                Center(
                   child: Text(
-                    '이메일로 회원가입',
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.secondary,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Center(
-                child: TextButton(
-                  onPressed: _isLoading ? null : _navigateToDashboard,
-                  child: Text(
-                    '임시 접근 (개발용)',
+                    'Й~?ЙS" Н?\'Йc\"Н?мЙнo ЙнoИ·,Н?,',
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.textHint,
-                      decoration: TextDecoration.underline,
                     ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                _EmailForm(
+                  formKey: _formKey,
+                  emailController: _emailController,
+                  passwordController: _passwordController,
+                  isLoading: _isLoading,
+                  onSubmit: _handleEmailLogin,
+                ),
+                const SizedBox(height: 20),
+                Center(
+                  child: TextButton(
+                    onPressed: _isLoading
+                        ? null
+                        : () {
+                            Navigator.of(context, rootNavigator: true).pushReplacement(
+                              MaterialPageRoute(
+                                fullscreenDialog: true,
+                                builder: (_) => const SignUpScreen(),
+                              ),
+                            );
+                          },
+                    child: Text(
+                      'Н?\'Йc\"Н?мЙнo бsOН>?И°?Нz.',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.secondary,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Center(
+                  child: TextButton(
+                    onPressed: _isLoading ? null : _handleGuestLogin,
+                    child: Text(
+                      'Нz,Н<o Н `И·м (И°oЙ°oНsc)',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textHint,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -194,7 +207,7 @@ class _LoginHeader extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          '나의 마음 구조를 분석하고 기록합니다',
+          'Й,~Н?~ Й^Н?O ИцкНн°ЙЭм Й,Н,?б~И3  И,°Йн?бcЙ<^Й<',
           style: AppTextStyles.bodySmall.copyWith(color: AppColors.textHint),
           textAlign: TextAlign.center,
         ),
@@ -310,7 +323,7 @@ class _EmailForm extends StatelessWidget {
                       ),
                     )
                   : Text(
-                      '로그인',
+                      'ЙнoИ·,Н?,',
                       style: AppTextStyles.buttonMedium,
                     ),
             ),
@@ -343,45 +356,6 @@ class _ErrorBanner extends StatelessWidget {
             child: Text(
               message,
               style: AppTextStyles.bodySmall.copyWith(color: Colors.red.shade700),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DevBypassBanner extends StatelessWidget {
-  final VoidCallback onBypass;
-  const _DevBypassBanner({required this.onBypass});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('개발 모드', style: AppTextStyles.labelMedium),
-          const SizedBox(height: 4),
-          Text(
-            '로그인/권한 없이 전체 화면 탐색 가능합니다.',
-            style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: 8),
-          TextButton(
-            onPressed: onBypass,
-            child: Text(
-              '바로 입장',
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.secondary,
-                decoration: TextDecoration.underline,
-              ),
             ),
           ),
         ],

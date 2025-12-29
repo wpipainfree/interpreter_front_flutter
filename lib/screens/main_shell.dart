@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
 import '../utils/app_colors.dart';
+import 'auth/login_screen.dart';
 import 'dashboard_screen.dart';
 import 'test/test_intro_screen.dart';
 import 'mymind/my_mind_page.dart';
@@ -17,6 +19,7 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   late int _index;
+  final AuthService _authService = AuthService();
 
   @override
   void initState() {
@@ -40,7 +43,7 @@ class _MainShellState extends State<MainShell> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
-        onTap: (i) => setState(() => _index = i),
+        onTap: _onTabSelected,
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.textHint,
         type: BottomNavigationBarType.fixed,
@@ -52,5 +55,22 @@ class _MainShellState extends State<MainShell> {
         ],
       ),
     );
+  }
+
+  Future<void> _onTabSelected(int i) async {
+    // Gate MyPage behind login; keep other tabs free.
+    if (i == 3 && !_authService.isLoggedIn) {
+      final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (_) => const LoginScreen(),
+        ),
+      );
+      if (ok == true && mounted) {
+        setState(() => _index = 3);
+      }
+      return;
+    }
+    setState(() => _index = i);
   }
 }
