@@ -106,15 +106,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 const _LoginHeader(),
                 const SizedBox(height: 28),
                 _SocialButton(
-                  label: 'Н1\'Н1\'Н~Йнo 3Н\'^ ЙOН-? Н<oНz`б~И,°',
-                  backgroundColor: const Color(0xFFFEE500),
-                  textColor: const Color(0xFF191919),
+                  label: '카카오로 계속하기',
+                  backgroundColor: AppColors.kakao,
+                  textColor: AppColors.kakaoText,
                   icon: Icons.chat_bubble_outline_rounded,
                   onPressed: () => _handleSocialLogin('kakao'),
                 ),
                 const SizedBox(height: 12),
                 _SocialButton(
-                  label: 'AppleЙнo И3,Н+?б~И,°',
+                  label: 'Apple로 계속하기',
                   backgroundColor: Colors.black,
                   textColor: Colors.white,
                   icon: Icons.apple,
@@ -122,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 12),
                 _SocialButton(
-                  label: 'GoogleЙнo ЙнoИ·,Н?,',
+                  label: 'Google로 계속하기',
                   backgroundColor: Colors.white,
                   textColor: AppColors.textPrimary,
                   icon: Icons.public,
@@ -134,7 +134,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 12),
                 Center(
                   child: Text(
-                    'Й~?ЙS" Н?\'Йc\"Н?мЙнo ЙнoИ·,Н?,',
+                    '또는 이메일로 로그인',
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.textHint,
                     ),
@@ -162,7 +162,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             );
                           },
                     child: Text(
-                      'Н?\'Йc\"Н?мЙнo бsOН>?И°?Нz.',
+                      '아직 계정이 없으신가요? 회원가입',
                       style: AppTextStyles.bodySmall.copyWith(
                         color: AppColors.secondary,
                         decoration: TextDecoration.underline,
@@ -175,7 +175,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: TextButton(
                     onPressed: _isLoading ? null : _handleGuestLogin,
                     child: Text(
-                      'Нz,Н<o Н `И·м (И°oЙ°oНsc)',
+                      '로그인 없이 둘러보기',
                       style: AppTextStyles.bodySmall.copyWith(
                         color: AppColors.textHint,
                         decoration: TextDecoration.underline,
@@ -201,13 +201,13 @@ class _LoginHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
-          'Sign in to Your Structure',
+          '로그인',
           style: AppTextStyles.h2,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
         Text(
-          'Й,~Н?~ Й^Н?O ИцкНн°ЙЭм Й,Н,?б~И3  И,°Йн?бcЙ<^Й<',
+          'WPI 구조를 계속 이용하려면 로그인하세요.',
           style: AppTextStyles.bodySmall.copyWith(color: AppColors.textHint),
           textAlign: TextAlign.center,
         ),
@@ -287,24 +287,24 @@ class _EmailForm extends StatelessWidget {
           TextFormField(
             controller: emailController,
             decoration: const InputDecoration(
-              labelText: 'Email',
+              labelText: '이메일',
               prefixIcon: Icon(Icons.email_outlined),
             ),
             keyboardType: TextInputType.emailAddress,
             validator: (value) =>
-                value != null && value.contains('@') ? null : 'Please enter a valid email.',
+                value != null && value.contains('@') ? null : '올바른 이메일을 입력해주세요.',
             enabled: !isLoading,
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: passwordController,
             decoration: const InputDecoration(
-              labelText: 'Password',
+              labelText: '비밀번호',
               prefixIcon: Icon(Icons.lock_outlined),
             ),
             obscureText: true,
             validator: (value) =>
-                value != null && value.length >= 6 ? null : 'Password must be at least 6 characters.',
+                value != null && value.length >= 6 ? null : '비밀번호는 6자 이상 입력해주세요.',
             enabled: !isLoading,
           ),
           const SizedBox(height: 16),
@@ -323,7 +323,7 @@ class _EmailForm extends StatelessWidget {
                       ),
                     )
                   : Text(
-                      'ЙнoИ·,Н?,',
+                      '로그인',
                       style: AppTextStyles.buttonMedium,
                     ),
             ),

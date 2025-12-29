@@ -20,7 +20,7 @@ class EntryScreen extends StatelessWidget {
             children: [
               const Spacer(flex: 3),
               Text(
-                '지금 마음을\n구조로 읽어드립니다.',
+                '당신의 이야기를\n구조적으로 정리해요.',
                 style: AppTextStyles.h1,
               ),
               const Spacer(flex: 4),
@@ -50,14 +50,14 @@ class EntryScreen extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    '내 마음 구조 해석하기',
+                    '이메일로 회원가입',
                     style: AppTextStyles.buttonMedium,
                   ),
                 ),
               ),
               const SizedBox(height: 12),
               Text(
-                '4단계 검사로 시작합니다.',
+                '몇 가지 질문으로 나를 이해하고 성장의 방향을 찾아보세요.',
                 style: AppTextStyles.bodySmall.copyWith(
                   color: AppColors.textHint,
                 ),

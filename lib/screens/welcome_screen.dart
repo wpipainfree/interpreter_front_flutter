@@ -17,7 +17,7 @@ class WelcomeScreen extends StatelessWidget {
             children: [
               const Spacer(flex: 3),
               Text(
-                '지금 마음을\n구조로 읽어드립니다.',
+                '당신만의 구조를\n만들 준비가 되셨나요?',
                 style: AppTextStyles.h1,
                 textAlign: TextAlign.start,
               ),
@@ -40,14 +40,14 @@ class WelcomeScreen extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    '내 마음 구조 해석하기',
+                    '시작하기',
                     style: AppTextStyles.buttonMedium,
                   ),
                 ),
               ),
               const SizedBox(height: 12),
               Text(
-                '4단계 검사로 시작합니다.',
+                '간단한 온보딩 후 바로 경험을 시작할 수 있어요.',
                 style: AppTextStyles.bodySmall.copyWith(
                   color: AppColors.textHint,
                 ),

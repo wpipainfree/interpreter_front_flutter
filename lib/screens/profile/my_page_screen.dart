@@ -33,7 +33,7 @@ class MyPageScreen extends StatelessWidget {
           children: [
             _ProfileHeader(user: user),
             const SizedBox(height: 16),
-            _SectionTitle('최근 검사 이력'),
+            _SectionTitle('최근 검사 결과'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
@@ -42,7 +42,7 @@ class MyPageScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Divider(height: 32),
-            _SectionTitle('계정 및 설정'),
+            _SectionTitle('설정'),
             _SettingTile(
               icon: Icons.notifications_outlined,
               title: '알림 설정',
@@ -66,7 +66,7 @@ class MyPageScreen extends StatelessWidget {
                   context: context,
                   builder: (context) => AlertDialog(
                     title: const Text('로그아웃'),
-                    content: const Text('정말 로그아웃 하시겠습니까?'),
+                    content: const Text('정말 로그아웃하시겠어요?'),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.of(context).pop(false),
@@ -118,7 +118,7 @@ class _ProfileHeader extends StatelessWidget {
             radius: 36,
             backgroundColor: AppColors.primary.withOpacity(0.12),
             child: Text(
-              (user?.nickname ?? 'U')[0].toUpperCase(),
+              (user?.nickname ?? 'G')[0].toUpperCase(),
               style: const TextStyle(fontSize: 28, color: AppColors.primary, fontWeight: FontWeight.bold),
             ),
           ),
@@ -130,7 +130,7 @@ class _ProfileHeader extends StatelessWidget {
                 Text(user?.nickname ?? '게스트', style: AppTextStyles.h4),
                 const SizedBox(height: 4),
                 Text(
-                  user?.email ?? '로그인 전',
+                  user?.email ?? '로그인이 필요합니다.',
                   style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
                 ),
               ],
@@ -263,6 +263,12 @@ Color _typeColor(String type) {
       return const Color(0xFF4CAF50);
     case '도전형':
       return const Color(0xFFF57C00);
+    case '안정형':
+      return const Color(0xFF2196F3);
+    case '탐험형':
+      return const Color(0xFF9C27B0);
+    case '감성형':
+      return const Color(0xFFE91E63);
     default:
       return AppColors.secondary;
   }

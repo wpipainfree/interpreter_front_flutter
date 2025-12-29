@@ -33,7 +33,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Future<void> _handleEmailSignUp() async {
     if (!_formKey.currentState!.validate()) return;
     if (!_agreed) {
-      setState(() => _errorMessage = '약관에 동의해야 진행됩니다.');
+      setState(() => _errorMessage = '약관에 동의해야 가입이 진행됩니다.');
       return;
     }
 
@@ -90,7 +90,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 const SizedBox(height: 12),
                 Center(
                   child: Text(
-                    '이메일로 가입을 완료해 주세요.',
+                    '이메일로 가입을 완료해주세요.',
                     style: AppTextStyles.bodySmall.copyWith(color: AppColors.textHint),
                   ),
                 ),
@@ -145,13 +145,13 @@ class _Header extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
-          'Create Your Structure',
+          '회원가입',
           style: AppTextStyles.h2,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
         Text(
-          '당신의 이야기를 구조적으로 쌓아갈 계정을 만들어 주세요.',
+          '당신의 이야기를 구조화할 계정을 만들어주세요.',
           style: AppTextStyles.bodySmall.copyWith(color: AppColors.textHint),
           textAlign: TextAlign.center,
         ),
@@ -190,35 +190,35 @@ class _EmailForm extends StatelessWidget {
           TextFormField(
             controller: emailController,
             decoration: const InputDecoration(
-              labelText: 'Email',
+              labelText: '이메일',
               prefixIcon: Icon(Icons.email_outlined),
             ),
             keyboardType: TextInputType.emailAddress,
             validator: (value) =>
-                value != null && value.contains('@') ? null : 'Please enter a valid email.',
+                value != null && value.contains('@') ? null : '올바른 이메일을 입력해주세요.',
             enabled: !isLoading,
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: passwordController,
             decoration: const InputDecoration(
-              labelText: 'Password',
+              labelText: '비밀번호',
               prefixIcon: Icon(Icons.lock_outlined),
             ),
             obscureText: true,
             validator: (value) =>
-                value != null && value.length >= 6 ? null : 'Password must be at least 6 characters.',
+                value != null && value.length >= 6 ? null : '비밀번호는 6자 이상 입력해주세요.',
             enabled: !isLoading,
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: nicknameController,
             decoration: const InputDecoration(
-              labelText: 'Nickname',
+              labelText: '닉네임',
               prefixIcon: Icon(Icons.person_outline),
             ),
             validator: (value) =>
-                value != null && value.isNotEmpty ? null : 'Please enter a nickname.',
+                value != null && value.isNotEmpty ? null : '닉네임을 입력해주세요.',
             enabled: !isLoading,
           ),
           const SizedBox(height: 12),

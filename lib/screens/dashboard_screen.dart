@@ -65,7 +65,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '오늘의 마음 구조',
+                    '오늘의 구조 상태',
                     style: TextStyle(
                       fontSize: 14,
                       color: AppColors.textOnDark.withOpacity(0.8),
@@ -82,7 +82,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const Spacer(),
                   Text(
-                    '정돈된 구조로 당신의 마음을 읽어드립니다.',
+                    '당신의 이야기를 더 선명하게 보기 위한 인사이트를 준비했어요.',
                     style: TextStyle(
                       fontSize: 15,
                       color: AppColors.textOnDark.withOpacity(0.9),
@@ -134,7 +134,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '대략 1-2분, 총 ${AppConstants.sampleQuestionCount}문항(샘플)',
+                      '약 1-2분, ${AppConstants.sampleQuestionCount}문항(맛보기)',
                       style: TextStyle(
                         fontSize: 14,
                         color: AppColors.textOnDark.withOpacity(0.85),
@@ -209,7 +209,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              '최근 검사 이력',
+              '최근 검사 기록',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -373,7 +373,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 20),
           const Text(
-            '아직 검사 이력이 없습니다.',
+            '아직 검사 기록이 없어요.',
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w600,
@@ -382,7 +382,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            '첫 검사를 진행해 보세요.',
+            '첫 검사를 완료하고 기록을 쌓아보세요.',
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey.shade600,

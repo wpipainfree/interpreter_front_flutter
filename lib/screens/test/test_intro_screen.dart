@@ -27,7 +27,6 @@ class TestIntroScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              
               _buildInfoCard(
                 icon: Icons.timer,
                 title: '소요 시간',
@@ -36,17 +35,14 @@ class TestIntroScreen extends StatelessWidget {
               _buildInfoCard(
                 icon: Icons.quiz,
                 title: '문항 수',
-                content: '총 ${AppConstants.sampleQuestionCount}문항 (샘플)',
+                content: '총 ${AppConstants.sampleQuestionCount}문항 (맛보기)',
               ),
               _buildInfoCard(
                 icon: Icons.psychology,
-                title: '검사 방법',
-                content: '각 문항을 읽고 현재 자신의 상태에 가장 가까운 답변을 선택하세요.',
+                title: '검사 목적',
+                content: '나의 존재 유형을 빠르게 파악해 다음 여정에 활용합니다.',
               ),
-              
               const Spacer(),
-              
-              // 안내 메시지
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -59,17 +55,14 @@ class TestIntroScreen extends StatelessWidget {
                     SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        '정답이 없습니다. 솔직하게 응답해주세요.',
+                        '결과는 학습을 돕기 위한 참고용입니다. 충분히 휴식한 상태에서 진행해주세요.',
                         style: TextStyle(color: AppColors.gapAnalysisText),
                       ),
                     ),
                   ],
                 ),
               ),
-              
               const SizedBox(height: 24),
-              
-              // 시작 버튼
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
