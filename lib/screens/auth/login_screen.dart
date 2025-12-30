@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
@@ -19,6 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isLoading = false;
   String? _errorMessage;
+  String? _debugMessage;
 
   @override
   void dispose() {
@@ -31,6 +33,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _debugMessage = null;
     });
 
     final result = await _authService.loginWithSocial(provider);
@@ -41,7 +44,10 @@ class _LoginScreenState extends State<LoginScreen> {
       _completeAuth(success: true);
       return;
     }
-    setState(() => _errorMessage = result.errorMessage);
+    setState(() {
+      _errorMessage = result.errorMessage;
+      _debugMessage = result.debugMessage;
+    });
   }
 
   Future<void> _handleEmailLogin() async {
@@ -49,6 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _debugMessage = null;
     });
 
     final result = await _authService.loginWithEmail(
@@ -62,13 +69,17 @@ class _LoginScreenState extends State<LoginScreen> {
       _completeAuth(success: true);
       return;
     }
-    setState(() => _errorMessage = result.errorMessage);
+    setState(() {
+      _errorMessage = result.errorMessage;
+      _debugMessage = result.debugMessage;
+    });
   }
 
   Future<void> _handleGuestLogin() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _debugMessage = null;
     });
     await _authService.loginAsGuest();
     if (!mounted) return;
@@ -82,10 +93,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        _completeAuth(success: false);
-        return false;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          _completeAuth(success: false);
+        }
       },
       child: Scaffold(
         backgroundColor: AppColors.backgroundLight,
@@ -130,7 +143,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: () => _handleSocialLogin('google'),
                 ),
                 const SizedBox(height: 20),
-                if (_errorMessage != null) _ErrorBanner(message: _errorMessage!),
+                if (_errorMessage != null)
+                  _ErrorBanner(
+                    message: _errorMessage!,
+                    debugMessage: kDebugMode ? _debugMessage : null,
+                  ),
                 const SizedBox(height: 12),
                 Center(
                   child: Text(
@@ -336,7 +353,8 @@ class _EmailForm extends StatelessWidget {
 
 class _ErrorBanner extends StatelessWidget {
   final String message;
-  const _ErrorBanner({required this.message});
+  final String? debugMessage;
+  const _ErrorBanner({required this.message, this.debugMessage});
 
   @override
   Widget build(BuildContext context) {
@@ -353,9 +371,21 @@ class _ErrorBanner extends StatelessWidget {
           Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              message,
-              style: AppTextStyles.bodySmall.copyWith(color: Colors.red.shade700),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  message,
+                  style: AppTextStyles.bodySmall.copyWith(color: Colors.red.shade700),
+                ),
+                if (debugMessage != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    debugMessage!,
+                    style: AppTextStyles.caption.copyWith(color: Colors.red.shade700.withOpacity(0.8)),
+                  ),
+                ],
+              ],
             ),
           ),
         ],

@@ -19,10 +19,12 @@ dependencies:
   
   # 로컬 저장소 (알림 설정 저장)
   shared_preferences: ^2.2.2
+  http: ^1.2.2
   
   # 이미지 캡처 및 저장
   path_provider: ^2.1.2
   share_plus: ^7.2.1
+  flutter_svg: ^2.0.9
   google_fonts: ^6.2.1
 
 dev_dependencies:

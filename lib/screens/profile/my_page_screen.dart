@@ -2,21 +2,25 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
-import '../settings/notification_settings_screen.dart';
+import '../auth/login_screen.dart';
 import '../entry_screen.dart';
+import '../settings/notification_settings_screen.dart';
 
-class MyPageScreen extends StatelessWidget {
+class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final authService = AuthService();
-    final user = authService.currentUser;
+  State<MyPageScreen> createState() => _MyPageScreenState();
+}
 
-    final history = [
-      _TestHistory(type: '조화형', date: DateTime.now().subtract(const Duration(days: 2))),
-      _TestHistory(type: '도전형', date: DateTime.now().subtract(const Duration(days: 30))),
-    ];
+class _MyPageScreenState extends State<MyPageScreen> {
+  final AuthService _authService = AuthService();
+
+  UserInfo? get _user => _authService.currentUser;
+
+  @override
+  Widget build(BuildContext context) {
+    final user = _user;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
@@ -27,71 +31,117 @@ class MyPageScreen extends StatelessWidget {
         centerTitle: true,
         title: Text('마이페이지', style: AppTextStyles.h4),
       ),
-      body: SingleChildScrollView(
+      body: user == null ? _buildLoggedOut(context) : _buildLoggedIn(context, user),
+    );
+  }
+
+  Widget _buildLoggedOut(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _ProfileHeader(user: user),
-            const SizedBox(height: 16),
-            _SectionTitle('최근 검사 결과'),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                children: history.map((h) => _HistoryCard(test: h)).toList(growable: false),
-              ),
-            ),
+            const Icon(Icons.lock_outline, size: 56, color: AppColors.textHint),
+            const SizedBox(height: 12),
+            Text('로그인이 필요합니다.', style: AppTextStyles.h4),
             const SizedBox(height: 8),
-            const Divider(height: 32),
-            _SectionTitle('설정'),
-            _SettingTile(
-              icon: Icons.notifications_outlined,
-              title: '알림 설정',
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const NotificationSettingsScreen()),
-                );
-              },
+            Text(
+              '마이페이지에서 계정/토큰 정보를 확인하려면 로그인해주세요.',
+              style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
             ),
-            _SettingTile(
-              icon: Icons.help_outline,
-              title: '도움말',
-              onTap: () {},
-            ),
-            _SettingTile(
-              icon: Icons.logout,
-              title: '로그아웃',
-              isDestructive: true,
-              onTap: () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('로그아웃'),
-                    content: const Text('정말 로그아웃하시겠어요?'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        child: const Text('취소'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(true),
-                        child: const Text('로그아웃', style: TextStyle(color: Colors.red)),
-                      ),
-                    ],
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () async {
+                final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
+                  MaterialPageRoute(
+                    fullscreenDialog: true,
+                    builder: (_) => const LoginScreen(),
                   ),
                 );
-                if (confirm == true) {
-                  await authService.logout();
-                  if (!context.mounted) return;
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const EntryScreen()),
-                    (route) => false,
-                  );
+                if (ok == true && mounted) {
+                  setState(() {});
                 }
               },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.textOnPrimary,
+                minimumSize: const Size(160, 48),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('로그인하기'),
             ),
-            const SizedBox(height: 32),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildLoggedIn(BuildContext context, UserInfo user) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _ProfileHeader(user: user),
+          if (user.counselingClient != null) ...[
+            _SectionTitle('매칭된 내담자 정보'),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _CounselingInfoCard(client: user.counselingClient!),
+            ),
+            const SizedBox(height: 16),
+          ],
+          const Divider(height: 32),
+          _SectionTitle('설정'),
+          _SettingTile(
+            icon: Icons.notifications_outlined,
+            title: '알림 설정',
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const NotificationSettingsScreen()),
+              );
+            },
+          ),
+          _SettingTile(
+            icon: Icons.help_outline,
+            title: '도움말',
+            onTap: () {},
+          ),
+          _SettingTile(
+            icon: Icons.logout,
+            title: '로그아웃',
+            isDestructive: true,
+            onTap: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('로그아웃'),
+                  content: const Text('정말 로그아웃하시겠습니까?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: const Text('취소'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: const Text('로그아웃', style: TextStyle(color: Colors.red)),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                await _authService.logout();
+                if (!context.mounted) return;
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const EntryScreen()),
+                  (route) => false,
+                );
+              }
+            },
+          ),
+          const SizedBox(height: 32),
+        ],
       ),
     );
   }
@@ -116,21 +166,18 @@ class _ProfileHeader extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 36,
-            backgroundColor: AppColors.primary.withOpacity(0.12),
-            child: Text(
-              (user?.nickname ?? 'G')[0].toUpperCase(),
-              style: const TextStyle(fontSize: 28, color: AppColors.primary, fontWeight: FontWeight.bold),
-            ),
+            backgroundColor: AppColors.primary.withOpacity(0.08),
+            child: const Icon(Icons.person_rounded, size: 32, color: AppColors.primary),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(user?.nickname ?? '게스트', style: AppTextStyles.h4),
+                Text(user?.displayName ?? '게스트', style: AppTextStyles.h4),
                 const SizedBox(height: 4),
                 Text(
-                  user?.email ?? '로그인이 필요합니다.',
+                  user?.email ?? '로그인 후 이메일이 표시됩니다.',
                   style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
                 ),
               ],
@@ -154,59 +201,64 @@ class _ProfileHeader extends StatelessWidget {
   }
 }
 
-class _HistoryCard extends StatelessWidget {
-  final _TestHistory test;
-  const _HistoryCard({required this.test});
+class _CounselingInfoCard extends StatelessWidget {
+  final CounselingClient client;
+  const _CounselingInfoCard({required this.client});
 
   @override
   Widget build(BuildContext context) {
-    final color = _typeColor(test.type);
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
+      ),
+      child: Column(
+        children: [
+          _InfoRow(label: '내담자 ID', value: client.clientId ?? '-'),
+          _InfoRow(label: '학생 이름', value: client.studentName ?? '-'),
+          if (client.parentName != null && client.parentName!.isNotEmpty)
+            _InfoRow(label: '학부모 이름', value: client.parentName!),
+          if (client.grade != null && client.grade!.isNotEmpty)
+            _InfoRow(label: '학년', value: client.grade!),
+          if (client.academicTrack != null && client.academicTrack!.isNotEmpty)
+            _InfoRow(label: '계열', value: client.academicTrack!),
+          if (client.institutionName != null && client.institutionName!.isNotEmpty)
+            _InfoRow(label: '소속 기관', value: client.institutionName!),
+          _InfoRow(label: '승인 역할', value: client.approvalRole ?? '-'),
+          _InfoRow(label: '승인 여부', value: client.isApproved ? '승인됨' : '미승인'),
         ],
       ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _InfoRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                test.type[0],
-                style: TextStyle(color: color, fontWeight: FontWeight.bold),
-              ),
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
             ),
           ),
-          const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(test.type, style: AppTextStyles.h5),
-                const SizedBox(height: 4),
-                Text(
-                  _formatDate(test.date),
-                  style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
-                ),
-              ],
+            child: Text(
+              value.isNotEmpty ? value : '-',
+              style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          const Icon(Icons.arrow_forward_ios, size: 14, color: AppColors.textHint),
         ],
       ),
     );
@@ -257,27 +309,6 @@ class _SettingTile extends StatelessWidget {
   }
 }
 
-Color _typeColor(String type) {
-  switch (type) {
-    case '조화형':
-      return const Color(0xFF4CAF50);
-    case '도전형':
-      return const Color(0xFFF57C00);
-    case '안정형':
-      return const Color(0xFF2196F3);
-    case '탐험형':
-      return const Color(0xFF9C27B0);
-    case '감성형':
-      return const Color(0xFFE91E63);
-    default:
-      return AppColors.secondary;
-  }
-}
-
-String _formatDate(DateTime date) {
-  return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
-}
-
 Color _providerColor(String provider) {
   switch (provider) {
     case 'kakao':
@@ -308,10 +339,4 @@ String _providerName(String provider) {
     default:
       return provider;
   }
-}
-
-class _TestHistory {
-  final String type;
-  final DateTime date;
-  const _TestHistory({required this.type, required this.date});
 }

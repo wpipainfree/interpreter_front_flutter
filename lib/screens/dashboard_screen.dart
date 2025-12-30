@@ -73,7 +73,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    user?.nickname ?? '게스트',
+                    user?.displayName ?? '게스트',
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,

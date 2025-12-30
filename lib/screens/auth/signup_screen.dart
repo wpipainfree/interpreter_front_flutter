@@ -63,10 +63,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        _completeAuth(success: false);
-        return false;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          _completeAuth(success: false);
+        }
       },
       child: Scaffold(
         backgroundColor: AppColors.backgroundLight,

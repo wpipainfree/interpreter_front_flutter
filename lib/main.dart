@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/splash_screen.dart';
+import 'services/auth_service.dart';
 import 'services/notification_service.dart';
 import 'utils/app_theme.dart';
 
@@ -8,6 +9,7 @@ void main() async {
 
   // 알림 서비스 초기화
   await NotificationService().initialize();
+  await AuthService().restoreSession();
 
   runApp(const WpiApp());
 }
