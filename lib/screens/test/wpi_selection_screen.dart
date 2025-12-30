@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/psych_tests_service.dart';
@@ -113,19 +115,6 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
     });
   }
 
-  void _resetCurrentRound() {
-    final rank = _roundIndex + 1;
-    final ids = _selectedRanks.entries.where((e) => e.value == rank).map((e) => e.key).toList();
-    if (ids.isEmpty) return;
-    for (final id in ids) {
-      _selectedRanks.remove(id);
-    }
-    setState(() {});
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('이번 라운드 선택을 초기화했어요.')),
-    );
-  }
-
   void _removeFromCurrentRound(int id) {
     final rank = _roundIndex + 1;
     if (_selectedRanks[id] == rank) {
@@ -147,6 +136,7 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
     if (checklist == null) return;
 
     final selections = WpiSelections(
+      checklistId: checklist.id,
       rank1: _selectedRanks.entries.where((e) => e.value == 1).map((e) => e.key).toList(),
       rank2: _selectedRanks.entries.where((e) => e.value == 2).map((e) => e.key).toList(),
       rank3: _selectedRanks.entries.where((e) => e.value == 3).map((e) => e.key).toList(),
@@ -208,7 +198,7 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
         backgroundColor: AppColors.backgroundLight,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
-        title: Text('${widget.testTitle} - ${_roundLabel(currentRank, target)}'),
+        title: Text(widget.testTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.close),
@@ -220,24 +210,28 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
         children: [
           _StickyHeader(
             brandRed: _brandRed,
-            roundLabel: _roundLabel(currentRank, target),
-            countLabel: '선택 ${currentSelections.length}/$target',
+            roundLabel: _roundLabel(currentRank),
+            countLabel: '${currentSelections.length}/$target 선택',
             criteria: '지금의 나를 가장 잘 나타내는 문장',
-            reassurance: '지금은 담고, 마지막 검토에서 1·2·3순위를 한 번 더 정리합니다.',
-            chips: _buildChips(currentSelections, checklist),
+            reassurance: '',
+            slotCount: target,
+            selectedIds: currentSelections,
+            checklist: checklist,
+            onRemove: _removeFromCurrentRound,
           ),
           const Divider(height: 1),
           Expanded(
             child: ListView.separated(
               itemCount: checklist.questions.length,
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+              separatorBuilder: (_, __) => const SizedBox(height: 6),
               itemBuilder: (context, index) {
                 final item = checklist.questions[index];
                 final rank = _selectedRanks[item.id];
                 final selected = rank == currentRank;
                 return _WpiItemCard(
                   brandRed: _brandRed,
+                  number: index + 1,
                   item: item,
                   lockedRank: rank,
                   selected: selected,
@@ -250,7 +244,6 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
             brandRed: _brandRed,
             canProceed: canProceed,
             primaryLabel: _roundIndex == 2 ? '검토로' : '${_roundIndex + 2}순위로',
-            onReset: currentSelections.isNotEmpty ? _resetCurrentRound : null,
             onNext: _goNext,
           ),
         ],
@@ -258,32 +251,10 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
     );
   }
 
-  List<Widget> _buildChips(List<int> ids, PsychTestChecklist checklist) {
-    if (ids.isEmpty) {
-      return [Text('이번 라운드 선택 없음', style: AppTextStyles.caption)];
-    }
-    return ids
-        .map(
-          (id) => Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: InputChip(
-              label: Text(
-                _cleanText(checklist.questions.firstWhere((e) => e.id == id).text),
-                overflow: TextOverflow.ellipsis,
-              ),
-              onDeleted: () => _removeFromCurrentRound(id),
-            ),
-          ),
-        )
-        .toList();
-  }
-
-  String _roundLabel(int rank, int target) {
-    return '$rank순위 ($target개)';
-  }
+  String _roundLabel(int rank) => '$rank순위';
 
   String _cleanText(String text) {
-    return text.replaceAll(RegExp(r'\\(.*?\\)'), '').trim();
+    return text.replaceAll(RegExp(r'\(.*?\)'), '').trim();
   }
 }
 
@@ -294,7 +265,10 @@ class _StickyHeader extends StatelessWidget {
     required this.countLabel,
     required this.criteria,
     required this.reassurance,
-    required this.chips,
+    required this.slotCount,
+    required this.selectedIds,
+    required this.checklist,
+    required this.onRemove,
   });
 
   final Color brandRed;
@@ -302,7 +276,10 @@ class _StickyHeader extends StatelessWidget {
   final String countLabel;
   final String criteria;
   final String reassurance;
-  final List<Widget> chips;
+  final int slotCount;
+  final List<int> selectedIds;
+  final PsychTestChecklist checklist;
+  final void Function(int id) onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -343,28 +320,91 @@ class _StickyHeader extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              reassurance,
-              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
-            ),
+            if (reassurance.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                reassurance,
+                style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+              ),
+            ],
             const SizedBox(height: 14),
             Text('이번 라운드 선택', style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(children: chips),
+            Container(
+              height: 60,
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9F9F9),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE0E0E0)),
+              ),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: List.generate(slotCount, (index) {
+                    final hasValue = index < selectedIds.length;
+                    final padding = EdgeInsets.only(right: index == slotCount - 1 ? 0 : 8);
+                    if (hasValue) {
+                      final id = selectedIds[index];
+                      final questionIndex = checklist.questions.indexWhere((e) => e.id == id);
+                      final label = questionIndex >= 0 ? '${questionIndex + 1}' : '${index + 1}';
+                      final text = questionIndex >= 0 ? _cleanText(checklist.questions[questionIndex].text) : '';
+                      return Padding(
+                        padding: padding,
+                        child: InputChip(
+                          label: SizedBox(
+                            width: 160,
+                            child: Text(
+                              '$label. $text',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          onDeleted: () => onRemove(id),
+                          backgroundColor: brandRed.withOpacity(0.08),
+                          deleteIconColor: brandRed,
+                          labelStyle: AppTextStyles.bodySmall.copyWith(
+                            color: brandRed,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          side: BorderSide(color: brandRed),
+                        ),
+                      );
+                    }
+                    return Padding(
+                      padding: padding,
+                      child: Container(
+                        height: 36,
+                        width: 64,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.grey.shade300, width: 1.2),
+                        ),
+                        child: Text(
+                          '${index + 1}',
+                          style: AppTextStyles.bodySmall.copyWith(color: Colors.grey.shade500),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
             ),
           ],
         ),
       ),
     );
   }
+
+  String _cleanText(String text) => text.replaceAll(RegExp(r'\(.*?\)'), '').trim();
 }
 
-class _WpiItemCard extends StatelessWidget {
+class _WpiItemCard extends StatefulWidget {
   const _WpiItemCard({
     required this.brandRed,
+    required this.number,
     required this.item,
     required this.lockedRank,
     required this.selected,
@@ -372,85 +412,131 @@ class _WpiItemCard extends StatelessWidget {
   });
 
   final Color brandRed;
+  final int number;
   final PsychTestItem item;
   final int? lockedRank;
   final bool selected;
   final VoidCallback onTap;
 
   @override
+  State<_WpiItemCard> createState() => _WpiItemCardState();
+}
+
+class _WpiItemCardState extends State<_WpiItemCard> {
+  bool _isPressed = false;
+
+  void _setPressed(bool value) {
+    if (_isPressed == value) return;
+    setState(() => _isPressed = value);
+  }
+
+  void _handleTap() {
+    final locked =
+        widget.lockedRank != null && widget.lockedRank! < 3 && widget.lockedRank! > 0 && !widget.selected;
+    if (locked) return;
+    // 햅틱: 선택될 때만 가볍게 톡.
+    if (!widget.selected && !kIsWeb) {
+      HapticFeedback.lightImpact();
+    }
+    widget.onTap();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final locked = lockedRank != null && lockedRank! < 3 && lockedRank! > 0 && !selected;
-    return InkWell(
-      onTap: locked ? null : onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
+    final locked =
+        widget.lockedRank != null && widget.lockedRank! < 3 && widget.lockedRank! > 0 && !widget.selected;
+    return MouseRegion(
+      cursor: locked ? SystemMouseCursors.basic : SystemMouseCursors.click,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          // 카드 전체는 눌림 애니메이션만, 선택은 원형 버튼에서만 처리.
+          onTap: locked ? null : () {},
+          onTapDown: locked ? null : (_) => _setPressed(true),
+          onTapCancel: locked ? null : () => _setPressed(false),
+          onTapUp: locked ? null : (_) => _setPressed(false),
+          mouseCursor: locked ? SystemMouseCursors.basic : SystemMouseCursors.click,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.02),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (lockedRank != null && lockedRank! < 3)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      margin: const EdgeInsets.only(bottom: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.textSecondary.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '${lockedRank}순위 선택됨',
-                        style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
-                      ),
-                    ),
-                  Text(
-                    item.text.replaceAll(RegExp(r'\\(.*?\\)'), '').trim(),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Text(
+                    '${widget.number}. ${_cleanText(widget.item.text)}',
                     style: AppTextStyles.bodyMedium.copyWith(
                       color: locked ? AppColors.textHint : AppColors.textPrimary,
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            GestureDetector(
-              onTap: locked ? null : onTap,
-              child: Container(
-                width: 48,
-                height: 48,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: selected ? brandRed : Colors.white,
-                  border: Border.all(
-                    color: selected ? brandRed : AppColors.border,
-                    width: selected ? 2 : 1.5,
+                ),
+                const SizedBox(width: 12),
+                GestureDetector(
+                  onTap: locked ? null : _handleTap,
+                  child: AnimatedScale(
+                    scale: _isPressed ? 0.94 : 1,
+                    duration:
+                        _isPressed ? const Duration(milliseconds: 90) : const Duration(milliseconds: 240),
+                    curve: _isPressed ? Curves.easeOutQuad : Curves.elasticOut,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOut,
+                      width: 48,
+                      height: 48,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: widget.selected
+                            ? widget.brandRed
+                            : (_isPressed ? Colors.grey.shade100 : Colors.white),
+                        border: Border.all(
+                          color: widget.selected ? widget.brandRed : AppColors.border,
+                          width: widget.selected ? 2 : 1.5,
+                        ),
+                        boxShadow: widget.selected
+                            ? [
+                                BoxShadow(
+                                  color: widget.brandRed.withOpacity(0.18),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: AnimatedOpacity(
+                        opacity: widget.selected ? 1 : 0,
+                        duration: const Duration(milliseconds: 120),
+                        child: AnimatedScale(
+                          scale: widget.selected ? 1 : 0.6,
+                          duration: const Duration(milliseconds: 160),
+                          curve: Curves.easeOutBack,
+                          child: const Icon(Icons.check, color: Colors.white, size: 22),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-                child: selected
-                    ? const Icon(Icons.check, color: Colors.white, size: 22)
-                    : const SizedBox.shrink(),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
+
+  String _cleanText(String text) => text.replaceAll(RegExp(r'\(.*?\)'), '').trim();
 }
 
 class _BottomCta extends StatelessWidget {
@@ -459,14 +545,12 @@ class _BottomCta extends StatelessWidget {
     required this.canProceed,
     required this.primaryLabel,
     required this.onNext,
-    required this.onReset,
   });
 
   final Color brandRed;
   final bool canProceed;
   final String primaryLabel;
   final VoidCallback onNext;
-  final VoidCallback? onReset;
 
   @override
   Widget build(BuildContext context) {
@@ -495,15 +579,9 @@ class _BottomCta extends StatelessWidget {
               ),
               child: Text(primaryLabel),
             ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: onReset,
-              child: const Text('이번 라운드 다시 고르기'),
-            ),
           ],
         ),
       ),
     );
   }
 }
-

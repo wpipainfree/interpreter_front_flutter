@@ -149,6 +149,7 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
   Future<void> _submit() async {
     setState(() => _submitting = true);
     final selections = WpiSelections(
+      checklistId: widget.selections.checklistId,
       rank1: _buckets[1]?.map((e) => e.id).toList() ?? [],
       rank2: _buckets[2]?.map((e) => e.id).toList() ?? [],
       rank3: _buckets[3]?.map((e) => e.id).toList() ?? [],

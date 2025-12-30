@@ -60,15 +60,15 @@ class PsychTestsService {
     String? worry,
     String? targetName,
     String? note,
-    String? processSequence,
+    int processSequence = 99,
   }) async {
     final uri = _uri('/api/v1/psych-tests/$testId/results');
     final auth = await _authService.getAuthorizationHeader();
     final payload = {
-      'worry': worry,
-      'test_target_name': targetName,
-      'note': note,
-      'process_sequence': processSequence ?? 'S23',
+      if (worry?.isNotEmpty ?? false) 'worry': worry,
+      if (targetName?.isNotEmpty ?? false) 'test_target_name': targetName,
+      if (note?.isNotEmpty ?? false) 'note': note,
+      'process_sequence': processSequence,
       'selections': selections.toPayload(),
     };
 
@@ -166,20 +166,25 @@ class WpiSelections {
   final List<int> rank1;
   final List<int> rank2;
   final List<int> rank3;
+  final int checklistId;
 
   const WpiSelections({
+    required this.checklistId,
     this.rank1 = const [],
     this.rank2 = const [],
     this.rank3 = const [],
   });
 
-  Map<String, dynamic> toPayload() {
-    return {
-      'rank1': rank1,
-      'rank2': rank2,
-      'rank3': rank3,
-    };
-  }
+  List<Map<String, dynamic>> toPayload() => [
+        {
+          'checklist_id': checklistId,
+          'ranks': [
+            {'rank': 1, 'question_ids': rank1},
+            {'rank': 2, 'question_ids': rank2},
+            {'rank': 3, 'question_ids': rank3},
+          ],
+        },
+      ];
 }
 
 class PsychTestException implements Exception {
