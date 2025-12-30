@@ -3,10 +3,28 @@ import '../../services/auth_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/constants.dart';
 import '../auth/login_screen.dart';
-import 'test_screen.dart';
+import 'wpi_selection_screen.dart';
 
 class TestIntroScreen extends StatelessWidget {
   const TestIntroScreen({super.key});
+
+  Future<void> _startTest(BuildContext context, {required int testId, required String title}) async {
+    final auth = AuthService();
+    if (!auth.isLoggedIn) {
+      final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (_) => const LoginScreen(),
+        ),
+      );
+      if (ok != true || !context.mounted) return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => WpiSelectionScreen(testId: testId, testTitle: title),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,37 +81,42 @@ class TestIntroScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    final auth = AuthService();
-                    if (!auth.isLoggedIn) {
-                      final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
-                        MaterialPageRoute(
-                          fullscreenDialog: true,
-                          builder: (_) => const LoginScreen(),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => _startTest(context, testId: 1, title: '현실 검사'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.secondary,
+                        foregroundColor: AppColors.textOnPrimary,
+                        minimumSize: const Size(double.infinity, 56),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      );
-                      if (ok != true || !context.mounted) return;
-                    }
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const TestScreen()),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.secondary,
-                    foregroundColor: AppColors.textOnPrimary,
-                    minimumSize: const Size(double.infinity, 56),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        '현실 검사',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
                     ),
                   ),
-                  child: const Text(
-                    '검사 시작',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => _startTest(context, testId: 3, title: '이상 검사'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 56),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        '이상 검사',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),
