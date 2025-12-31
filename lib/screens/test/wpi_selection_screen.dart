@@ -35,6 +35,7 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
 
   // questionId -> rank(1,2,3)
   final Map<int, int> _selectedRanks = {};
+  bool _limitSnackVisible = false;
   int _roundIndex = 0; // 0: 1순위, 1: 2순위, 2: 3순위
 
   List<int> get _roundTargets {
@@ -101,12 +102,25 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
 
     final target = _roundTargets[_roundIndex];
     if (currentSelections.length >= target) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('이번 라운드는 ${target}개를 선택합니다. 위 칩에서 ✕로 빼고 다시 골라주세요.'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      if (_limitSnackVisible) return;
+      final messenger = ScaffoldMessenger.of(context);
+      _limitSnackVisible = true;
+      messenger.hideCurrentSnackBar();
+      messenger
+          .showSnackBar(
+            SnackBar(
+              content: Text('이번 라운드는 ${target}개를 선택합니다. 위 칩에서 ✕로 빼고 다시 골라주세요.'),
+              duration: const Duration(seconds: 2),
+            ),
+          )
+          .closed
+          .whenComplete(() {
+        if (mounted) {
+          setState(() => _limitSnackVisible = false);
+        } else {
+          _limitSnackVisible = false;
+        }
+      });
       return;
     }
 

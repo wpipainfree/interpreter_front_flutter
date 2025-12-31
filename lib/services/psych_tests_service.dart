@@ -1,53 +1,69 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 
 import '../utils/app_config.dart';
 import 'auth_service.dart';
 
 class PsychTestsService {
-  PsychTestsService({http.Client? client}) : _client = client ?? http.Client();
+  PsychTestsService({Dio? client})
+      : _client = client ??
+            Dio(
+              BaseOptions(
+                connectTimeout: _timeout,
+                receiveTimeout: _timeout,
+              ),
+            );
 
-  final http.Client _client;
+  final Dio _client;
   final AuthService _authService = AuthService();
 
   static const _timeout = Duration(seconds: 15);
 
-  /// 체크리스트(문항 + 라운드별 개수)를 조회합니다.
-  ///
-  /// 응답 구조가 {checklists: [..., {questions: [...]}]} 형태이므로
-  /// 기본적으로 첫 번째 checklist를 사용합니다.
+  /// 문항 목록을 불러옵니다.
   Future<PsychTestChecklist> fetchChecklist(int testId) async {
     final uri = _uri('/api/v1/psych-tests/$testId/items');
     final auth = await _authService.getAuthorizationHeader();
-    final response = await _client
-        .get(uri, headers: {if (auth != null) 'Authorization': auth})
-        .timeout(_timeout);
-
-    if (response.statusCode != 200) {
-      throw PsychTestException(
-        '문항을 불러오지 못했습니다. (${response.statusCode})',
-        debug: utf8.decode(response.bodyBytes),
+    try {
+      final response = await _client.get(
+        uri.toString(),
+        options: Options(
+          headers: {if (auth != null) 'Authorization': auth},
+          sendTimeout: _timeout,
+          receiveTimeout: _timeout,
+        ),
       );
-    }
 
-    final data = jsonDecode(utf8.decode(response.bodyBytes));
-    if (data is Map && data['checklists'] is List && (data['checklists'] as List).isNotEmpty) {
-      final checklistJson = (data['checklists'] as List).first;
-      return PsychTestChecklist.fromJson(checklistJson);
-    }
+      if (response.statusCode != 200) {
+        throw PsychTestException(
+          '문항을 불러오지 못했습니다. (${response.statusCode})',
+          debug: response.data?.toString(),
+        );
+      }
 
-    // fallback: 기존 리스트 구조
-    if (data is List) {
-      final items = data.map<PsychTestItem>((e) => PsychTestItem.fromJson(e)).toList();
-      return PsychTestChecklist(
-        id: 0,
-        name: 'WPI',
-        description: '',
-        firstCount: 3,
-        secondCount: 4,
-        thirdCount: 5,
-        questions: items,
+      final data = response.data;
+      if (data is Map && data['checklists'] is List && (data['checklists'] as List).isNotEmpty) {
+        final checklistJson = (data['checklists'] as List).first as Map<String, dynamic>;
+        return PsychTestChecklist.fromJson(checklistJson);
+      }
+
+      // fallback: 기존 리스트 구조
+      if (data is List) {
+        final items = data.map<PsychTestItem>((e) => PsychTestItem.fromJson(e)).toList();
+        return PsychTestChecklist(
+          id: 0,
+          name: 'WPI',
+          description: '',
+          firstCount: 3,
+          secondCount: 4,
+          thirdCount: 5,
+          questions: items,
+        );
+      }
+    } on DioException catch (e) {
+      throw PsychTestException(
+        '문항을 불러오지 못했습니다. (${e.response?.statusCode ?? e.error})',
+        debug: e.response?.data?.toString(),
       );
     }
 
@@ -72,27 +88,36 @@ class PsychTestsService {
       'selections': selections.toPayload(),
     };
 
-    final response = await _client
-        .post(
-          uri,
+    try {
+      final response = await _client.post(
+        uri.toString(),
+        data: payload,
+        options: Options(
           headers: {
             'Content-Type': 'application/json',
             if (auth != null) 'Authorization': auth,
           },
-          body: jsonEncode(payload),
-        )
-        .timeout(_timeout);
+          sendTimeout: _timeout,
+          receiveTimeout: _timeout,
+        ),
+      );
 
-    if (response.statusCode != 200 && response.statusCode != 201) {
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw PsychTestException(
+          '결과 제출에 실패했습니다. (${response.statusCode})',
+          debug: response.data?.toString(),
+        );
+      }
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) return data;
+      return {'result': data};
+    } on DioException catch (e) {
       throw PsychTestException(
-        '결과 제출에 실패했습니다. (${response.statusCode})',
-        debug: utf8.decode(response.bodyBytes),
+        '결과 제출에 실패했습니다. (${e.response?.statusCode ?? e.error})',
+        debug: e.response?.data?.toString(),
       );
     }
-
-    final data = jsonDecode(utf8.decode(response.bodyBytes));
-    if (data is Map<String, dynamic>) return data;
-    return {'result': data};
   }
 
   Uri _uri(String path) {
@@ -123,7 +148,7 @@ class PsychTestItem {
         sequence: _asInt(json['sequence']),
       );
     }
-    throw const PsychTestException('문항 데이터 형식이 올바르지 않습니다.');
+    throw const PsychTestException('문항 응답 형식이 올바르지 않습니다.');
   }
 }
 

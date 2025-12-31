@@ -1,12 +1,12 @@
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/app_config.dart';
 
-/// Authentication and token management service.
+/// Authentication and token management service powered by Dio.
 class AuthService {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
@@ -17,7 +17,12 @@ class AuthService {
   static const _timeout = Duration(seconds: 15);
   static const _refreshBuffer = Duration(seconds: 60);
 
-  final http.Client _client = http.Client();
+  final Dio _dio = Dio(
+    BaseOptions(
+      connectTimeout: _timeout,
+      receiveTimeout: _timeout,
+    ),
+  );
 
   UserInfo? _currentUser;
   AuthTokens? _tokens;
@@ -51,20 +56,23 @@ class AuthService {
   Future<AuthResult> loginWithEmail(String email, String password) async {
     final uri = _uri('/api/v1/auth/login');
     try {
-      final response = await _client
-          .post(
-            uri,
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: {'username': email, 'password': password},
-          )
-          .timeout(_timeout);
+      final response = await _dio.post(
+        uri.toString(),
+        data: {'username': email, 'password': password},
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          sendTimeout: _timeout,
+          receiveTimeout: _timeout,
+        ),
+      );
 
       if (response.statusCode == 200) {
-        final data = _decodeJson(response.bodyBytes);
+        final data = _asJsonMap(response.data);
+        final refreshHeader = response.headers.value('set-cookie');
         final tokens = AuthTokens(
           accessToken: data['access_token'] as String? ?? '',
           tokenType: data['token_type'] as String? ?? 'bearer',
-          refreshTokenCookie: _extractRefreshTokenCookie(response.headers),
+          refreshTokenCookie: _extractRefreshTokenCookieFromHeader(refreshHeader),
           accessTokenExpiresAt: _parseAccessTokenExpiry(data['access_token'] as String?),
         );
         final user = UserInfo.fromJson(data);
@@ -77,13 +85,13 @@ class AuthService {
       return AuthResult.failure(
         _extractErrorMessage(response),
         debugMessage:
-            'HTTP ${response.statusCode} ${response.reasonPhrase ?? ''} body=${utf8.decode(response.bodyBytes)} uri=$uri',
+            'HTTP ${response.statusCode} ${response.statusMessage ?? ''} data=${response.data} uri=$uri',
       );
-    } catch (e) {
+    } on DioException catch (e) {
       _logNetworkError('loginWithEmail', e);
       return AuthResult.failure(
-        '로그인에 실패했습니다. 네트워크 연결을 확인해주세요.',
-        debugMessage: '$e uri=$uri',
+        '로그인에 실패했습니다. 네트워크를 확인해 주세요.',
+        debugMessage: '${e.message} uri=$uri data=${e.response?.data}',
       );
     }
   }
@@ -95,29 +103,33 @@ class AuthService {
 
     final uri = _uri('/api/v1/auth/refresh');
     try {
-      final response = await _client
-          .post(
-            uri,
-            headers: {'Cookie': refreshCookie},
-          )
-          .timeout(_timeout);
+      final response = await _dio.post(
+        uri.toString(),
+        options: Options(
+          headers: {'Cookie': refreshCookie},
+          sendTimeout: _timeout,
+          receiveTimeout: _timeout,
+        ),
+      );
 
       if (response.statusCode != 200) {
         await logout();
         return null;
       }
 
-      final data = _decodeJson(response.bodyBytes);
+      final data = _asJsonMap(response.data);
       final updatedTokens = AuthTokens(
         accessToken: data['access_token'] as String? ?? '',
         tokenType: data['token_type'] as String? ?? 'bearer',
-        refreshTokenCookie: _extractRefreshTokenCookie(response.headers) ?? refreshCookie,
+        refreshTokenCookie:
+            _extractRefreshTokenCookieFromHeader(response.headers.value('set-cookie')) ??
+                refreshCookie,
         accessTokenExpiresAt: _parseAccessTokenExpiry(data['access_token'] as String?),
       );
       _tokens = updatedTokens;
       await _persistSession(_currentUser, updatedTokens);
       return updatedTokens;
-    } catch (e) {
+    } on DioException catch (e) {
       _logNetworkError('refreshAccessToken', e);
       return null;
     }
@@ -125,7 +137,7 @@ class AuthService {
 
   /// Placeholder for social login flows.
   Future<AuthResult> loginWithSocial(String provider) async {
-    return AuthResult.failure('아직 지원하지 않는 로그인 방식입니다. 이메일 로그인을 사용해주세요.');
+    return AuthResult.failure('소셜 로그인이 아직 준비되지 않았습니다.');
   }
 
   /// Placeholder sign-up (not implemented with API).
@@ -135,7 +147,7 @@ class AuthService {
     required String nickname,
     DateTime? birthDate,
   }) async {
-    return AuthResult.failure('회원가입은 아직 앱에서 지원하지 않습니다.');
+    return AuthResult.failure('회원가입은 아직 준비되지 않았습니다.');
   }
 
   /// Guest login (local only, no tokens persisted).
@@ -180,15 +192,17 @@ class AuthService {
     final refreshCookie = _tokens?.refreshTokenCookie;
     final authHeader = await getAuthorizationHeader(refreshIfNeeded: false);
     try {
-      await _client
-          .post(
-            _uri('/api/v1/auth/logout'),
-            headers: {
-              if (authHeader != null) 'Authorization': authHeader,
-              if (refreshCookie != null) 'Cookie': refreshCookie,
-            },
-          )
-          .timeout(_timeout);
+      await _dio.post(
+        _uri('/api/v1/auth/logout').toString(),
+        options: Options(
+          headers: {
+            if (authHeader != null) 'Authorization': authHeader,
+            if (refreshCookie != null) 'Cookie': refreshCookie,
+          },
+          sendTimeout: _timeout,
+          receiveTimeout: _timeout,
+        ),
+      );
     } catch (e) {
       _logNetworkError('logout', e);
     }
@@ -224,27 +238,37 @@ class AuthService {
     return Uri.parse('$base$normalized');
   }
 
-  Map<String, dynamic> _decodeJson(List<int> bytes) {
-    final decoded = utf8.decode(bytes);
-    final data = jsonDecode(decoded);
+  Map<String, dynamic> _asJsonMap(dynamic data) {
     if (data is Map<String, dynamic>) return data;
+    if (data is String) {
+      final decoded = jsonDecode(data);
+      if (decoded is Map<String, dynamic>) return decoded;
+    }
     throw const FormatException('Unexpected response format.');
   }
 
-  String _extractErrorMessage(http.Response response) {
+  String _extractErrorMessage(Response? response) {
+    final data = response?.data;
     try {
-      final data = jsonDecode(utf8.decode(response.bodyBytes));
       if (data is Map<String, dynamic>) {
         if (data['detail'] is String) return data['detail'] as String;
         if (data['message'] is String) return data['message'] as String;
         if (data['error'] is String) return data['error'] as String;
+      } else if (data is String) {
+        final decoded = jsonDecode(data);
+        if (decoded is Map<String, dynamic>) {
+          if (decoded['detail'] is String) return decoded['detail'] as String;
+          if (decoded['message'] is String) return decoded['message'] as String;
+          if (decoded['error'] is String) return decoded['error'] as String;
+        }
       }
     } catch (_) {
       // ignore
     }
-    if (response.statusCode == 401) return '이메일 또는 비밀번호를 확인해주세요.';
-    if (response.statusCode >= 500) return '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
-    return '로그인에 실패했습니다. (${response.statusCode})';
+    final code = response?.statusCode;
+    if (code == 401) return '인증 정보가 올바르지 않습니다.';
+    if (code != null && code >= 500) return '서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+    return '로그인에 실패했습니다. (${code ?? 'unknown'})';
   }
 
   DateTime? _parseAccessTokenExpiry(String? token) {
@@ -266,14 +290,8 @@ class AuthService {
     return null;
   }
 
-  String? _extractRefreshTokenCookie(Map<String, String> headers) {
-    final raw = headers.entries
-        .firstWhere(
-          (e) => e.key.toLowerCase() == 'set-cookie',
-          orElse: () => const MapEntry('', ''),
-        )
-        .value;
-    if (raw.isEmpty) return null;
+  String? _extractRefreshTokenCookieFromHeader(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
     final match = RegExp(r'(refresh[^=]*)=([^;]+)').firstMatch(raw);
     if (match == null) return null;
     final name = match.group(1);

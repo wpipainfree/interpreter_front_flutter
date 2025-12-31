@@ -92,19 +92,20 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(title, style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
-              const SizedBox(height: 8),
-              ...list.map((item) => _DraggableTile(
-                    item: item,
-                    rank: rank,
-                    onSwap: _handleSwap,
-                  )),
-            ],
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(title, style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                ...list.map((item) => _DraggableTile(
+                      item: item,
+                      rank: rank,
+                      onSwap: _handleSwap,
+                      onDragUpdate: _handleAutoScroll,
+                    )),
+              ],
+            ),
           ),
         ),
-      ),
     );
   }
 
@@ -144,6 +145,25 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
     if (snap == null) return;
     _handleSwap(DragData(itemId: snap.toId, rank: snap.toRank), snap.fromRank, snap.fromId);
     _lastSwap = null;
+  }
+
+  void _handleAutoScroll(DragUpdateDetails details) {
+    final scrollableState = Scrollable.maybeOf(context);
+    final position = scrollableState?.position;
+    if (position == null) return;
+
+    const edgeDragWidth = 60.0;
+    const scrollStep = 16.0;
+    final box = scrollableState?.context.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final localOffset = box.globalToLocal(details.globalPosition);
+    final dy = localOffset.dy;
+
+    if (dy < edgeDragWidth && position.pixels > position.minScrollExtent) {
+      position.jumpTo((position.pixels - scrollStep).clamp(position.minScrollExtent, position.maxScrollExtent));
+    } else if (dy > box.size.height - edgeDragWidth && position.pixels < position.maxScrollExtent) {
+      position.jumpTo((position.pixels + scrollStep).clamp(position.minScrollExtent, position.maxScrollExtent));
+    }
   }
 
   Future<void> _submit() async {
@@ -214,14 +234,18 @@ class _DraggableTile extends StatelessWidget {
     required this.item,
     required this.rank,
     required this.onSwap,
+    required this.onDragUpdate,
   });
 
   final PsychTestItem item;
   final int rank;
   final void Function(DragData drag, int targetRank, int targetId) onSwap;
+  final void Function(DragUpdateDetails details) onDragUpdate;
 
   @override
   Widget build(BuildContext context) {
+    // For auto-scroll we need the nearest scrollable.
+    final scrollable = Scrollable.of(context);
     return DragTarget<DragData>(
       onWillAcceptWithDetails: (details) => details.data.itemId != item.id,
       onAcceptWithDetails: (details) => onSwap(details.data, rank, item.id),
@@ -234,6 +258,12 @@ class _DraggableTile extends StatelessWidget {
             opacity: 0.4,
             child: _tile(context, dragging: true, highlight: highlight),
           ),
+          onDragUpdate: (details) {
+            onDragUpdate(details);
+            if (scrollable != null) {
+              _autoScroll(scrollable, details);
+            }
+          },
           child: _tile(context, highlight: highlight),
         );
       },
@@ -289,6 +319,24 @@ class _DraggableTile extends StatelessWidget {
         child: Text(text, style: AppTextStyles.bodyMedium),
       ),
     );
+  }
+
+  void _autoScroll(ScrollableState scrollable, DragUpdateDetails details) {
+    final position = scrollable.position;
+    if (!position.haveDimensions) return;
+    const edge = 60.0;
+    const step = 16.0;
+    final box = scrollable.context.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final local = box.globalToLocal(details.globalPosition);
+
+    if (local.dy < edge && position.pixels > position.minScrollExtent) {
+      final newOffset = (position.pixels - step).clamp(position.minScrollExtent, position.maxScrollExtent);
+      position.jumpTo(newOffset);
+    } else if (local.dy > box.size.height - edge && position.pixels < position.maxScrollExtent) {
+      final newOffset = (position.pixels + step).clamp(position.minScrollExtent, position.maxScrollExtent);
+      position.jumpTo(newOffset);
+    }
   }
 }
 
