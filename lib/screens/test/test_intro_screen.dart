@@ -2,11 +2,20 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/constants.dart';
+import '../../utils/app_config.dart';
 import '../auth/login_screen.dart';
 import 'wpi_selection_screen.dart';
+import 'wpi_selection_flow_new.dart';
 
-class TestIntroScreen extends StatelessWidget {
+class TestIntroScreen extends StatefulWidget {
   const TestIntroScreen({super.key});
+
+  @override
+  State<TestIntroScreen> createState() => _TestIntroScreenState();
+}
+
+class _TestIntroScreenState extends State<TestIntroScreen> {
+  bool _useNewFlow = AppConfig.useNewWpiFlow;
 
   Future<void> _startTest(BuildContext context, {required int testId, required String title}) async {
     final auth = AuthService();
@@ -21,7 +30,9 @@ class TestIntroScreen extends StatelessWidget {
     }
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => WpiSelectionScreen(testId: testId, testTitle: title),
+        builder: (_) => _useNewFlow
+            ? WpiSelectionFlowNew(testId: testId, testTitle: title)
+            : WpiSelectionScreen(testId: testId, testTitle: title),
       ),
     );
   }
@@ -44,7 +55,26 @@ class TestIntroScreen extends StatelessWidget {
                   color: AppColors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '새 플로우 체험하기',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  Switch.adaptive(
+                    value: _useNewFlow,
+                    onChanged: (v) => setState(() => _useNewFlow = v),
+                    activeColor: AppColors.secondary,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
               _buildInfoCard(
                 icon: Icons.timer,
                 title: '소요 시간',
@@ -58,7 +88,7 @@ class TestIntroScreen extends StatelessWidget {
               _buildInfoCard(
                 icon: Icons.psychology,
                 title: '검사 목적',
-                content: '나의 존재 유형을 빠르게 파악해 다음 여정에 활용합니다.',
+                content: '지금의 나를 파악하고, 마지막에 1·2·3순위로 정리해 드려요.',
               ),
               const Spacer(),
               Container(
