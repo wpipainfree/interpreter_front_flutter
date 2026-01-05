@@ -25,14 +25,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        backgroundColor: AppColors.backgroundLight,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 0,
-        centerTitle: true,
-        title: Text('마이페이지', style: AppTextStyles.h4),
-      ),
-      body: user == null ? _buildLoggedOut(context) : _buildLoggedIn(context, user),
-    );
+      backgroundColor: AppColors.backgroundLight,
+      foregroundColor: AppColors.textPrimary,
+      elevation: 0,
+      centerTitle: false,
+      title: Text('마이페이지', style: AppTextStyles.h4),
+    ),
+    body: user == null ? _buildLoggedOut(context) : _buildLoggedIn(context, user),
+  );
   }
 
   Widget _buildLoggedOut(BuildContext context) {

@@ -117,6 +117,7 @@ class PsychTestsService {
     int page = 1,
     int pageSize = 50,
     bool fetchAll = false,
+    List<int>? testIds,
   }) async {
     final uri = _uri('/api/v1/psych-tests/accounts/$userId');
     try {
@@ -127,6 +128,7 @@ class PsychTestsService {
             'page': page,
             'page_size': pageSize,
             'fetch_all': fetchAll,
+            if (testIds != null && testIds.isNotEmpty) 'test_ids': testIds,
           },
           options: _optionsWithAuth(auth),
         ),

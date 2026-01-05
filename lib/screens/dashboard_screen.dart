@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/psych_tests_service.dart';
 import '../utils/app_colors.dart';
-import '../utils/constants.dart';
 import '../utils/app_text_styles.dart';
 import 'auth/login_screen.dart';
 import 'test/test_intro_screen.dart';
@@ -40,8 +39,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
     try {
-      final res =
-          await _testsService.fetchUserAccounts(userId: userId, page: 1, pageSize: _maxRecent, fetchAll: false);
+      final res = await _testsService.fetchUserAccounts(
+        userId: userId,
+        page: 1,
+        pageSize: _maxRecent,
+        fetchAll: false,
+        testIds: const [1, 3],
+      );
       if (!mounted) return;
       setState(() {
         _accounts
@@ -78,55 +82,91 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   SliverAppBar _buildAppBar(UserInfo? user) {
+    const double expandedHeight = 200;
     return SliverAppBar(
-      expandedHeight: 180,
+      expandedHeight: expandedHeight,
       pinned: true,
       backgroundColor: AppColors.primary,
       automaticallyImplyLeading: false,
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [AppColors.primary, AppColors.primaryLight],
-            ),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '오늘의 구조 상태',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.textOnDark.withOpacity(0.8),
-                    ),
+      flexibleSpace: LayoutBuilder(
+        builder: (context, constraints) {
+          final double delta = expandedHeight - kToolbarHeight;
+          final double t = ((constraints.maxHeight - kToolbarHeight) /
+                  (delta <= 0 ? 1 : delta))
+              .clamp(0.0, 1.0);
+          final bool showTitle = t < 0.4;
+          final bool showContent = t > 0.65;
+
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppColors.primary, AppColors.primaryLight],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    user?.displayName ?? '게스트',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textOnDark,
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '당신의 이야기를 더 선명하게 보기 위한 인사이트를 준비했어요.',
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: AppColors.textOnDark.withOpacity(0.9),
-                    ),
-                  ),
-                ],
+                ),
+                child: showContent
+                    ? SafeArea(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '오늘의 구조 상태',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.textOnDark.withOpacity(0.8),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                user?.displayName ?? '게스트',
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textOnDark,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '당신의 이야기를 더 선명하게 보기 위한 인사이트를 준비했어요.',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  color: AppColors.textOnDark.withOpacity(0.9),
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
               ),
-            ),
-          ),
-        ),
+              Positioned(
+                left: 16,
+                bottom: 12,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 180),
+                  opacity: showTitle ? 1 : 0,
+                  child: const Text(
+                    '홈',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -178,7 +218,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ElevatedButton(
                       onPressed: () async {
                         if (!_authService.isLoggedIn) {
-                          final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
+                          final ok =
+                              await Navigator.of(context, rootNavigator: true)
+                                  .push<bool>(
                             MaterialPageRoute(
                               fullscreenDialog: true,
                               builder: (_) => const LoginScreen(),
@@ -187,24 +229,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           if (ok != true || !mounted) return;
                         }
                         Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const TestIntroScreen()),
+                          MaterialPageRoute(
+                              builder: (_) => const TestIntroScreen()),
                         );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.backgroundWhite,
                         foregroundColor: AppColors.secondary,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
+                        splashFactory: NoSplash.splashFactory,
                       ),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
                             '검사 시작',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                           SizedBox(width: 8),
                           Icon(Icons.arrow_forward_rounded, size: 20),
@@ -254,8 +300,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             hasMore
                 ? TextButton(
                     onPressed: () {
-                      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MyMindPage()));
+                      Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => const MyMindPage()));
                     },
+                    style: TextButton.styleFrom(
+                      splashFactory: NoSplash.splashFactory,
+                    ),
                     child: const Text('더보기'),
                   )
                 : Text(
@@ -290,6 +340,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 8),
               ElevatedButton(
                 onPressed: _loadAccounts,
+                style: ElevatedButton.styleFrom(
+                    splashFactory: NoSplash.splashFactory),
                 child: const Text('다시 시도'),
               ),
             ],
@@ -363,76 +415,114 @@ class _AccountCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final date = _formatDateTime(item.createDate ?? item.paymentDate ?? item.modifyDate);
+    final date =
+        _formatDateTime(item.createDate ?? item.paymentDate ?? item.modifyDate);
     final testName = _testName(item.testId);
     final tester = _tester(item);
     final selfType = _resultType(item, key: 'self') ?? _resultType(item);
     final rawOtherType = _resultType(item, key: 'other');
-    final otherType = rawOtherType != null && rawOtherType != selfType ? rawOtherType : null;
+    final otherType =
+        rawOtherType != null && rawOtherType != selfType ? rawOtherType : null;
     final statusText = _statusLabel(item.status);
     final statusColor = _statusColor(item.status);
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: item.resultId != null
+            ? () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => UserResultDetailScreen(
+                      resultId: item.resultId!,
+                      testId: item.testId,
+                    ),
+                  ),
+                );
+              }
+            : null,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 26,
-            backgroundColor: AppColors.primary.withOpacity(0.1),
-            child: const Icon(Icons.psychology_alt_rounded, color: AppColors.primary),
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+        overlayColor: MaterialStateProperty.all(Colors.transparent),
+        splashFactory: NoSplash.splashFactory,
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.border),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  testName,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (tester.isNotEmpty && tester != '미입력') ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    '검사자 $tester',
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-                const SizedBox(height: 4),
-                Text(
-                  date,
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 26,
+                backgroundColor: AppColors.primary.withOpacity(0.1),
+                child: const Icon(Icons.psychology_alt_rounded,
+                    color: AppColors.primary),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (selfType != null) _pill(selfType),
-                    if (otherType != null) _pill(otherType),
-                    if (statusText != null) _statusPill(statusText, statusColor),
+                    Text(
+                      testName,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        if (tester.isNotEmpty && tester != '미입력')
+                          Flexible(
+                            child: Text(
+                              '검사자 $tester',
+                              style: TextStyle(
+                                  fontSize: 13, color: Colors.grey.shade700),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        if (tester.isNotEmpty && tester != '미입력') ...[
+                          const SizedBox(width: 6),
+                          Text('·',
+                              style: TextStyle(color: Colors.grey.shade500)),
+                          const SizedBox(width: 6),
+                        ],
+                        Text(
+                          date,
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: [
+                        if (selfType != null) _pill(selfType),
+                        if (otherType != null) _pill(otherType),
+                        if (statusText != null)
+                          _statusPill(statusText, statusColor),
+                      ],
+                    ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              const Icon(
+                Icons.chevron_right,
+                color: AppColors.textSecondary,
+              ),
+            ],
           ),
-          const Icon(
-            Icons.chevron_right,
-            color: AppColors.textSecondary,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -503,7 +593,8 @@ class _AccountCard extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: AppTextStyles.caption.copyWith(color: color, fontWeight: FontWeight.w700),
+        style: AppTextStyles.caption
+            .copyWith(color: color, fontWeight: FontWeight.w700),
       ),
     );
   }

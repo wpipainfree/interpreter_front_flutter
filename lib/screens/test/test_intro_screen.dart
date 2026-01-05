@@ -91,25 +91,6 @@ class _TestIntroScreenState extends State<TestIntroScreen> {
                 content: '지시문에 맞게 12개 선택 (1순위 3 · 2순위 4 · 3순위 5)',
               ),
               const Spacer(),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.gapAnalysisBg,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.info, color: AppColors.accent),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        '결과는 평가가 아니라 해석을 위한 좌표입니다.',
-                        style: TextStyle(color: AppColors.gapAnalysisText),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               const SizedBox(height: 24),
               Row(
                 children: [

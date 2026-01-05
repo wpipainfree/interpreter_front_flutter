@@ -22,15 +22,15 @@ class _MyMindPageState extends State<MyMindPage> {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        backgroundColor: AppColors.backgroundLight,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 0,
-        title: Text('내 마음', style: AppTextStyles.h4),
-        centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          const SizedBox(height: 8),
+      backgroundColor: AppColors.backgroundLight,
+      foregroundColor: AppColors.textPrimary,
+      elevation: 0,
+      title: Text('내 마음', style: AppTextStyles.h4),
+      centerTitle: false,
+    ),
+    body: Column(
+      children: [
+        const SizedBox(height: 8),
           _buildSegments(),
           const SizedBox(height: 12),
           Expanded(child: _buildPanel()),
@@ -65,9 +65,12 @@ class _MyMindPageState extends State<MyMindPage> {
       child: TextButton(
         onPressed: () => setState(() => _tab = idx),
         style: TextButton.styleFrom(
-          foregroundColor: selected ? AppColors.primary : AppColors.textSecondary,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          foregroundColor:
+              selected ? AppColors.primary : AppColors.textSecondary,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           padding: const EdgeInsets.symmetric(vertical: 12),
+          splashFactory: NoSplash.splashFactory,
         ),
         child: Text(
           label,
@@ -163,6 +166,7 @@ class _ResultPanelState extends State<_ResultPanel> {
         page: _page,
         pageSize: 20,
         fetchAll: false,
+        testIds: const [1, 3],
       );
       if (!mounted) return;
       setState(() {
@@ -234,7 +238,10 @@ class _ResultPanelState extends State<_ResultPanel> {
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: OutlinedButton(
                   onPressed: () => _loadPage(reset: false),
-                  style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44)),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(44),
+                    splashFactory: NoSplash.splashFactory,
+                  ),
                   child: const Text('다음 결과 불러오기'),
                 ),
               );
@@ -269,17 +276,23 @@ class _ResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final date = _formatDateTime(item.createDate ?? item.paymentDate ?? item.modifyDate);
+    final date =
+        _formatDateTime(item.createDate ?? item.paymentDate ?? item.modifyDate);
     final testName = _testName(item.testId);
     final tester = _tester(item);
     final selfType = _resultType(item, key: 'self') ?? _resultType(item);
     final rawOtherType = _resultType(item, key: 'other');
-    final otherType = rawOtherType != null && rawOtherType != selfType ? rawOtherType : null;
+    final otherType =
+        rawOtherType != null && rawOtherType != selfType ? rawOtherType : null;
     final statusText = _statusLabel(item.status);
     final statusColor = _statusColor(item.status);
 
     return InkWell(
       onTap: () => _openDetail(context),
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      overlayColor: MaterialStateProperty.all(Colors.transparent),
+      splashFactory: NoSplash.splashFactory,
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -306,7 +319,8 @@ class _ResultCard extends StatelessWidget {
                     children: [
                       Text(
                         testName,
-                        style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w800),
+                        style: AppTextStyles.bodyMedium
+                            .copyWith(fontWeight: FontWeight.w800),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -314,14 +328,16 @@ class _ResultCard extends StatelessWidget {
                       if (tester.isNotEmpty && tester != '미입력')
                         Text(
                           '검사자 $tester',
-                          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                          style: AppTextStyles.bodySmall
+                              .copyWith(color: AppColors.textSecondary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       const SizedBox(height: 4),
                       Text(
                         date,
-                        style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                        style: AppTextStyles.caption
+                            .copyWith(color: AppColors.textSecondary),
                       ),
                     ],
                   ),
@@ -412,7 +428,8 @@ class _ResultCard extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: AppTextStyles.caption.copyWith(color: color, fontWeight: FontWeight.w700),
+        style: AppTextStyles.caption
+            .copyWith(color: color, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -472,7 +489,8 @@ Widget _card(String title, String subtitle) {
         const SizedBox(height: 6),
         Text(
           subtitle,
-          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+          style:
+              AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
         ),
       ],
     ),
