@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import '../models/test_history.dart';
 import '../services/auth_service.dart';
+import '../services/psych_tests_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/constants.dart';
-import '../utils/helpers.dart';
+import '../utils/app_text_styles.dart';
 import 'auth/login_screen.dart';
 import 'test/test_intro_screen.dart';
-import 'result/test_history_detail_screen.dart';
+import 'mymind/my_mind_page.dart';
+import '../screens/result/user_result_detail_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -17,12 +18,45 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final AuthService _authService = AuthService();
-  late List<TestHistory> _testHistory;
+  final PsychTestsService _testsService = PsychTestsService();
+  final List<UserAccountItem> _accounts = [];
+  bool _loading = true;
+  String? _error;
+  static const int _maxRecent = 3;
 
   @override
   void initState() {
     super.initState();
-    _testHistory = TestHistory.getSampleHistory();
+    _loadAccounts();
+  }
+
+  Future<void> _loadAccounts() async {
+    final userId = int.tryParse(_authService.currentUser?.id ?? '');
+    if (userId == null) {
+      setState(() {
+        _loading = false;
+        _error = '로그인이 필요합니다.';
+      });
+      return;
+    }
+    try {
+      final res =
+          await _testsService.fetchUserAccounts(userId: userId, page: 1, pageSize: _maxRecent, fetchAll: false);
+      if (!mounted) return;
+      setState(() {
+        _accounts
+          ..clear()
+          ..addAll(res.items);
+        _loading = false;
+        _error = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.toString();
+      });
+    }
   }
 
   @override
@@ -134,7 +168,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '약 1-2분, ${AppConstants.sampleQuestionCount}문항(맛보기)',
+                      '약 10–15분 · 나를 표현하는 30문장 중 12개 선택',
                       style: TextStyle(
                         fontSize: 14,
                         color: AppColors.textOnDark.withOpacity(0.85),
@@ -202,6 +236,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   SliverToBoxAdapter _buildHistoryHeader() {
+    final hasMore = _accounts.length >= _maxRecent;
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
@@ -216,13 +251,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 color: AppColors.textPrimary,
               ),
             ),
-            Text(
-              '${_testHistory.length}건',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade600,
-              ),
-            ),
+            hasMore
+                ? TextButton(
+                    onPressed: () {
+                      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MyMindPage()));
+                    },
+                    child: const Text('더보기'),
+                  )
+                : Text(
+                    '${_accounts.length}건',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
           ],
         ),
       ),
@@ -230,125 +272,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildHistoryList() {
-    if (_testHistory.isEmpty) {
+    if (_loading) {
+      return const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+    if (_error != null) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              Text(_error!, style: AppTextStyles.bodyMedium),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: _loadAccounts,
+                child: const Text('다시 시도'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    if (_accounts.isEmpty) {
       return SliverToBoxAdapter(child: _buildEmptyState());
     }
 
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (context, index) {
-          final history = _testHistory[index];
+          final item = _accounts[index];
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-            child: _buildHistoryCard(history),
+            child: _AccountCard(item: item),
           );
         },
-        childCount: _testHistory.length,
-      ),
-    );
-  }
-
-  Widget _buildHistoryCard(TestHistory history) {
-    final typeColor = AppColors.getTypeColor(history.existenceType);
-
-    return GestureDetector(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => TestHistoryDetailScreen(history: history),
-        ),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.cardBackground,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: typeColor.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Center(
-                child: Text(
-                  history.existenceType[0],
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: typeColor,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        history.existenceType,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: typeColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          '${history.questionCount}문항',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: typeColor,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    Helpers.formatRelativeDate(history.testDate),
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: AppColors.backgroundLight,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 16,
-                color: AppColors.textTertiary,
-              ),
-            ),
-          ],
-        ),
+        childCount: _accounts.length,
       ),
     );
   }
@@ -389,6 +351,159 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AccountCard extends StatelessWidget {
+  const _AccountCard({required this.item});
+
+  final UserAccountItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final date = _formatDateTime(item.createDate ?? item.paymentDate ?? item.modifyDate);
+    final testName = _testName(item.testId);
+    final tester = _tester(item);
+    final selfType = _resultType(item, key: 'self') ?? _resultType(item);
+    final rawOtherType = _resultType(item, key: 'other');
+    final otherType = rawOtherType != null && rawOtherType != selfType ? rawOtherType : null;
+    final statusText = _statusLabel(item.status);
+    final statusColor = _statusColor(item.status);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 26,
+            backgroundColor: AppColors.primary.withOpacity(0.1),
+            child: const Icon(Icons.psychology_alt_rounded, color: AppColors.primary),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  testName,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (tester.isNotEmpty && tester != '미입력') ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '검사자 $tester',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                const SizedBox(height: 4),
+                Text(
+                  date,
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    if (selfType != null) _pill(selfType),
+                    if (otherType != null) _pill(otherType),
+                    if (statusText != null) _statusPill(statusText, statusColor),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const Icon(
+            Icons.chevron_right,
+            color: AppColors.textSecondary,
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDateTime(String? raw) {
+    if (raw == null || raw.isEmpty) return '-';
+    final parsed = DateTime.tryParse(raw);
+    if (parsed == null) return raw;
+    return '${parsed.year}.${parsed.month.toString().padLeft(2, '0')}.${parsed.day.toString().padLeft(2, '0')} '
+        '${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
+  }
+
+  String _testName(int? testId) {
+    if (testId == 1) return 'WPI(현실)';
+    if (testId == 3) return 'WPI(이상)';
+    return 'WPI';
+  }
+
+  String _tester(UserAccountItem item) {
+    final name = item.result?['TEST_TARGET_NAME'] ?? '';
+    return name is String && name.isNotEmpty ? name : '미입력';
+  }
+
+  String? _resultType(UserAccountItem item, {String key = 'DESCRIPTION'}) {
+    final byKey = item.result?[key];
+    if (byKey is String && byKey.isNotEmpty) return byKey;
+    final desc = item.result?['DESCRIPTION'] ?? item.result?['description'];
+    if (desc is String && desc.isNotEmpty) return desc;
+    final existence = item.result?['existence_type'] ?? item.result?['title'];
+    if (existence is String && existence.isNotEmpty) return existence;
+    return null;
+  }
+
+  String? _statusLabel(String? status) {
+    if (status == '4') return '완료';
+    if (status == '3') return '진행중';
+    return null;
+  }
+
+  Color _statusColor(String? status) {
+    if (status == '4') return AppColors.success;
+    if (status == '3') return AppColors.warning;
+    return AppColors.textSecondary;
+  }
+
+  Widget _pill(String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundLight,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Text(
+        value,
+        style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w700),
+      ),
+    );
+  }
+
+  Widget _statusPill(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Text(
+        text,
+        style: AppTextStyles.caption.copyWith(color: color, fontWeight: FontWeight.w700),
       ),
     );
   }

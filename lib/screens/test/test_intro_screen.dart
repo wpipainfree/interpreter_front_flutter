@@ -60,7 +60,7 @@ class _TestIntroScreenState extends State<TestIntroScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      '새 플로우 체험하기',
+                      '지시문에 맞는 문장을 골라, 지금의 나를 구조로 확인합니다.',
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         color: AppColors.textSecondary,
@@ -78,17 +78,17 @@ class _TestIntroScreenState extends State<TestIntroScreen> {
               _buildInfoCard(
                 icon: Icons.timer,
                 title: '소요 시간',
-                content: '약 1-2분',
+                content: '약 10–15분',
               ),
               _buildInfoCard(
                 icon: Icons.quiz,
-                title: '문항 수',
-                content: '총 ${AppConstants.sampleQuestionCount}문항 (맛보기)',
+                title: '문장 구성',
+                content: '나를 표현하는 문장 30개',
               ),
               _buildInfoCard(
                 icon: Icons.psychology,
-                title: '검사 목적',
-                content: '지금의 나를 파악하고, 마지막에 1·2·3순위로 정리해 드려요.',
+                title: '선택 방법',
+                content: '지시문에 맞게 12개 선택 (1순위 3 · 2순위 4 · 3순위 5)',
               ),
               const Spacer(),
               Container(
@@ -103,7 +103,7 @@ class _TestIntroScreenState extends State<TestIntroScreen> {
                     SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        '결과는 학습을 돕기 위한 참고용입니다. 충분히 휴식한 상태에서 진행해주세요.',
+                        '결과는 평가가 아니라 해석을 위한 좌표입니다.',
                         style: TextStyle(color: AppColors.gapAnalysisText),
                       ),
                     ),
@@ -125,7 +125,7 @@ class _TestIntroScreenState extends State<TestIntroScreen> {
                         ),
                       ),
                       child: const Text(
-                        '현실 검사',
+                        '현실 검사 시작',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                       ),
                     ),
@@ -141,7 +141,7 @@ class _TestIntroScreenState extends State<TestIntroScreen> {
                         ),
                       ),
                       child: const Text(
-                        '이상 검사',
+                        '이상 검사 시작',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                       ),
                     ),

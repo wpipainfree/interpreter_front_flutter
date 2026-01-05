@@ -48,24 +48,5 @@ class AppConstants {
   static const Duration splashDuration = Duration(seconds: 2);
 
   // ============================================
-  // 존재 유형 샘플
-  // ============================================
-  static const List<String> existenceTypes = [
-    '조화형',
-    '도전형',
-    '안정형',
-    '탐험형',
-    '감성형',
-  ];
-
-  // ============================================
-  // Likert 옵션
-  // ============================================
-  static const List<String> likertOptions = [
-    '전혀 아니다',
-    '아니다',
-    '보통이다',
-    '그렇다',
-    '매우 그렇다',
-  ];
+  
 }
