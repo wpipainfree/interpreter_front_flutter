@@ -310,19 +310,19 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
 
   String _roundLabel(int rank) => '$rank순위';
 
-  int? _extractResultId(Map<String, dynamic>? res) {
+  int? _extractResultId(dynamic res) {
     if (res == null) return null;
-    int? fromMap(Map<String, dynamic> m) {
-      if (m['result_id'] is int) return m['result_id'] as int;
-      if (m['id'] is int) return m['id'] as int;
-      if (m['ID'] is int) return m['ID'] as int;
-      return null;
+    if (res is int) return res;
+    if (res is String) return int.tryParse(res);
+    if (res is Map<String, dynamic>) {
+      int? fromKey(String key) {
+        final v = res[key];
+        if (v is int) return v;
+        if (v is String) return int.tryParse(v);
+        return null;
+      }
+      return fromKey('result_id') ?? fromKey('RESULT_ID') ?? fromKey('resultId');
     }
-
-    final direct = fromMap(res);
-    if (direct != null) return direct;
-    final nested = res['result'];
-    if (nested is Map<String, dynamic>) return fromMap(nested);
     return null;
   }
 }

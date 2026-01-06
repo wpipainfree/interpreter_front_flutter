@@ -379,7 +379,9 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
               itemCount: available.length,
               itemBuilder: (context, index) {
                 final item = available[index];
+                final number = (_originalOrder[item.id] ?? index) + 1;
                 return _SelectableTile(
+                  number: number,
                   text: _cleanText(item.text),
                   onSelect: () => _toggleSelect(item),
                 );
@@ -415,19 +417,19 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
 
   String _cleanText(String text) => text.replaceAll(RegExp(r'\(.*?\)'), '').trim();
 
-  int? _extractResultId(Map<String, dynamic>? res) {
+  int? _extractResultId(dynamic res) {
     if (res == null) return null;
-    int? fromMap(Map<String, dynamic> m) {
-      if (m['result_id'] is int) return m['result_id'] as int;
-      if (m['id'] is int) return m['id'] as int;
-      if (m['ID'] is int) return m['ID'] as int;
-      return null;
+    if (res is int) return res;
+    if (res is String) return int.tryParse(res);
+    if (res is Map<String, dynamic>) {
+      int? fromKey(String key) {
+        final v = res[key];
+        if (v is int) return v;
+        if (v is String) return int.tryParse(v);
+        return null;
+      }
+      return fromKey('result_id') ?? fromKey('RESULT_ID') ?? fromKey('resultId');
     }
-
-    final direct = fromMap(res);
-    if (direct != null) return direct;
-    final nested = res['result'];
-    if (nested is Map<String, dynamic>) return fromMap(nested);
     return null;
   }
 }
@@ -481,8 +483,9 @@ class _SummaryBar extends StatelessWidget {
 }
 
 class _SelectableTile extends StatelessWidget {
-  const _SelectableTile({required this.text, required this.onSelect});
+  const _SelectableTile({required this.number, required this.text, required this.onSelect});
 
+  final int number;
   final String text;
   final VoidCallback onSelect;
 
@@ -493,6 +496,11 @@ class _SelectableTile extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: AppColors.secondary.withOpacity(0.12),
+          foregroundColor: AppColors.secondary,
+          child: Text('$number', style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w700)),
+        ),
         title: Text(text, style: AppTextStyles.bodyMedium),
         trailing: IconButton(
           icon: const Icon(Icons.add_circle_outline, color: AppColors.secondary),

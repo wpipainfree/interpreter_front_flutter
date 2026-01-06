@@ -95,8 +95,16 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
     // Extract five-point self/other scores in the order needed for the chart/table.
     final selfLabels = ['Realist', 'Romanticist', 'Humanist', 'Idealist', 'Agent'];
     final otherLabels = ['Relation', 'Trust', 'Manual', 'Self', 'Culture'];
-    final selfScores = _extractScores(detail.classes, selfLabels);
-    final otherScores = _extractScores(detail.classes, otherLabels);
+    final selfScores = _extractScores(
+      detail.classes,
+      selfLabels,
+      checklistNameContains: '자기',
+    );
+    final otherScores = _extractScores(
+      detail.classes,
+      otherLabels,
+      checklistNameContains: '타인',
+    );
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -342,10 +350,18 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
         '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
-  List<double?> _extractScores(List<ResultClassItem> items, List<String> labels) {
+  List<double?> _extractScores(
+    List<ResultClassItem> items,
+    List<String> labels, {
+    String? checklistNameContains,
+  }) {
     final map = <String, double?>{};
     for (final item in items) {
       final name = _normalize(item.name ?? item.checklistName ?? '');
+      if (checklistNameContains != null) {
+        final ckName = item.checklistName ?? '';
+        if (!ckName.contains(checklistNameContains)) continue;
+      }
       final value = item.point;
       if (labels.any((l) => _normalize(l) == name)) {
         map[name] = value;
@@ -360,17 +376,11 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
   }
 
   String _normalize(String raw) {
-    return raw.toLowerCase().replaceAll(' ', '').split('/').first;
+    final normalized = raw.toLowerCase().replaceAll(' ', '').split('/').first;
+    if (normalized == 'romantist') return 'romanticist';
+    return normalized;
   }
 
-  double _maxValue(List<double?> a, List<double?> b) {
-    final vals = <double>[
-      ...a.whereType<double>(),
-      ...b.whereType<double>(),
-    ];
-    final double maxVal = vals.isEmpty ? 100 : vals.reduce(max);
-    return max(maxVal, 100.0);
-  }
 }
 
 class _LegendDot extends StatelessWidget {
