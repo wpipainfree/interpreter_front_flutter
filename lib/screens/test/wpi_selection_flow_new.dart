@@ -5,6 +5,8 @@ import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../result/raw_result_screen.dart';
 
+/// New free-order flow: users pick items up to target counts, then submit.
+/// This now runs through every checklist (e.g., self/other) sequentially.
 class WpiSelectionFlowNew extends StatefulWidget {
   const WpiSelectionFlowNew({
     super.key,
@@ -25,11 +27,15 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
   bool _loading = true;
   bool _submitting = false;
   String? _error;
-  PsychTestChecklist? _checklist;
+  final List<PsychTestChecklist> _checklists = [];
+  int _stageIndex = 0;
+  int? _resultId;
   final List<PsychTestItem> _allItems = [];
   final List<int> _selectedIds = [];
   final Map<int, int> _originalOrder = {};
   bool _limitSnackVisible = false;
+
+  PsychTestChecklist? get _checklist => _checklists.isEmpty ? null : _checklists[_stageIndex];
 
   int get _totalTarget {
     final c = _checklist;
@@ -49,19 +55,14 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       _error = null;
     });
     try {
-      final checklist = await _service.fetchChecklist(widget.testId);
-      _allItems
-        ..clear()
-        ..addAll(checklist.questions);
-      _originalOrder.clear();
-      for (var i = 0; i < _allItems.length; i++) {
-        _originalOrder[_allItems[i].id] = i;
+      final lists = await _service.fetchChecklists(widget.testId);
+      if (lists.isEmpty) {
+        throw const PsychTestException('No checklist data.');
       }
-      setState(() {
-        _checklist = checklist;
-        _selectedIds.clear();
-        _loading = false;
-      });
+      _checklists
+        ..clear()
+        ..addAll(lists);
+      _prepareStage(0);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -69,6 +70,27 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
         _error = e.toString();
       });
     }
+  }
+
+  void _prepareStage(int index) {
+    if (index < 0 || index >= _checklists.length) return;
+    final checklist = _checklists[index];
+    _allItems
+      ..clear()
+      ..addAll(checklist.questions);
+    _originalOrder
+      ..clear();
+    for (var i = 0; i < _allItems.length; i++) {
+      _originalOrder[_allItems[i].id] = i;
+    }
+    setState(() {
+      _stageIndex = index;
+      if (index == 0) _resultId = null;
+      _selectedIds.clear();
+      _loading = false;
+      _error = null;
+      _submitting = false;
+    });
   }
 
   List<PsychTestItem> get _availableItems {
@@ -85,9 +107,9 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       _limitSnackVisible = true;
       ScaffoldMessenger.of(context)
           .showSnackBar(
-            SnackBar(
-              content: const Text('이미 12개가 모여 있어요. 위에서 하나를 빼면 새로 담을 수 있어요.'),
-              duration: const Duration(seconds: 2),
+            const SnackBar(
+              content: Text('선택 가능 개수를 모두 선택했습니다. 다른 항목을 제거한 뒤 추가해주세요.'),
+              duration: Duration(seconds: 2),
             ),
           )
           .closed
@@ -100,9 +122,9 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     ScaffoldMessenger.of(context)
         .showSnackBar(
           SnackBar(
-            content: const Text('내 선택에 추가됐어요'),
+            content: const Text('선택되었습니다'),
             action: SnackBarAction(
-              label: '되돌리기',
+              label: '취소',
               onPressed: () {
                 if (mounted) {
                   setState(() {
@@ -135,8 +157,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     setState(() => _submitting = true);
     final c = _checklist!;
     final rank1 = _selectedIds.take(c.firstCount).toList();
-    final rank2 =
-        _selectedIds.skip(c.firstCount).take(c.secondCount).toList();
+    final rank2 = _selectedIds.skip(c.firstCount).take(c.secondCount).toList();
     final rank3 = _selectedIds.skip(c.firstCount + c.secondCount).toList();
     final selections = WpiSelections(
       checklistId: c.id,
@@ -145,17 +166,38 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       rank3: rank3,
     );
     try {
-      final result =
-          await _service.submitResults(testId: widget.testId, selections: selections);
+      final result = _resultId == null
+          ? await _service.submitResults(
+              testId: widget.testId,
+              selections: selections,
+              processSequence: c.sequence == 0 ? _stageIndex + 1 : c.sequence,
+            )
+          : await _service.updateResults(
+              resultId: _resultId!,
+              selections: selections,
+              processSequence: c.sequence == 0 ? _stageIndex + 1 : c.sequence,
+            );
+      _resultId ??= _extractResultId(result);
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => RawResultScreen(
-            title: '검사 결과',
-            payload: result,
+      final hasNext = _stageIndex + 1 < _checklists.length;
+      if (hasNext) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('단계가 완료되었습니다. 이어서 다음 단계를 진행합니다.'),
+            duration: Duration(seconds: 2),
           ),
-        ),
-      );
+        );
+        _prepareStage(_stageIndex + 1);
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => RawResultScreen(
+              title: '검사 결과',
+              payload: result,
+            ),
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -180,21 +222,16 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
               children: [
                 Row(
                   children: [
-                    Text('내 선택(순위)', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
+                    Text('선택한 항목', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
                     const Spacer(),
                     TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('닫기')),
                   ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '끌어서 순서를 바꾸면 순위도 함께 바뀝니다.',
-                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 12),
                 Expanded(
                   child: _selectedIds.isEmpty
                       ? Center(
-                          child: Text('아직 선택한 문장이 없어요.', style: AppTextStyles.bodySmall),
+                          child: Text('선택된 항목이 없습니다.', style: AppTextStyles.bodySmall),
                         )
                       : ReorderableListView.builder(
                           itemCount: _selectedIds.length,
@@ -292,6 +329,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     final available = _availableItems;
     final total = _totalTarget;
     final canSubmit = _selectedIds.length == total && !_submitting;
+    final stageLabel = '${_stageIndex + 1}/${_checklists.length} ${checklist.name}';
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
@@ -299,7 +337,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
         backgroundColor: AppColors.backgroundLight,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
-        title: Text('[New] ${widget.testTitle}'),
+        title: Text('[New] ${widget.testTitle} · $stageLabel'),
         actions: [
           IconButton(
             icon: const Icon(Icons.close),
@@ -312,6 +350,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
           _SummaryBar(
             selectedCount: _selectedIds.length,
             totalTarget: total,
+            stageLabel: stageLabel,
             onOpen: _openSelectedPanel,
           ),
           Padding(
@@ -320,12 +359,14 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '선택한 문장은 위에 모이고, 모인 순서가 순위가 됩니다.',
+                  checklist.question.isNotEmpty
+                      ? checklist.question
+                      : '각 순위별로 정해진 개수만큼 선택해주세요.',
                   style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '1~${checklist.firstCount}개는 1순위, ${checklist.firstCount + 1}~${checklist.firstCount + checklist.secondCount}개는 2순위, 나머지는 3순위로 계산돼요.',
+                  '1~${checklist.firstCount}번까지 1순위, 다음 ${checklist.secondCount}개 2순위, 나머지 3순위입니다.',
                   style: AppTextStyles.caption.copyWith(color: AppColors.textHint),
                 ),
               ],
@@ -363,7 +404,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
                           valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       )
-                    : const Text('이 파트 확정'),
+                    : const Text('제출'),
               ),
             ),
           ),
@@ -373,17 +414,35 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
   }
 
   String _cleanText(String text) => text.replaceAll(RegExp(r'\(.*?\)'), '').trim();
+
+  int? _extractResultId(Map<String, dynamic>? res) {
+    if (res == null) return null;
+    int? fromMap(Map<String, dynamic> m) {
+      if (m['result_id'] is int) return m['result_id'] as int;
+      if (m['id'] is int) return m['id'] as int;
+      if (m['ID'] is int) return m['ID'] as int;
+      return null;
+    }
+
+    final direct = fromMap(res);
+    if (direct != null) return direct;
+    final nested = res['result'];
+    if (nested is Map<String, dynamic>) return fromMap(nested);
+    return null;
+  }
 }
 
 class _SummaryBar extends StatelessWidget {
   const _SummaryBar({
     required this.selectedCount,
     required this.totalTarget,
+    required this.stageLabel,
     required this.onOpen,
   });
 
   final int selectedCount;
   final int totalTarget;
+  final String stageLabel;
   final VoidCallback onOpen;
 
   @override
@@ -396,20 +455,22 @@ class _SummaryBar extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(stageLabel, style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+            const SizedBox(height: 6),
             Row(
               children: [
                 Expanded(
                   child: Text(
-                    '내 선택 $selectedCount/$totalTarget',
+                    '선택 $selectedCount/$totalTarget',
                     style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w700),
                   ),
                 ),
-                TextButton(onPressed: onOpen, child: const Text('내 선택 보기')),
+                TextButton(onPressed: onOpen, child: const Text('선택 보기')),
               ],
             ),
             const SizedBox(height: 4),
             Text(
-              '위에서부터 1~3이 1순위, 4~7이 2순위, 8~12가 3순위로 계산됩니다.',
+              '순서를 드래그해 순위를 조정할 수 있습니다.',
               style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
             ),
           ],

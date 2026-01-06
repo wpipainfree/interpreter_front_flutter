@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:dio/dio.dart';
 
 import '../utils/app_config.dart';
@@ -21,7 +19,7 @@ class PsychTestsService {
   static const _timeout = Duration(seconds: 15);
 
   /// 문항 목록을 불러옵니다.
-  Future<PsychTestChecklist> fetchChecklist(int testId) async {
+  Future<List<PsychTestChecklist>> fetchChecklists(int testId) async {
     final uri = _uri('/api/v1/psych-tests/$testId/items');
     try {
       final response = await _requestWithAuthRetry(
@@ -40,22 +38,29 @@ class PsychTestsService {
 
       final data = response.data;
       if (data is Map && data['checklists'] is List && (data['checklists'] as List).isNotEmpty) {
-        final checklistJson = (data['checklists'] as List).first as Map<String, dynamic>;
-        return PsychTestChecklist.fromJson(checklistJson);
+        final list = (data['checklists'] as List)
+            .whereType<Map<String, dynamic>>()
+            .map(PsychTestChecklist.fromJson)
+            .toList();
+        return list;
       }
 
       // fallback: 기존 리스트 구조
       if (data is List) {
         final items = data.map<PsychTestItem>((e) => PsychTestItem.fromJson(e)).toList();
-        return PsychTestChecklist(
-          id: 0,
-          name: 'WPI',
-          description: '',
-          firstCount: 3,
-          secondCount: 4,
-          thirdCount: 5,
-          questions: items,
-        );
+        return [
+          PsychTestChecklist(
+            id: 0,
+            name: 'WPI',
+            description: '',
+            firstCount: 3,
+            secondCount: 4,
+            thirdCount: 5,
+            sequence: 1,
+            question: '',
+            questions: items,
+          ),
+        ];
       }
     } on DioException catch (e) {
       throw PsychTestException(
@@ -106,6 +111,50 @@ class PsychTestsService {
     } on DioException catch (e) {
       throw PsychTestException(
         '결과 제출에 실패했습니다. (${e.response?.statusCode ?? e.error})',
+        debug: e.response?.data?.toString(),
+      );
+    }
+  }
+
+  Future<Map<String, dynamic>> updateResults({
+    required int resultId,
+    required WpiSelections selections,
+    String? worry,
+    String? targetName,
+    String? note,
+    int processSequence = 99,
+  }) async {
+    final uri = _uri('/api/v1/psych-tests/results/$resultId');
+    final payload = {
+      if (worry?.isNotEmpty ?? false) 'worry': worry,
+      if (targetName?.isNotEmpty ?? false) 'test_target_name': targetName,
+      if (note?.isNotEmpty ?? false) 'note': note,
+      'process_sequence': processSequence,
+      'selections': selections.toPayload(),
+    };
+
+    try {
+      final response = await _requestWithAuthRetry(
+        (auth) => _client.patch(
+          uri.toString(),
+          data: payload,
+          options: _optionsWithAuth(auth, contentType: 'application/json'),
+        ),
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw PsychTestException(
+          '?? ??? ??????. (${response.statusCode})',
+          debug: response.data?.toString(),
+        );
+      }
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) return data;
+      return {'result': data};
+    } on DioException catch (e) {
+      throw PsychTestException(
+        '?? ??? ??????. (${e.response?.statusCode ?? e.error})',
         debug: e.response?.data?.toString(),
       );
     }
@@ -241,6 +290,8 @@ class PsychTestChecklist {
   final int firstCount;
   final int secondCount;
   final int thirdCount;
+  final int sequence;
+  final String question;
   final List<PsychTestItem> questions;
 
   const PsychTestChecklist({
@@ -250,6 +301,8 @@ class PsychTestChecklist {
     required this.firstCount,
     required this.secondCount,
     required this.thirdCount,
+    required this.sequence,
+    required this.question,
     required this.questions,
   });
 
@@ -261,6 +314,8 @@ class PsychTestChecklist {
       id: _asInt(json['id']),
       name: (json['name'] ?? '').toString(),
       description: (json['description'] ?? '').toString(),
+      question: (json['question'] ?? '').toString(),
+      sequence: _asInt(json['sequence']),
       firstCount: _asInt(json['cnt_1st_selection']) == 0 ? 3 : _asInt(json['cnt_1st_selection']),
       secondCount: _asInt(json['cnt_2nd_selection']) == 0 ? 4 : _asInt(json['cnt_2nd_selection']),
       thirdCount: _asInt(json['cnt_3rd_selection']) == 0 ? 5 : _asInt(json['cnt_3rd_selection']),

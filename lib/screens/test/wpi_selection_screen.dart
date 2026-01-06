@@ -9,6 +9,7 @@ import '../../utils/app_text_styles.dart';
 import '../auth/login_screen.dart';
 import 'wpi_review_screen.dart';
 
+/// Classic round-based flow. Now iterates through all checklists (self/other) sequentially.
 class WpiSelectionScreen extends StatefulWidget {
   const WpiSelectionScreen({
     super.key,
@@ -31,12 +32,15 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
 
   bool _loading = true;
   String? _error;
-  PsychTestChecklist? _checklist;
+  final List<PsychTestChecklist> _checklists = [];
+  int _stageIndex = 0;
+  int? _resultId;
+  PsychTestChecklist? get _checklist => _checklists.isEmpty ? null : _checklists[_stageIndex];
 
   // questionId -> rank(1,2,3)
   final Map<int, int> _selectedRanks = {};
   bool _limitSnackVisible = false;
-  int _roundIndex = 0; // 0: 1순위, 1: 2순위, 2: 3순위
+  int _roundIndex = 0; // 0: 1st, 1: 2nd, 2: 3rd
 
   List<int> get _roundTargets {
     final c = _checklist;
@@ -72,18 +76,39 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
       _error = null;
     });
     try {
-      final checklist = await _service.fetchChecklist(widget.testId);
+      final lists = await _service.fetchChecklists(widget.testId);
       if (!mounted) return;
-      setState(() {
-        _checklist = checklist;
-        _loading = false;
-      });
+      if (lists.isEmpty) {
+        setState(() {
+          _loading = false;
+          _error = '체크리스트가 비어 있습니다.';
+        });
+        return;
+      }
+      _checklists
+        ..clear()
+        ..addAll(lists);
+      _prepareStage(0);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _loading = false;
         _error = e.toString();
       });
     }
+  }
+
+  void _prepareStage(int index) {
+    if (!mounted || index < 0 || index >= _checklists.length) return;
+    setState(() {
+      _stageIndex = index;
+      _roundIndex = 0;
+      _selectedRanks.clear();
+      _limitSnackVisible = false;
+      if (index == 0) _resultId = null;
+      _loading = false;
+      _error = null;
+    });
   }
 
   void _toggleSelect(PsychTestItem item) {
@@ -109,7 +134,7 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
       messenger
           .showSnackBar(
             SnackBar(
-              content: Text('이번 라운드는 ${target}개를 선택합니다. 위 칩에서 ✕로 빼고 다시 골라주세요.'),
+              content: Text('최대 ${target}개까지 선택할 수 있습니다. 다른 항목을 해제해주세요.'),
               duration: const Duration(seconds: 2),
             ),
           )
@@ -157,16 +182,33 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
     );
 
     if (!mounted) return;
-    Navigator.of(context).push(
+    final isLastStage = _stageIndex + 1 >= _checklists.length;
+    final result = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => WpiReviewScreen(
           testId: widget.testId,
-          testTitle: widget.testTitle,
+          testTitle: '${widget.testTitle} · ${checklist.name}',
           items: checklist.questions,
           selections: selections,
+          processSequence: checklist.sequence == 0 ? _stageIndex + 1 : checklist.sequence,
+          deferNavigation: !isLastStage,
+          existingResultId: _resultId,
         ),
       ),
     );
+
+    if (!mounted) return;
+    if (!isLastStage) {
+      if (result == null) return;
+      _resultId ??= _extractResultId(result);
+      _prepareStage(_stageIndex + 1);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('다음 체크리스트로 이동합니다.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   @override
@@ -179,7 +221,7 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('WPI 검사'),
+          title: const Text('WPI 오류'),
           backgroundColor: AppColors.backgroundLight,
           foregroundColor: AppColors.textPrimary,
         ),
@@ -205,6 +247,7 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
     final currentSelections =
         _selectedRanks.entries.where((e) => e.value == currentRank).map((e) => e.key).toList();
     final canProceed = currentSelections.length == target;
+    final stageLabel = '${_stageIndex + 1}/${_checklists.length} ${checklist.name}';
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
@@ -212,7 +255,7 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
         backgroundColor: AppColors.backgroundLight,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
-        title: Text(widget.testTitle),
+        title: Text('${widget.testTitle} · $stageLabel'),
         actions: [
           IconButton(
             icon: const Icon(Icons.close),
@@ -226,7 +269,7 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
             brandRed: _brandRed,
             roundLabel: _roundLabel(currentRank),
             countLabel: '${currentSelections.length}/$target 선택',
-            criteria: '지금의 나를 가장 잘 나타내는 문장',
+            criteria: '순서대로 ${target}개를 선택해주세요.',
             reassurance: '',
             slotCount: target,
             selectedIds: currentSelections,
@@ -257,7 +300,7 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
           _BottomCta(
             brandRed: _brandRed,
             canProceed: canProceed,
-            primaryLabel: _roundIndex == 2 ? '검토로' : '${_roundIndex + 2}순위로',
+            primaryLabel: _roundIndex == 2 ? '확인하기' : '${_roundIndex + 2}순위로',
             onNext: _goNext,
           ),
         ],
@@ -267,8 +310,20 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
 
   String _roundLabel(int rank) => '$rank순위';
 
-  String _cleanText(String text) {
-    return text.replaceAll(RegExp(r'\(.*?\)'), '').trim();
+  int? _extractResultId(Map<String, dynamic>? res) {
+    if (res == null) return null;
+    int? fromMap(Map<String, dynamic> m) {
+      if (m['result_id'] is int) return m['result_id'] as int;
+      if (m['id'] is int) return m['id'] as int;
+      if (m['ID'] is int) return m['ID'] as int;
+      return null;
+    }
+
+    final direct = fromMap(res);
+    if (direct != null) return direct;
+    final nested = res['result'];
+    if (nested is Map<String, dynamic>) return fromMap(nested);
+    return null;
   }
 }
 
@@ -342,7 +397,7 @@ class _StickyHeader extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 14),
-            Text('이번 라운드 선택', style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w600)),
+            Text('현재 선택', style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Container(
               height: 60,
@@ -448,7 +503,6 @@ class _WpiItemCardState extends State<_WpiItemCard> {
     final locked =
         widget.lockedRank != null && widget.lockedRank! < 3 && widget.lockedRank! > 0 && !widget.selected;
     if (locked) return;
-    // 햅틱: 선택될 때만 가볍게 톡.
     if (!widget.selected && !kIsWeb) {
       HapticFeedback.lightImpact();
     }
@@ -464,7 +518,6 @@ class _WpiItemCardState extends State<_WpiItemCard> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          // 카드 전체는 눌림 애니메이션만, 선택은 원형 버튼에서만 처리.
           onTap: locked ? null : () {},
           onTapDown: locked ? null : (_) => _setPressed(true),
           onTapCancel: locked ? null : () => _setPressed(false),

@@ -12,12 +12,18 @@ class WpiReviewScreen extends StatefulWidget {
     required this.testTitle,
     required this.items,
     required this.selections,
+    this.processSequence,
+    this.deferNavigation = false,
+    this.existingResultId,
   });
 
   final int testId;
   final String testTitle;
   final List<PsychTestItem> items;
   final WpiSelections selections;
+  final int? processSequence;
+  final bool deferNavigation;
+  final int? existingResultId;
 
   @override
   State<WpiReviewScreen> createState() => _WpiReviewScreenState();
@@ -48,7 +54,7 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
         backgroundColor: AppColors.backgroundLight,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
-        title: const Text('검토/정리'),
+        title: const Text('선택 검토'),
         actions: [
           IconButton(
             icon: const Icon(Icons.close),
@@ -65,9 +71,9 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
               padding: const EdgeInsets.only(bottom: 12),
               child: Column(
                 children: [
-                  _buildBucket(1, '1순위 (3/3)'),
-                  _buildBucket(2, '2순위 (4/4)'),
-                  _buildBucket(3, '3순위 (5/5)'),
+                  _buildBucket(1, '1순위'),
+                  _buildBucket(2, '2순위'),
+                  _buildBucket(3, '3순위'),
                 ],
               ),
             ),
@@ -92,20 +98,20 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(title, style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 8),
-                ...list.map((item) => _DraggableTile(
-                      item: item,
-                      rank: rank,
-                      onSwap: _handleSwap,
-                      onDragUpdate: _handleAutoScroll,
-                    )),
-              ],
-            ),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(title, style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              ...list.map((item) => _DraggableTile(
+                    item: item,
+                    rank: rank,
+                    onSwap: _handleSwap,
+                    onDragUpdate: _handleAutoScroll,
+                  )),
+            ],
           ),
         ),
+      ),
     );
   }
 
@@ -131,7 +137,7 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('순위가 바뀌었습니다.'),
+        content: const Text('순위를 교체했습니다.'),
         action: SnackBarAction(
           label: '되돌리기',
           onPressed: _undoSwap,
@@ -150,12 +156,11 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
   void _handleAutoScroll(DragUpdateDetails details) {
     final scrollableState = Scrollable.maybeOf(context);
     final position = scrollableState?.position;
-    if (position == null) return;
+    final box = scrollableState?.context.findRenderObject() as RenderBox?;
+    if (position == null || box == null) return;
 
     const edgeDragWidth = 60.0;
     const scrollStep = 16.0;
-    final box = scrollableState?.context.findRenderObject() as RenderBox?;
-    if (box == null) return;
     final localOffset = box.globalToLocal(details.globalPosition);
     final dy = localOffset.dy;
 
@@ -175,16 +180,30 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
       rank3: _buckets[3]?.map((e) => e.id).toList() ?? [],
     );
     try {
-      final result = await _service.submitResults(testId: widget.testId, selections: selections);
+      final result = widget.existingResultId == null
+          ? await _service.submitResults(
+              testId: widget.testId,
+              selections: selections,
+              processSequence: widget.processSequence ?? 99,
+            )
+          : await _service.updateResults(
+              resultId: widget.existingResultId!,
+              selections: selections,
+              processSequence: widget.processSequence ?? 99,
+            );
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => RawResultScreen(
-            title: '검사 제출 완료',
-            payload: result,
+      if (widget.deferNavigation) {
+        Navigator.of(context).pop(result);
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => RawResultScreen(
+              title: '검사 결과',
+              payload: result,
+            ),
           ),
-        ),
-      );
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -211,10 +230,10 @@ class _ReviewHeader extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('지금까지 담은 12개를 마지막으로 정리합니다.', style: AppTextStyles.bodyMedium),
+            Text('총 3개 순위를 다시 확인해주세요.', style: AppTextStyles.bodyMedium),
             const SizedBox(height: 4),
             Text(
-              '문장을 길게 눌러 끌어 바꾸고 싶은 문장 위에 놓으면 순위가 바뀝니다.',
+              '필요하면 드래그로 순서를 바꿀 수 있습니다.',
               style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 4),
@@ -244,8 +263,7 @@ class _DraggableTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // For auto-scroll we need the nearest scrollable.
-    final scrollable = Scrollable.of(context);
+    final scrollable = Scrollable.maybeOf(context);
     return DragTarget<DragData>(
       onWillAcceptWithDetails: (details) => details.data.itemId != item.id,
       onAcceptWithDetails: (details) => onSwap(details.data, rank, item.id),
@@ -384,13 +402,13 @@ class _BottomBar extends StatelessWidget {
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
-                  : const Text('이 파트 확정'),
+                  : const Text('제출'),
             ),
             const SizedBox(height: 8),
             OutlinedButton(
               onPressed: submitting ? null : onBack,
               style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-              child: const Text('라운드로 돌아가기'),
+              child: const Text('뒤로가기'),
             ),
           ],
         ),
@@ -402,7 +420,8 @@ class _BottomBar extends StatelessWidget {
 class DragData {
   final int itemId;
   final int rank;
-  DragData({required this.itemId, required this.rank});
+
+  const DragData({required this.itemId, required this.rank});
 }
 
 class DragSnapshot {
@@ -411,7 +430,7 @@ class DragSnapshot {
   final int fromId;
   final int toId;
 
-  DragSnapshot({
+  const DragSnapshot({
     required this.fromRank,
     required this.toRank,
     required this.fromId,
