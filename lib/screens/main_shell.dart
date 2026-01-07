@@ -85,11 +85,16 @@ class _AtomIcon extends StatelessWidget {
   final double size;
 
   static const String _svg = '''
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <ellipse cx="12" cy="12" rx="10" ry="4.5" stroke="currentColor" stroke-width="2"/>
-  <ellipse cx="12" cy="12" rx="10" ry="4.5" transform="rotate(60 12 12)" stroke="currentColor" stroke-width="2"/>
-  <ellipse cx="12" cy="12" rx="10" ry="4.5" transform="rotate(120 12 12)" stroke="currentColor" stroke-width="2"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
   <circle cx="12" cy="12" r="2.5" fill="currentColor"/>
+  
+  <ellipse cx="12" cy="12" rx="3.5" ry="10" fill="none" stroke="currentColor" stroke-width="1.5" transform="rotate(30 12 12)"/>
+  <ellipse cx="12" cy="12" rx="3.5" ry="10" fill="none" stroke="currentColor" stroke-width="1.5" transform="rotate(-30 12 12)"/>
+  <ellipse cx="12" cy="12" rx="10" ry="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  
+  <circle cx="12" cy="2" r="1.5" fill="currentColor" transform="rotate(30 12 2)"/>
+  <circle cx="20.66" cy="17" r="1.5" fill="currentColor" transform="rotate(-30 20.66 17)"/>
+  <circle cx="3.34" cy="17" r="1.5" fill="currentColor"/>
 </svg>
 ''';
 

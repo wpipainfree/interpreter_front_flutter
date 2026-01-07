@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_colors.dart';
-import '../../utils/constants.dart';
 import '../../utils/app_config.dart';
 import '../auth/login_screen.dart';
 import 'wpi_selection_screen.dart';
@@ -39,8 +38,16 @@ class _TestIntroScreenState extends State<TestIntroScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final canPop = Navigator.of(context).canPop();
     return Scaffold(
       backgroundColor: AppColors.backgroundWhite,
+      appBar: AppBar(
+        title: const Text('WPI 검사 안내'),
+        backgroundColor: AppColors.backgroundWhite,
+        foregroundColor: AppColors.textPrimary,
+        elevation: 0,
+        automaticallyImplyLeading: canPop,
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),

@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import '../../services/psych_tests_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
-import '../result/raw_result_screen.dart';
+import '../result/user_result_detail_screen.dart';
 
 /// New free-order flow: users pick items up to target counts, then submit.
-/// This now runs through every checklist (e.g., self/other) sequentially.
+/// This runs through every checklist (e.g., self/other) sequentially.
 class WpiSelectionFlowNew extends StatefulWidget {
   const WpiSelectionFlowNew({
     super.key,
@@ -31,6 +31,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
   int _stageIndex = 0;
   int? _resultId;
   final List<PsychTestItem> _allItems = [];
+  final List<_VisibleEntry> _visibleItems = [];
   final List<int> _selectedIds = [];
   final Map<int, int> _originalOrder = {};
   bool _limitSnackVisible = false;
@@ -87,6 +88,9 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       _stageIndex = index;
       if (index == 0) _resultId = null;
       _selectedIds.clear();
+      _visibleItems
+        ..clear()
+        ..addAll(_availableItems.map((e) => _VisibleEntry(item: e, selected: false)));
       _loading = false;
       _error = null;
       _submitting = false;
@@ -102,54 +106,124 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
 
   void _toggleSelect(PsychTestItem item) {
     if (_selectedIds.contains(item.id)) return;
+    final messenger = ScaffoldMessenger.of(context);
     if (_selectedIds.length >= _totalTarget) {
       if (_limitSnackVisible) return;
       _limitSnackVisible = true;
-      ScaffoldMessenger.of(context)
+      messenger.hideCurrentSnackBar();
+      messenger
           .showSnackBar(
             const SnackBar(
               content: Text('선택 가능 개수를 모두 선택했습니다. 다른 항목을 제거한 뒤 추가해주세요.'),
-              duration: Duration(seconds: 2),
+              duration: Duration(milliseconds: 1200),
             ),
           )
           .closed
           .whenComplete(() => _limitSnackVisible = false);
       return;
     }
+
+    final removeIndex = _visibleItems.indexWhere((e) => e.item.id == item.id && !e.selected);
+    if (removeIndex >= 0) {
+      _visibleItems.removeAt(removeIndex);
+    }
+
+    final insertIndex = _selectedIds.length;
     setState(() {
       _selectedIds.add(item.id);
+      _visibleItems.insert(insertIndex, _VisibleEntry(item: item, selected: true));
     });
-    ScaffoldMessenger.of(context)
-        .showSnackBar(
-          SnackBar(
-            content: const Text('선택되었습니다'),
-            action: SnackBarAction(
-              label: '취소',
-              onPressed: () {
-                if (mounted) {
-                  setState(() {
-                    _selectedIds.remove(item.id);
-                  });
-                }
-              },
-            ),
-            duration: const Duration(seconds: 3),
-          ),
-        )
-        .closed
-        .whenComplete(() {});
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: const Text('선택되었습니다'),
+        action: SnackBarAction(
+          label: '취소',
+          onPressed: () => _deselect(item),
+        ),
+        duration: const Duration(milliseconds: 1200),
+      ),
+    );
   }
 
-  void _removeSelected(int id) {
-    setState(() => _selectedIds.remove(id));
-  }
-
-  void _reorderSelected(int oldIndex, int newIndex) {
-    if (oldIndex < newIndex) newIndex -= 1;
+  void _deselect(PsychTestItem item) {
+    final idx = _visibleItems.indexWhere((e) => e.item.id == item.id && e.selected);
+    if (idx >= 0) {
+      _visibleItems.removeAt(idx);
+    }
     setState(() {
-      final id = _selectedIds.removeAt(oldIndex);
-      _selectedIds.insert(newIndex, id);
+      _selectedIds.remove(item.id);
     });
+    _insertBack(item);
+  }
+
+  void _insertBack(PsychTestItem item) {
+    final avail = _availableItems..removeWhere((e) => e.id == item.id);
+    avail.add(item);
+    avail.sort((a, b) => (_originalOrder[a.id] ?? 0).compareTo(_originalOrder[b.id] ?? 0));
+    final insertIndexInAvail = avail.indexWhere((e) => e.id == item.id);
+    final targetIndex = _selectedIds.length + insertIndexInAvail;
+    _visibleItems.insert(targetIndex, _VisibleEntry(item: item, selected: false));
+  }
+
+  void _handleReorder(int oldIndex, int newIndex) {
+    final selectedCount = _selectedIds.length;
+    if (oldIndex >= selectedCount || newIndex > selectedCount) {
+      return;
+    }
+
+    final firstCut = _checklist?.firstCount ?? 0;
+    final secondCut = firstCut + (_checklist?.secondCount ?? 0);
+
+    int bandStart = 0;
+    int bandEnd = selectedCount - 1;
+    if (oldIndex < firstCut) {
+      bandStart = 0;
+      bandEnd = firstCut - 1;
+    } else if (oldIndex < secondCut) {
+      bandStart = firstCut;
+      bandEnd = secondCut - 1;
+    } else {
+      bandStart = secondCut;
+      bandEnd = selectedCount - 1;
+    }
+
+    // ReorderableList provides a target assuming removal; adjust and then swap within band.
+    int target = newIndex > oldIndex ? newIndex - 1 : newIndex;
+    if (target < bandStart) target = bandStart;
+    if (target > bandEnd) target = bandEnd;
+    if (target == oldIndex) return;
+
+    setState(() {
+      final entry = _visibleItems[oldIndex];
+      _visibleItems[oldIndex] = _visibleItems[target];
+      _visibleItems[target] = entry;
+      final id = _selectedIds[oldIndex];
+      _selectedIds[oldIndex] = _selectedIds[target];
+      _selectedIds[target] = id;
+    });
+  }
+
+  Widget _rankLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+      child: Row(
+        children: [
+          Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              text,
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1)),
+        ],
+      ),
+    );
   }
 
   Future<void> _submit() async {
@@ -183,20 +257,24 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       if (hasNext) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('단계가 완료되었습니다. 이어서 다음 단계를 진행합니다.'),
+            content: Text('다음 단계로 이동합니다.'),
             duration: Duration(seconds: 2),
           ),
         );
         _prepareStage(_stageIndex + 1);
       } else {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => RawResultScreen(
-              title: '검사 결과',
-              payload: result,
+        final rid = _resultId ?? _extractResultId(result);
+        if (rid != null) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => UserResultDetailScreen(resultId: rid, testId: widget.testId),
             ),
-          ),
-        );
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('결과 ID를 확인할 수 없습니다.')),
+          );
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -206,98 +284,6 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
-  }
-
-  void _openSelectedPanel() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text('선택한 항목', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
-                    const Spacer(),
-                    TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('닫기')),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: _selectedIds.isEmpty
-                      ? Center(
-                          child: Text('선택된 항목이 없습니다.', style: AppTextStyles.bodySmall),
-                        )
-                      : ReorderableListView.builder(
-                          itemCount: _selectedIds.length,
-                          onReorder: _reorderSelected,
-                          buildDefaultDragHandles: false,
-                          padding: EdgeInsets.zero,
-                          itemBuilder: (context, index) {
-                            final id = _selectedIds[index];
-                            final item = _allItems.firstWhere((e) => e.id == id);
-                            final div = _rankDivider(index);
-                            return Column(
-                              key: ValueKey(id),
-                              children: [
-                                if (div != null) div,
-                                ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  leading: ReorderableDragStartListener(
-                                    index: index,
-                                    child: const Icon(Icons.drag_handle),
-                                  ),
-                                  title: Text(_cleanText(item.text)),
-                                  trailing: IconButton(
-                                    icon: const Icon(Icons.close),
-                                    onPressed: () => _removeSelected(id),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget? _rankDivider(int index) {
-    final c = _checklist;
-    if (c == null) return null;
-    if (index == 0) {
-      return _dividerLabel('1순위 (${c.firstCount})');
-    } else if (index == c.firstCount) {
-      return _dividerLabel('2순위 (${c.secondCount})');
-    } else if (index == c.firstCount + c.secondCount) {
-      return _dividerLabel('3순위 (${c.thirdCount})');
-    }
-    return null;
-  }
-
-  Widget _dividerLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1)),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Text(text, style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
-          ),
-          Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1)),
-        ],
-      ),
-    );
   }
 
   @override
@@ -326,7 +312,6 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     }
 
     final checklist = _checklist!;
-    final available = _availableItems;
     final total = _totalTarget;
     final canSubmit = _selectedIds.length == total && !_submitting;
     final stageLabel = '${_stageIndex + 1}/${_checklists.length} ${checklist.name}';
@@ -351,7 +336,6 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
             selectedCount: _selectedIds.length,
             totalTarget: total,
             stageLabel: stageLabel,
-            onOpen: _openSelectedPanel,
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -359,14 +343,12 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  checklist.question.isNotEmpty
-                      ? checklist.question
-                      : '각 순위별로 정해진 개수만큼 선택해주세요.',
+                  checklist.question.isNotEmpty ? checklist.question : '순서대로 선택 후 제출해주세요.',
                   style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '1~${checklist.firstCount}번까지 1순위, 다음 ${checklist.secondCount}개 2순위, 나머지 3순위입니다.',
+                  '1~${checklist.firstCount}개 1순위, 그 다음 ${checklist.secondCount}개 2순위, 나머지 3순위로 선택합니다.',
                   style: AppTextStyles.caption.copyWith(color: AppColors.textHint),
                 ),
               ],
@@ -374,16 +356,61 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
           ),
           const Divider(height: 1),
           Expanded(
-            child: ListView.builder(
+            child: ReorderableListView.builder(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-              itemCount: available.length,
+              buildDefaultDragHandles: false,
+              onReorder: _handleReorder,
+              proxyDecorator: (child, index, animation) {
+                final entry = _visibleItems[index];
+                if (!entry.selected) return child;
+                final number = (_originalOrder[entry.item.id] ?? index) + 1;
+                return Material(
+                  elevation: 6,
+                  color: Colors.transparent,
+                  child: _SelectableTile(
+                    number: number,
+                    text: _cleanText(entry.item.text),
+                    onSelect: () {},
+                    onDeselect: () => _deselect(entry.item),
+                    selected: true,
+                  ),
+                );
+              },
+              itemCount: _visibleItems.length,
               itemBuilder: (context, index) {
-                final item = available[index];
-                final number = (_originalOrder[item.id] ?? index) + 1;
-                return _SelectableTile(
+                final entry = _visibleItems[index];
+                final number = (_originalOrder[entry.item.id] ?? index) + 1;
+                final List<Widget> children = [];
+                // Rank dividers inside selected block.
+                if (index == 0 && _selectedIds.isNotEmpty) {
+                  children.add(_rankLabel('1순위 (${_checklist?.firstCount ?? 0})'));
+                } else if (index == (_checklist?.firstCount ?? 0) && index < _selectedIds.length) {
+                  children.add(_rankLabel('2순위 (${_checklist?.secondCount ?? 0})'));
+                } else if (index == ((_checklist?.firstCount ?? 0) + (_checklist?.secondCount ?? 0)) &&
+                    index < _selectedIds.length) {
+                  children.add(_rankLabel('3순위 (${_checklist?.thirdCount ?? 0})'));
+                }
+
+                Widget tile = _SelectableTile(
+                  key: ValueKey(entry.item.id),
                   number: number,
-                  text: _cleanText(item.text),
-                  onSelect: () => _toggleSelect(item),
+                  text: _cleanText(entry.item.text),
+                  onSelect: () => _toggleSelect(entry.item),
+                  onDeselect: () => _deselect(entry.item),
+                  selected: entry.selected,
+                );
+                if (entry.selected) {
+                  tile = ReorderableDelayedDragStartListener(
+                    index: index,
+                    child: tile,
+                  );
+                }
+                children.add(tile);
+
+                return Column(
+                  key: ValueKey('wrap-${entry.item.id}'),
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: children,
                 );
               },
             ),
@@ -415,7 +442,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     );
   }
 
-  String _cleanText(String text) => text.replaceAll(RegExp(r'\(.*?\)'), '').trim();
+  String _cleanText(String text) => text.replaceAll(RegExp(r'\\(.*?\\)'), '').trim();
 
   int? _extractResultId(dynamic res) {
     if (res == null) return null;
@@ -428,6 +455,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
         if (v is String) return int.tryParse(v);
         return null;
       }
+
       return fromKey('result_id') ?? fromKey('RESULT_ID') ?? fromKey('resultId');
     }
     return null;
@@ -439,13 +467,11 @@ class _SummaryBar extends StatelessWidget {
     required this.selectedCount,
     required this.totalTarget,
     required this.stageLabel,
-    required this.onOpen,
   });
 
   final int selectedCount;
   final int totalTarget;
   final String stageLabel;
-  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -459,20 +485,13 @@ class _SummaryBar extends StatelessWidget {
           children: [
             Text(stageLabel, style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
             const SizedBox(height: 6),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '선택 $selectedCount/$totalTarget',
-                    style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                ),
-                TextButton(onPressed: onOpen, child: const Text('선택 보기')),
-              ],
+            Text(
+              '선택 ${selectedCount}/$totalTarget',
+              style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 4),
             Text(
-              '순서를 드래그해 순위를 조정할 수 있습니다.',
+              '목록에서 바로 선택/취소할 수 있습니다.',
               style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
             ),
           ],
@@ -483,15 +502,25 @@ class _SummaryBar extends StatelessWidget {
 }
 
 class _SelectableTile extends StatelessWidget {
-  const _SelectableTile({required this.number, required this.text, required this.onSelect});
+  const _SelectableTile({
+    required this.number,
+    required this.text,
+    required this.onSelect,
+    required this.onDeselect,
+    this.selected = false,
+    Key? key,
+  });
 
   final int number;
   final String text;
   final VoidCallback onSelect;
+  final VoidCallback? onDeselect;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    final tile = Card(
+      color: selected ? AppColors.secondary.withOpacity(0.08) : Colors.white,
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -502,11 +531,25 @@ class _SelectableTile extends StatelessWidget {
           child: Text('$number', style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w700)),
         ),
         title: Text(text, style: AppTextStyles.bodyMedium),
-        trailing: IconButton(
-          icon: const Icon(Icons.add_circle_outline, color: AppColors.secondary),
-          onPressed: onSelect,
-        ),
+        trailing: selected
+            ? IconButton(
+                icon: const Icon(Icons.close, color: AppColors.secondary),
+                onPressed: onDeselect,
+              )
+            : IconButton(
+                icon: const Icon(Icons.add_circle_outline, color: AppColors.secondary),
+                onPressed: onSelect,
+              ),
       ),
     );
+
+    return tile;
   }
+}
+
+class _VisibleEntry {
+  _VisibleEntry({required this.item, required this.selected});
+
+  final PsychTestItem item;
+  final bool selected;
 }
