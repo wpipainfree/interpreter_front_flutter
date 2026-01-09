@@ -23,6 +23,8 @@ class WpiSelectionFlowNew extends StatefulWidget {
 
 class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
   final PsychTestsService _service = PsychTestsService();
+  final ScrollController _listController = ScrollController();
+  final GlobalKey _selectedAnchorKey = GlobalKey();
 
   bool _loading = true;
   bool _submitting = false;
@@ -31,9 +33,9 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
   int _stageIndex = 0;
   int? _resultId;
   final List<PsychTestItem> _allItems = [];
-  final List<_VisibleEntry> _visibleItems = [];
   final List<int> _selectedIds = [];
   final Map<int, int> _originalOrder = {};
+  final Map<int, PsychTestItem> _itemById = {};
   bool _limitSnackVisible = false;
 
   PsychTestChecklist? get _checklist => _checklists.isEmpty ? null : _checklists[_stageIndex];
@@ -48,6 +50,12 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _listController.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -81,20 +89,30 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       ..addAll(checklist.questions);
     _originalOrder
       ..clear();
+    _itemById
+      ..clear();
     for (var i = 0; i < _allItems.length; i++) {
-      _originalOrder[_allItems[i].id] = i;
+      final item = _allItems[i];
+      _originalOrder[item.id] = i;
+      _itemById[item.id] = item;
     }
     setState(() {
       _stageIndex = index;
       if (index == 0) _resultId = null;
       _selectedIds.clear();
-      _visibleItems
-        ..clear()
-        ..addAll(_availableItems.map((e) => _VisibleEntry(item: e, selected: false)));
       _loading = false;
       _error = null;
       _submitting = false;
     });
+  }
+
+  List<PsychTestItem> get _selectedItems {
+    final items = <PsychTestItem>[];
+    for (final id in _selectedIds) {
+      final item = _itemById[id];
+      if (item != null) items.add(item);
+    }
+    return items;
   }
 
   List<PsychTestItem> get _availableItems {
@@ -123,15 +141,8 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       return;
     }
 
-    final removeIndex = _visibleItems.indexWhere((e) => e.item.id == item.id && !e.selected);
-    if (removeIndex >= 0) {
-      _visibleItems.removeAt(removeIndex);
-    }
-
-    final insertIndex = _selectedIds.length;
     setState(() {
       _selectedIds.add(item.id);
-      _visibleItems.insert(insertIndex, _VisibleEntry(item: item, selected: true));
     });
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
@@ -147,60 +158,35 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
   }
 
   void _deselect(PsychTestItem item) {
-    final idx = _visibleItems.indexWhere((e) => e.item.id == item.id && e.selected);
-    if (idx >= 0) {
-      _visibleItems.removeAt(idx);
-    }
     setState(() {
       _selectedIds.remove(item.id);
     });
-    _insertBack(item);
   }
 
-  void _insertBack(PsychTestItem item) {
-    final avail = _availableItems..removeWhere((e) => e.id == item.id);
-    avail.add(item);
-    avail.sort((a, b) => (_originalOrder[a.id] ?? 0).compareTo(_originalOrder[b.id] ?? 0));
-    final insertIndexInAvail = avail.indexWhere((e) => e.id == item.id);
-    final targetIndex = _selectedIds.length + insertIndexInAvail;
-    _visibleItems.insert(targetIndex, _VisibleEntry(item: item, selected: false));
+  void _scrollToSelected() {
+    if (_selectedIds.isEmpty) return;
+    final context = _selectedAnchorKey.currentContext;
+    if (context == null) return;
+    Scrollable.ensureVisible(
+      context,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOut,
+      alignment: 0,
+    );
   }
 
   void _handleReorder(int oldIndex, int newIndex) {
     final selectedCount = _selectedIds.length;
-    if (oldIndex >= selectedCount || newIndex > selectedCount) {
-      return;
-    }
+    if (selectedCount <= 1) return;
 
-    final firstCut = _checklist?.firstCount ?? 0;
-    final secondCut = firstCut + (_checklist?.secondCount ?? 0);
-
-    int bandStart = 0;
-    int bandEnd = selectedCount - 1;
-    if (oldIndex < firstCut) {
-      bandStart = 0;
-      bandEnd = firstCut - 1;
-    } else if (oldIndex < secondCut) {
-      bandStart = firstCut;
-      bandEnd = secondCut - 1;
-    } else {
-      bandStart = secondCut;
-      bandEnd = selectedCount - 1;
-    }
-
-    // ReorderableList provides a target assuming removal; adjust and then swap within band.
     int target = newIndex > oldIndex ? newIndex - 1 : newIndex;
-    if (target < bandStart) target = bandStart;
-    if (target > bandEnd) target = bandEnd;
+    if (target < 0) target = 0;
+    if (target >= selectedCount) target = selectedCount - 1;
     if (target == oldIndex) return;
 
     setState(() {
-      final entry = _visibleItems[oldIndex];
-      _visibleItems[oldIndex] = _visibleItems[target];
-      _visibleItems[target] = entry;
-      final id = _selectedIds[oldIndex];
-      _selectedIds[oldIndex] = _selectedIds[target];
-      _selectedIds[target] = id;
+      final movedId = _selectedIds.removeAt(oldIndex);
+      _selectedIds.insert(target, movedId);
     });
   }
 
@@ -315,6 +301,8 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     final total = _totalTarget;
     final canSubmit = _selectedIds.length == total && !_submitting;
     final stageLabel = '${_stageIndex + 1}/${_checklists.length} ${checklist.name}';
+    final selectedItems = _selectedItems;
+    final availableItems = _availableItems;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
@@ -336,6 +324,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
             selectedCount: _selectedIds.length,
             totalTarget: total,
             stageLabel: stageLabel,
+            onTap: _scrollToSelected,
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -356,63 +345,86 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
           ),
           const Divider(height: 1),
           Expanded(
-            child: ReorderableListView.builder(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-              buildDefaultDragHandles: false,
-              onReorder: _handleReorder,
-              proxyDecorator: (child, index, animation) {
-                final entry = _visibleItems[index];
-                if (!entry.selected) return child;
-                final number = (_originalOrder[entry.item.id] ?? index) + 1;
-                return Material(
-                  elevation: 6,
-                  color: Colors.transparent,
-                  child: _SelectableTile(
-                    number: number,
-                    text: _cleanText(entry.item.text),
-                    onSelect: () {},
-                    onDeselect: () => _deselect(entry.item),
-                    selected: true,
+            child: CustomScrollView(
+              controller: _listController,
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                  sliver: SliverReorderableList(
+                    itemCount: selectedItems.length,
+                    onReorder: _handleReorder,
+                    proxyDecorator: (child, index, animation) {
+                      if (index < 0 || index >= selectedItems.length) return child;
+                      final item = selectedItems[index];
+                      final number = (_originalOrder[item.id] ?? index) + 1;
+                      return Material(
+                        elevation: 6,
+                        color: Colors.transparent,
+                        child: _SelectableTile(
+                          number: number,
+                          text: _cleanText(item.text),
+                          onSelect: () {},
+                          onDeselect: () => _deselect(item),
+                          selected: true,
+                        ),
+                      );
+                    },
+                    itemBuilder: (context, index) {
+                      final item = selectedItems[index];
+                      final number = (_originalOrder[item.id] ?? index) + 1;
+                      final List<Widget> children = [];
+                      if (index == 0 && _selectedIds.isNotEmpty) {
+                        children.add(SizedBox(key: _selectedAnchorKey, height: 0));
+                        children.add(_rankLabel('1?^o?o, (${_checklist?.firstCount ?? 0})'));
+                      } else if (index == (_checklist?.firstCount ?? 0) && index < _selectedIds.length) {
+                        children.add(_rankLabel('2?^o?o, (${_checklist?.secondCount ?? 0})'));
+                      } else if (index == ((_checklist?.firstCount ?? 0) + (_checklist?.secondCount ?? 0)) &&
+                          index < _selectedIds.length) {
+                        children.add(_rankLabel('3?^o?o, (${_checklist?.thirdCount ?? 0})'));
+                      }
+
+                      Widget tile = _SelectableTile(
+                        number: number,
+                        text: _cleanText(item.text),
+                        onSelect: () {},
+                        onDeselect: () => _deselect(item),
+                        selected: true,
+                      );
+                      tile = ReorderableDelayedDragStartListener(
+                        index: index,
+                        child: tile,
+                      );
+                      children.add(tile);
+
+                      return Column(
+                        key: ValueKey(item.id),
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: children,
+                      );
+                    },
                   ),
-                );
-              },
-              itemCount: _visibleItems.length,
-              itemBuilder: (context, index) {
-                final entry = _visibleItems[index];
-                final number = (_originalOrder[entry.item.id] ?? index) + 1;
-                final List<Widget> children = [];
-                // Rank dividers inside selected block.
-                if (index == 0 && _selectedIds.isNotEmpty) {
-                  children.add(_rankLabel('1순위 (${_checklist?.firstCount ?? 0})'));
-                } else if (index == (_checklist?.firstCount ?? 0) && index < _selectedIds.length) {
-                  children.add(_rankLabel('2순위 (${_checklist?.secondCount ?? 0})'));
-                } else if (index == ((_checklist?.firstCount ?? 0) + (_checklist?.secondCount ?? 0)) &&
-                    index < _selectedIds.length) {
-                  children.add(_rankLabel('3순위 (${_checklist?.thirdCount ?? 0})'));
-                }
-
-                Widget tile = _SelectableTile(
-                  key: ValueKey(entry.item.id),
-                  number: number,
-                  text: _cleanText(entry.item.text),
-                  onSelect: () => _toggleSelect(entry.item),
-                  onDeselect: () => _deselect(entry.item),
-                  selected: entry.selected,
-                );
-                if (entry.selected) {
-                  tile = ReorderableDelayedDragStartListener(
-                    index: index,
-                    child: tile,
-                  );
-                }
-                children.add(tile);
-
-                return Column(
-                  key: ValueKey('wrap-${entry.item.id}'),
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: children,
-                );
-              },
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final item = availableItems[index];
+                        final number = (_originalOrder[item.id] ?? index) + 1;
+                        return _SelectableTile(
+                          key: ValueKey(item.id),
+                          number: number,
+                          text: _cleanText(item.text),
+                          onSelect: () => _toggleSelect(item),
+                          onDeselect: () => _deselect(item),
+                          selected: false,
+                        );
+                      },
+                      childCount: availableItems.length,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           SafeArea(
@@ -467,34 +479,42 @@ class _SummaryBar extends StatelessWidget {
     required this.selectedCount,
     required this.totalTarget,
     required this.stageLabel,
+    this.onTap,
   });
 
   final int selectedCount;
   final int totalTarget;
   final String stageLabel;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      elevation: 1,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(stageLabel, style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
-            const SizedBox(height: 6),
-            Text(
-              '선택 ${selectedCount}/$totalTarget',
-              style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+    return SizedBox(
+      width: double.infinity,
+      child: Material(
+        color: Colors.white,
+        elevation: 1,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(stageLabel, style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+                const SizedBox(height: 2),
+                Text(
+                  '선택 ${selectedCount}/$totalTarget',
+                  style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  '목록에서 바로 선택/취소할 수 있습니다.',
+                  style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              '목록에서 바로 선택/취소할 수 있습니다.',
-              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -547,9 +567,3 @@ class _SelectableTile extends StatelessWidget {
   }
 }
 
-class _VisibleEntry {
-  _VisibleEntry({required this.item, required this.selected});
-
-  final PsychTestItem item;
-  final bool selected;
-}

@@ -254,54 +254,76 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
     required List<String> labels,
     required List<double?> scores,
   }) {
+    final columnWidths = <int, TableColumnWidth>{};
+    for (var i = 0; i < labels.length; i++) {
+      columnWidths[i] = const FlexColumnWidth();
+    }
+    const cellPadding = EdgeInsets.symmetric(horizontal: 6, vertical: 10);
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),
-      child: Table(
-        columnWidths: const {
-          0: FixedColumnWidth(80),
-        },
-        border: TableBorder.symmetric(
-          inside: BorderSide(color: AppColors.border),
-        ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          TableRow(
-            decoration: BoxDecoration(color: headerBg),
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(10),
-                child: Text(title, style: AppTextStyles.bodyMedium.copyWith(color: titleColor, fontWeight: FontWeight.w700)),
+          Container(
+            width: double.infinity,
+            color: headerBg,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(
+              title,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: titleColor,
+                fontWeight: FontWeight.w700,
               ),
-              ...labels.map(
-                (label) => Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Text(
-                    label,
-                    style: AppTextStyles.bodySmall.copyWith(color: titleColor, fontWeight: FontWeight.w700),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-          TableRow(
+          const Divider(height: 1, thickness: 1, color: AppColors.border),
+          Table(
+            columnWidths: columnWidths,
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+            border: TableBorder.symmetric(
+              inside: BorderSide(color: AppColors.border),
+            ),
             children: [
-              Padding(
-                padding: const EdgeInsets.all(10),
-                child: Text('점수', style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+              TableRow(
+                children: labels
+                    .map(
+                      (label) => Padding(
+                        padding: cellPadding,
+                        child: Text(
+                          label,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: titleColor,
+                            fontWeight: FontWeight.w700,
+                            height: 1.1,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          softWrap: true,
+                        ),
+                      ),
+                    )
+                    .toList(),
               ),
-              ...scores.map(
-                (score) => Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Text(
-                    score != null ? score.toStringAsFixed(1).replaceAll(RegExp(r'\\.0\$'), '') : '-',
-                    style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w600),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
+              TableRow(
+                children: scores
+                    .map(
+                      (score) => Padding(
+                        padding: cellPadding,
+                        child: Text(
+                          score != null ? score.toStringAsFixed(1).replaceAll(RegExp(r'\.0\$'), '') : '-',
+                          style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    )
+                    .toList(),
               ),
             ],
           ),
@@ -309,7 +331,6 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
       ),
     );
   }
-
   String _testName(int? testId) {
     if (testId == 1) return 'WPI(현실)';
     if (testId == 3) return 'WPI(이상)';

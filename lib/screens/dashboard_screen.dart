@@ -111,7 +111,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: showContent
                     ? SafeArea(
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
@@ -123,7 +123,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   color: AppColors.textOnDark.withOpacity(0.8),
                                 ),
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 4),
                               Text(
                                 user?.displayName ?? '게스트',
                                 style: const TextStyle(
@@ -132,7 +132,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   color: AppColors.textOnDark,
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 6),
                               Text(
                                 '당신의 이야기를 더 선명하게 보기 위한 인사이트를 준비했어요.',
                                 style: TextStyle(
