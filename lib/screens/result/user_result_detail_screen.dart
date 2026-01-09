@@ -229,6 +229,7 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
               showModalBottomSheet(
                 context: context,
                 isScrollControlled: true,
+                barrierColor: Colors.black.withOpacity(0.12),
                 builder: (ctx) => SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.all(16),

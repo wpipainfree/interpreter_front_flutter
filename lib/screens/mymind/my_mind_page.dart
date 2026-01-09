@@ -1,12 +1,14 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/psych_tests_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../result/user_result_detail_screen.dart';
+import 'interpretation_panel.dart';
+import 'interpretation_record_panel.dart';
 
-/// MyMind main page: 결과 / 보관함 / 기록 탭
+/// MyMind main page: results / saved / records / interpretation.
 class MyMindPage extends StatefulWidget {
   const MyMindPage({super.key});
 
@@ -22,15 +24,15 @@ class _MyMindPageState extends State<MyMindPage> {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-      backgroundColor: AppColors.backgroundLight,
-      foregroundColor: AppColors.textPrimary,
-      elevation: 0,
-      title: Text('내 마음', style: AppTextStyles.h4),
-      centerTitle: false,
-    ),
-    body: Column(
-      children: [
-        const SizedBox(height: 8),
+        backgroundColor: AppColors.backgroundLight,
+        foregroundColor: AppColors.textPrimary,
+        elevation: 0,
+        title: Text('내 마음', style: AppTextStyles.h4),
+        centerTitle: false,
+      ),
+      body: Column(
+        children: [
+          const SizedBox(height: 8),
           _buildSegments(),
           const SizedBox(height: 12),
           Expanded(child: _buildPanel()),
@@ -53,6 +55,7 @@ class _MyMindPageState extends State<MyMindPage> {
             _segButton('결과', 0),
             _segButton('보관함', 1),
             _segButton('기록', 2),
+            _segButton('해석', 3),
           ],
         ),
       ),
@@ -65,10 +68,8 @@ class _MyMindPageState extends State<MyMindPage> {
       child: TextButton(
         onPressed: () => setState(() => _tab = idx),
         style: TextButton.styleFrom(
-          foregroundColor:
-              selected ? AppColors.primary : AppColors.textSecondary,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          foregroundColor: selected ? AppColors.primary : AppColors.textSecondary,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           padding: const EdgeInsets.symmetric(vertical: 12),
           splashFactory: NoSplash.splashFactory,
         ),
@@ -89,8 +90,10 @@ class _MyMindPageState extends State<MyMindPage> {
         return const _ResultPanel();
       case 1:
         return const _SavedPanel();
-      default:
+      case 2:
         return const _RecordPanel();
+      default:
+        return const InterpretationPanel();
     }
   }
 }
@@ -153,7 +156,7 @@ class _ResultPanelState extends State<_ResultPanel> {
     if (userId == null) {
       if (!mounted) return;
       setState(() {
-        _error = '로그인이 필요합니다.';
+        _error = '사용자 정보를 불러올 수 없습니다.';
         _loading = false;
         _loadingMore = false;
       });
@@ -214,8 +217,8 @@ class _ResultPanelState extends State<_ResultPanel> {
 
     if (_items.isEmpty) {
       return _card(
-        '저장된 결과가 없습니다.',
-        '검사를 완료하면 결과가 여기에 표시됩니다.',
+        '아직 검사 결과가 없어요.',
+        '검사를 완료하면 여기에 최근 결과가 표시됩니다.',
       );
     }
 
@@ -242,7 +245,7 @@ class _ResultPanelState extends State<_ResultPanel> {
                     minimumSize: const Size.fromHeight(44),
                     splashFactory: NoSplash.splashFactory,
                   ),
-                  child: const Text('다음 결과 불러오기'),
+                  child: const Text('더 불러오기'),
                 ),
               );
             }
@@ -325,7 +328,7 @@ class _ResultCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
-                      if (tester.isNotEmpty && tester != '미입력')
+                      if (tester.isNotEmpty && tester != '미지정')
                         Text(
                           '검사자 $tester',
                           style: AppTextStyles.bodySmall
@@ -378,7 +381,7 @@ class _ResultCard extends StatelessWidget {
 
   String _tester(UserAccountItem item) {
     final name = item.result?['TEST_TARGET_NAME'] ?? '';
-    return name is String && name.isNotEmpty ? name : '미입력';
+    return name is String && name.isNotEmpty ? name : '미지정';
   }
 
   String? _resultType(UserAccountItem item, {String key = 'DESCRIPTION'}) {
@@ -445,7 +448,10 @@ class _SavedPanel extends StatelessWidget {
       children: [
         Text('보관함', style: AppTextStyles.h4),
         const SizedBox(height: 12),
-        _card('저장한 결과가 없습니다.', '결과 해석을 저장하면 보관함에서 다시 볼 수 있어요.'),
+        _card(
+          '보관한 결과가 없어요.',
+          '결과 화면에서 보관하면 여기에서 확인할 수 있습니다.',
+        ),
       ],
     );
   }
@@ -456,14 +462,7 @@ class _RecordPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        Text('기록', style: AppTextStyles.h4),
-        const SizedBox(height: 12),
-        _card('기록이 없습니다.', '검사 결과나 메모를 남겨 보세요.'),
-      ],
-    );
+    return const InterpretationRecordPanel();
   }
 }
 
@@ -489,8 +488,7 @@ Widget _card(String title, String subtitle) {
         const SizedBox(height: 6),
         Text(
           subtitle,
-          style:
-              AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
         ),
       ],
     ),
