@@ -59,6 +59,7 @@ class PsychTestsService {
             sequence: 1,
             question: '',
             questions: items,
+            role: EvaluationRole.unknown,
           ),
         ];
       }
@@ -283,6 +284,35 @@ class PsychTestItem {
   }
 }
 
+enum EvaluationRole {
+  self,
+  other,
+  unknown,
+}
+
+EvaluationRole _resolveChecklistRole({
+  required String name,
+  required String description,
+  required String question,
+}) {
+  final roleFromName = _roleFromText(name);
+  if (roleFromName != EvaluationRole.unknown) return roleFromName;
+
+  final roleFromBody = _roleFromText('$question $description');
+  return roleFromBody;
+}
+
+EvaluationRole _roleFromText(String raw) {
+  final text = raw.trim().toLowerCase();
+  if (text.isEmpty) return EvaluationRole.unknown;
+  if (text.contains('자기') || text.contains('self')) return EvaluationRole.self;
+  if (text.contains('타인') || text.contains('other') || text.contains('주변')) {
+    return EvaluationRole.other;
+  }
+  if (text.contains('다른 사람')) return EvaluationRole.other;
+  return EvaluationRole.unknown;
+}
+
 class PsychTestChecklist {
   final int id;
   final String name;
@@ -293,6 +323,7 @@ class PsychTestChecklist {
   final int sequence;
   final String question;
   final List<PsychTestItem> questions;
+  final EvaluationRole role;
 
   const PsychTestChecklist({
     required this.id,
@@ -304,22 +335,31 @@ class PsychTestChecklist {
     required this.sequence,
     required this.question,
     required this.questions,
+    this.role = EvaluationRole.unknown,
   });
 
   factory PsychTestChecklist.fromJson(Map<String, dynamic> json) {
     final rawQuestions = (json['questions'] as List?) ?? const [];
     final items = rawQuestions.map((e) => PsychTestItem.fromJson(e)).toList()
       ..sort((a, b) => (a.sequence ?? 0).compareTo(b.sequence ?? 0));
+    final name = (json['name'] ?? '').toString();
+    final description = (json['description'] ?? '').toString();
+    final question = (json['question'] ?? '').toString();
     return PsychTestChecklist(
       id: _asInt(json['id']),
-      name: (json['name'] ?? '').toString(),
-      description: (json['description'] ?? '').toString(),
-      question: (json['question'] ?? '').toString(),
+      name: name,
+      description: description,
+      question: question,
       sequence: _asInt(json['sequence']),
       firstCount: _asInt(json['cnt_1st_selection']) == 0 ? 3 : _asInt(json['cnt_1st_selection']),
       secondCount: _asInt(json['cnt_2nd_selection']) == 0 ? 4 : _asInt(json['cnt_2nd_selection']),
       thirdCount: _asInt(json['cnt_3rd_selection']) == 0 ? 5 : _asInt(json['cnt_3rd_selection']),
       questions: items,
+      role: _resolveChecklistRole(
+        name: name,
+        description: description,
+        question: question,
+      ),
     );
   }
 }

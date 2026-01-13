@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../services/psych_tests_service.dart';
+import '../../test_flow/role_transition_screen.dart';
+import '../../test_flow/test_flow_models.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../result/user_result_detail_screen.dart';
@@ -13,11 +15,15 @@ class WpiSelectionFlowNew extends StatefulWidget {
     required this.testId,
     required this.testTitle,
     this.mindFocus,
+    this.kind = WpiTestKind.reality,
+    this.exitMode = FlowExitMode.openResultDetail,
   });
 
   final int testId;
   final String testTitle;
   final String? mindFocus;
+  final WpiTestKind kind;
+  final FlowExitMode exitMode;
 
   @override
   State<WpiSelectionFlowNew> createState() => _WpiSelectionFlowNewState();
@@ -39,6 +45,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
   final Map<int, int> _originalOrder = {};
   final Map<int, PsychTestItem> _itemById = {};
   bool _limitSnackVisible = false;
+  bool _shownOtherTransition = false;
 
   PsychTestChecklist? get _checklist => _checklists.isEmpty ? null : _checklists[_stageIndex];
 
@@ -70,9 +77,10 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       if (lists.isEmpty) {
         throw const PsychTestException('No checklist data.');
       }
+      final sorted = _sortChecklists(lists);
       _checklists
         ..clear()
-        ..addAll(lists);
+        ..addAll(sorted);
       _prepareStage(0);
     } catch (e) {
       if (!mounted) return;
@@ -101,6 +109,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     setState(() {
       _stageIndex = index;
       if (index == 0) _resultId = null;
+      if (index == 0) _shownOtherTransition = false;
       _selectedIds.clear();
       _loading = false;
       _error = null;
@@ -249,15 +258,23 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
             duration: Duration(seconds: 2),
           ),
         );
-        _prepareStage(_stageIndex + 1);
+        final nextIndex = _stageIndex + 1;
+        await _maybeShowOtherTransition(_checklists[_stageIndex], _checklists[nextIndex]);
+        _prepareStage(nextIndex);
       } else {
         final rid = _resultId ?? _extractResultId(result);
         if (rid != null) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (_) => UserResultDetailScreen(resultId: rid, testId: widget.testId),
-            ),
-          );
+          if (widget.exitMode == FlowExitMode.popWithResult) {
+            Navigator.of(context).pop(
+              FlowCompletion(kind: widget.kind, resultId: rid.toString()),
+            );
+          } else {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (_) => UserResultDetailScreen(resultId: rid, testId: widget.testId),
+              ),
+            );
+          }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('결과 ID를 확인할 수 없습니다.')),
@@ -272,6 +289,39 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  List<PsychTestChecklist> _sortChecklists(List<PsychTestChecklist> source) {
+    final indexed = List.generate(source.length, (i) => MapEntry(i, source[i]));
+    indexed.sort((a, b) {
+      final priorityA = _rolePriority(a.value.role);
+      final priorityB = _rolePriority(b.value.role);
+      if (priorityA != priorityB) return priorityA.compareTo(priorityB);
+      return a.key.compareTo(b.key);
+    });
+    return indexed.map((e) => e.value).toList();
+  }
+
+  int _rolePriority(EvaluationRole role) {
+    switch (role) {
+      case EvaluationRole.self:
+        return 0;
+      case EvaluationRole.other:
+        return 1;
+      case EvaluationRole.unknown:
+        return 2;
+    }
+  }
+
+  Future<void> _maybeShowOtherTransition(
+    PsychTestChecklist current,
+    PsychTestChecklist next,
+  ) async {
+    if (_shownOtherTransition) return;
+    if (current.role != EvaluationRole.self || next.role != EvaluationRole.other) return;
+    _shownOtherTransition = true;
+    if (!mounted) return;
+    await RoleTransitionScreen.show(context);
   }
 
   @override

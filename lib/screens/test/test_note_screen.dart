@@ -1,9 +1,9 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../test_flow/test_flow_coordinator.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
-import 'wpi_selection_flow_new.dart';
 
 class TestNoteScreen extends StatefulWidget {
   const TestNoteScreen({
@@ -60,14 +60,12 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
     await prefs.setString(_storageKey, text);
 
     if (!mounted) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => WpiSelectionFlowNew(
-          testId: widget.testId,
-          testTitle: widget.testTitle,
-          mindFocus: text,
-        ),
-      ),
+    final coordinator = TestFlowCoordinator();
+    await coordinator.startRealityThenMaybeIdeal(
+      context,
+      realityTestId: widget.testId,
+      realityTestTitle: widget.testTitle,
+      mindFocus: text,
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/psych_tests_service.dart';
+import '../test_flow/test_flow_coordinator.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_text_styles.dart';
 import 'auth/login_screen.dart';
@@ -20,6 +21,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final PsychTestsService _testsService = PsychTestsService();
   final List<UserAccountItem> _accounts = [];
   bool _loading = true;
+  bool _pendingIdeal = false;
   String? _error;
   static const int _maxRecent = 3;
 
@@ -27,6 +29,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _loadAccounts();
+    _loadPendingIdeal();
   }
 
   Future<void> _loadAccounts() async {
@@ -61,6 +64,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _error = e.toString();
       });
     }
+  }
+
+  Future<void> _loadPendingIdeal() async {
+    final pending = await TestFlowCoordinator.hasPendingIdeal();
+    if (!mounted) return;
+    setState(() => _pendingIdeal = pending);
   }
 
   @override
@@ -228,10 +237,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           );
                           if (ok != true || !mounted) return;
                         }
-                        Navigator.of(context).push(
+                        await Navigator.of(context).push(
                           MaterialPageRoute(
                               builder: (_) => const TestIntroScreen()),
                         );
+                        if (!mounted) return;
+                        await _loadPendingIdeal();
+                        await _loadAccounts();
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.backgroundWhite,
@@ -257,6 +269,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ],
                       ),
                     ),
+                    if (_pendingIdeal) ...[
+                      const SizedBox(height: 12),
+                      OutlinedButton(
+                        onPressed: () async {
+                          final coordinator = TestFlowCoordinator();
+                          await coordinator.startIdealOnly(context);
+                          if (!mounted) return;
+                          await _loadPendingIdeal();
+                          await _loadAccounts();
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.textOnDark,
+                          side: BorderSide(color: AppColors.textOnDark.withOpacity(0.6)),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: const Text('이상 검사 이어하기'),
+                      ),
+                    ],
                   ],
                 ),
               ),
