@@ -12,10 +12,12 @@ class WpiSelectionFlowNew extends StatefulWidget {
     super.key,
     required this.testId,
     required this.testTitle,
+    this.mindFocus,
   });
 
   final int testId;
   final String testTitle;
+  final String? mindFocus;
 
   @override
   State<WpiSelectionFlowNew> createState() => _WpiSelectionFlowNewState();
@@ -375,12 +377,12 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
                       final List<Widget> children = [];
                       if (index == 0 && _selectedIds.isNotEmpty) {
                         children.add(SizedBox(key: _selectedAnchorKey, height: 0));
-                        children.add(_rankLabel('1?^o?o, (${_checklist?.firstCount ?? 0})'));
+                        children.add(_rankLabel('1순위 (${_checklist?.firstCount ?? 0})'));
                       } else if (index == (_checklist?.firstCount ?? 0) && index < _selectedIds.length) {
-                        children.add(_rankLabel('2?^o?o, (${_checklist?.secondCount ?? 0})'));
+                        children.add(_rankLabel('2순위 (${_checklist?.secondCount ?? 0})'));
                       } else if (index == ((_checklist?.firstCount ?? 0) + (_checklist?.secondCount ?? 0)) &&
                           index < _selectedIds.length) {
-                        children.add(_rankLabel('3?^o?o, (${_checklist?.thirdCount ?? 0})'));
+                        children.add(_rankLabel('3순위 (${_checklist?.thirdCount ?? 0})'));
                       }
 
                       Widget tile = _SelectableTile(

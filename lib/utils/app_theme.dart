@@ -10,7 +10,7 @@ class AppTheme {
   static ThemeData get lightTheme {
     final base = ThemeData.light(useMaterial3: true);
 
-    final textTheme = GoogleFonts.latoTextTheme(base.textTheme).copyWith(
+    final textTheme = GoogleFonts.notoSansKrTextTheme(base.textTheme).copyWith(
       headlineLarge: AppTextStyles.h1,
       headlineMedium: AppTextStyles.h2,
       headlineSmall: AppTextStyles.h3,
@@ -112,7 +112,7 @@ class AppTheme {
       ),
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.emotionalSignalBg,
-        labelStyle: GoogleFonts.lato(
+        labelStyle: GoogleFonts.notoSansKr(
           fontSize: 14,
           fontWeight: FontWeight.w600,
           color: AppColors.emotionalSignalText,

@@ -11,15 +11,13 @@ class AiAssistantService {
       : _client = client ??
             Dio(
               BaseOptions(
-                connectTimeout: _timeout,
-                receiveTimeout: _timeout,
+                connectTimeout: null,
+                receiveTimeout: null,
               ),
             );
 
   final Dio _client;
   final AuthService _authService = AuthService();
-
-  static const _timeout = Duration(seconds: 60);
 
   Future<Map<String, dynamic>> interpret(Map<String, dynamic> payload) async {
     final uri = _uri('/api/v1/ai-assistant/interpret');
@@ -165,8 +163,8 @@ class AiAssistantService {
         if (contentType != null) 'Content-Type': contentType,
         if (auth != null) 'Authorization': auth,
       },
-      sendTimeout: _timeout,
-      receiveTimeout: _timeout,
+      sendTimeout: null,
+      receiveTimeout: null,
     );
   }
 

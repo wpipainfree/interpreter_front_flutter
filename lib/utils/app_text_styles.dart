@@ -7,7 +7,7 @@ class AppTextStyles {
   AppTextStyles._();
 
   // Headings (serif)
-  static TextStyle get h1 => GoogleFonts.playfairDisplay(
+  static TextStyle get h1 => GoogleFonts.notoSerifKr(
         fontSize: 32,
         fontWeight: FontWeight.w700,
         color: AppColors.textPrimary,
@@ -15,7 +15,7 @@ class AppTextStyles {
         letterSpacing: -0.4,
       );
 
-  static TextStyle get h2 => GoogleFonts.playfairDisplay(
+  static TextStyle get h2 => GoogleFonts.notoSerifKr(
         fontSize: 26,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
@@ -23,21 +23,21 @@ class AppTextStyles {
         letterSpacing: -0.2,
       );
 
-  static TextStyle get h3 => GoogleFonts.playfairDisplay(
+  static TextStyle get h3 => GoogleFonts.notoSerifKr(
         fontSize: 22,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
         height: 1.35,
       );
 
-  static TextStyle get h4 => GoogleFonts.playfairDisplay(
+  static TextStyle get h4 => GoogleFonts.notoSerifKr(
         fontSize: 20,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
         height: 1.35,
       );
 
-  static TextStyle get h5 => GoogleFonts.playfairDisplay(
+  static TextStyle get h5 => GoogleFonts.notoSerifKr(
         fontSize: 18,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
@@ -45,21 +45,21 @@ class AppTextStyles {
       );
 
   // Body (sans)
-  static TextStyle get bodyLarge => GoogleFonts.lato(
+  static TextStyle get bodyLarge => GoogleFonts.notoSansKr(
         fontSize: 17,
         fontWeight: FontWeight.w400,
         color: AppColors.textSecondary,
         height: 1.6,
       );
 
-  static TextStyle get bodyMedium => GoogleFonts.lato(
+  static TextStyle get bodyMedium => GoogleFonts.notoSansKr(
         fontSize: 15,
         fontWeight: FontWeight.w400,
         color: AppColors.textSecondary,
         height: 1.6,
       );
 
-  static TextStyle get bodySmall => GoogleFonts.lato(
+  static TextStyle get bodySmall => GoogleFonts.notoSansKr(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         color: AppColors.textSecondary,
@@ -67,65 +67,65 @@ class AppTextStyles {
       );
 
   // Buttons
-  static TextStyle get buttonLarge => GoogleFonts.lato(
+  static TextStyle get buttonLarge => GoogleFonts.notoSansKr(
         fontSize: 18,
         fontWeight: FontWeight.w600,
         color: AppColors.textOnPrimary,
       );
 
-  static TextStyle get buttonMedium => GoogleFonts.lato(
+  static TextStyle get buttonMedium => GoogleFonts.notoSansKr(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         color: AppColors.textOnPrimary,
       );
 
-  static TextStyle get buttonSmall => GoogleFonts.lato(
+  static TextStyle get buttonSmall => GoogleFonts.notoSansKr(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         color: AppColors.textOnPrimary,
       );
 
   // Labels
-  static TextStyle get labelLarge => GoogleFonts.lato(
+  static TextStyle get labelLarge => GoogleFonts.notoSansKr(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       );
 
-  static TextStyle get labelMedium => GoogleFonts.lato(
+  static TextStyle get labelMedium => GoogleFonts.notoSansKr(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         color: AppColors.textSecondary,
       );
 
-  static TextStyle get labelSmall => GoogleFonts.lato(
+  static TextStyle get labelSmall => GoogleFonts.notoSansKr(
         fontSize: 12,
         fontWeight: FontWeight.w600,
         color: AppColors.textTertiary,
       );
 
   // Caption
-  static TextStyle get caption => GoogleFonts.lato(
+  static TextStyle get caption => GoogleFonts.notoSansKr(
         fontSize: 13,
         fontWeight: FontWeight.w400,
         color: AppColors.textTertiary,
       );
 
-  static TextStyle get captionSmall => GoogleFonts.lato(
+  static TextStyle get captionSmall => GoogleFonts.notoSansKr(
         fontSize: 11,
         fontWeight: FontWeight.w400,
         color: AppColors.textHint,
       );
 
   // On dark surfaces
-  static TextStyle get h2OnDark => GoogleFonts.playfairDisplay(
+  static TextStyle get h2OnDark => GoogleFonts.notoSerifKr(
         fontSize: 26,
         fontWeight: FontWeight.w700,
         color: AppColors.textOnDark,
         height: 1.3,
       );
 
-  static TextStyle get bodyOnDark => GoogleFonts.lato(
+  static TextStyle get bodyOnDark => GoogleFonts.notoSansKr(
         fontSize: 15,
         fontWeight: FontWeight.w400,
         color: Colors.white70,
@@ -133,14 +133,14 @@ class AppTextStyles {
       );
 
   // Specialized
-  static TextStyle get existenceType => GoogleFonts.playfairDisplay(
+  static TextStyle get existenceType => GoogleFonts.notoSerifKr(
         fontSize: 28,
         fontWeight: FontWeight.w700,
         color: AppColors.textOnDark,
         height: 1.3,
       );
 
-  static TextStyle get quote => GoogleFonts.lato(
+  static TextStyle get quote => GoogleFonts.notoSansKr(
         fontSize: 16,
         fontWeight: FontWeight.w500,
         color: AppColors.textSecondary,
@@ -148,7 +148,7 @@ class AppTextStyles {
         height: 1.6,
       );
 
-  static TextStyle get link => GoogleFonts.lato(
+  static TextStyle get link => GoogleFonts.notoSansKr(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         color: AppColors.primary,
