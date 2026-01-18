@@ -239,7 +239,7 @@ class _ReviewHeader extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               testTitle,
-              style: AppTextStyles.caption.copyWith(color: AppColors.textHint),
+              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
             ),
           ],
         ),

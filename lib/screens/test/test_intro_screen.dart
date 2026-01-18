@@ -36,7 +36,10 @@ class TestIntroScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('준비 1/2', style: AppTextStyles.caption),
+              Text(
+                '준비 1/2',
+                style: AppTextStyles.labelSmall,
+              ),
               const SizedBox(height: 12),
               Text(
                 '정답은 없습니다.\n지금의 나를 있는 그대로 선택해요.',
@@ -46,7 +49,7 @@ class TestIntroScreen extends StatelessWidget {
               Text(
                 '마음은 원자 구조처럼 구성됩니다.\n'
                 '기준·믿음·감정·몸의 구조를 확인해 봅니다.',
-                style: AppTextStyles.bodyMedium,
+                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
               ),
               const Spacer(),
               SizedBox(

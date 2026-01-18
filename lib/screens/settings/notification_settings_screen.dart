@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/notification_service.dart';
+import '../../utils/app_colors.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
@@ -70,7 +71,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                           child: Text(
                             '알림을 통해 검사 결과와 리마인더를 받아보세요.',
                             style: TextStyle(
-                              color: Colors.grey.shade700,
+                              color: AppColors.textSecondary,
                               fontSize: 14,
                             ),
                           ),
@@ -187,7 +188,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF666666),
+                  color: AppColors.textSecondary,
                   letterSpacing: 0.5,
                 ),
               ),
@@ -230,7 +231,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: Color(0xFF1A1A2E),
+                    color: AppColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -238,7 +239,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                   subtitle,
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey.shade600,
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ],
@@ -283,7 +284,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: Color(0xFF1A1A2E),
+                    color: AppColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -291,7 +292,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                   subtitle,
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey.shade600,
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ],
@@ -325,13 +326,13 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
         children: [
           Row(
             children: [
-              const Icon(Icons.schedule, size: 20, color: Color(0xFF666666)),
+              const Icon(Icons.schedule, size: 20, color: AppColors.textSecondary),
               const SizedBox(width: 8),
               const Text(
                 '알림 주기',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Color(0xFF666666),
+                  color: AppColors.textSecondary,
                 ),
               ),
               const Spacer(),
@@ -380,7 +381,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: isSelected ? Colors.white : const Color(0xFF666666),
+          color: isSelected ? Colors.white : AppColors.textSecondary,
           ),
         ),
       ),
@@ -400,13 +401,13 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
         children: [
           Row(
             children: [
-              Icon(Icons.bug_report_outlined, color: Colors.grey.shade600, size: 20),
+              Icon(Icons.bug_report_outlined, color: AppColors.textSecondary, size: 20),
               const SizedBox(width: 8),
               Text(
                 '테스트 (개발용)',
                 style: TextStyle(
                   fontSize: 13,
-                  color: Colors.grey.shade600,
+                  color: AppColors.textSecondary,
                   fontWeight: FontWeight.w500,
                 ),
               ),

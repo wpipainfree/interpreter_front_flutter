@@ -453,7 +453,7 @@ class _StickyHeader extends StatelessWidget {
                         ),
                         child: Text(
                           '${index + 1}',
-                          style: AppTextStyles.bodySmall.copyWith(color: Colors.grey.shade500),
+                          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
                         ),
                       ),
                     );
@@ -545,7 +545,7 @@ class _WpiItemCardState extends State<_WpiItemCard> {
                   child: Text(
                     '${widget.number}. ${_cleanText(widget.item.text)}',
                     style: AppTextStyles.bodyMedium.copyWith(
-                      color: locked ? AppColors.textHint : AppColors.textPrimary,
+                      color: locked ? AppColors.textSecondary.withOpacity(0.6) : AppColors.textPrimary,
                     ),
                   ),
                 ),

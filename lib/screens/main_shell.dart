@@ -58,7 +58,7 @@ class _MainShellState extends State<MainShell> {
         currentIndex: _index,
         onTap: _onTabSelected,
         selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.textHint,
+        unselectedItemColor: AppColors.textSecondary,
         type: BottomNavigationBarType.fixed,
         items: [
           const BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: '홈'),

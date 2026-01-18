@@ -153,7 +153,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Text(
                     '또는 이메일로 로그인',
                     style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.textHint,
+                      color: AppColors.textSecondary,
                     ),
                   ),
                 ),
@@ -194,7 +194,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Text(
                       '로그인 없이 둘러보기',
                       style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textHint,
+                        color: AppColors.textSecondary,
                         decoration: TextDecoration.underline,
                       ),
                     ),
@@ -225,7 +225,7 @@ class _LoginHeader extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           'WPI 구조를 계속 이용하려면 로그인하세요.',
-          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textHint),
+          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
           textAlign: TextAlign.center,
         ),
       ],

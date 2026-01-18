@@ -93,7 +93,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 Center(
                   child: Text(
                     '이메일로 가입을 완료해주세요.',
-                    style: AppTextStyles.bodySmall.copyWith(color: AppColors.textHint),
+                    style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -154,7 +154,7 @@ class _Header extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           '당신의 이야기를 구조화할 계정을 만들어주세요.',
-          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textHint),
+          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
           textAlign: TextAlign.center,
         ),
       ],

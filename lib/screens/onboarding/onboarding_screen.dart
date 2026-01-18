@@ -81,7 +81,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         Text(
           '처음 안내',
           style: AppTextStyles.labelSmall.copyWith(
-            color: AppColors.textHint,
+            color: AppColors.textSecondary,
             letterSpacing: 0.8,
           ),
         ),
@@ -90,7 +90,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           onPressed: _skipOnboarding,
           child: Text(
             '건너뛰기',
-            style: AppTextStyles.labelSmall.copyWith(color: AppColors.textHint),
+            style: AppTextStyles.labelSmall.copyWith(color: AppColors.textSecondary),
           ),
         ),
       ],
@@ -110,7 +110,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           decoration: BoxDecoration(
             color: _currentPage == index
                 ? AppColors.secondary
-                : AppColors.textHint.withOpacity(0.4),
+                : AppColors.textSecondary.withOpacity(0.4),
             shape: BoxShape.circle,
           ),
         ),

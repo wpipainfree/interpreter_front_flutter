@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/app_colors.dart';
 
 /// 소셜 로그인 버튼 위젯
 class SocialLoginButtons extends StatelessWidget {
@@ -37,7 +38,7 @@ class SocialLoginButtons extends StatelessWidget {
         _SocialButton(
           text: 'Google로 계속하기',
           backgroundColor: Colors.white,
-          textColor: const Color(0xFF757575),
+          textColor: AppColors.textPrimary,
           iconPath: 'google',
           borderColor: const Color(0xFFDDDDDD),
           onPressed: () => onSocialLogin('google'),
@@ -216,7 +217,7 @@ class OrDivider extends StatelessWidget {
           child: Text(
             text,
             style: const TextStyle(
-              color: Color(0xFF999999),
+              color: AppColors.textSecondary,
               fontSize: 14,
             ),
           ),

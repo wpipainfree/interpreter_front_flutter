@@ -244,13 +244,15 @@ class _ConversationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final displayTitle = item.displayTitle;
+    final rawTitle = item.title.trim();
     return InkWell(
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => InterpretationRecordDetailScreen(
               conversationId: item.id,
-              title: item.title,
+              title: rawTitle,
             ),
           ),
         );
@@ -276,7 +278,7 @@ class _ConversationCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              item.title.isNotEmpty ? item.title : '대화 기록',
+              displayTitle,
               style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w700),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -341,7 +343,14 @@ class _InterpretationRecordDetailScreenState extends State<InterpretationRecordD
           final derived = items
               .map((entry) => entry.title.trim())
               .firstWhere((title) => title.isNotEmpty, orElse: () => '');
-          _resolvedTitle = derived.isNotEmpty ? derived : null;
+          if (derived.isNotEmpty) {
+            _resolvedTitle = derived;
+          } else {
+            final fallback = items
+                .map((entry) => entry.request.trim())
+                .firstWhere((text) => text.isNotEmpty, orElse: () => '');
+            _resolvedTitle = fallback.isNotEmpty ? _truncateTitle(fallback) : null;
+          }
         } else {
           _resolvedTitle = null;
         }
@@ -473,6 +482,12 @@ class _ConversationEntryCard extends StatelessWidget {
   }
 }
 
+String _truncateTitle(String text, {int max = 100}) {
+  final normalized = text.trim();
+  if (normalized.length <= max) return normalized;
+  return '${normalized.substring(0, max)}...';
+}
+
 class _ConversationSummary {
   const _ConversationSummary({
     required this.id,
@@ -483,9 +498,20 @@ class _ConversationSummary {
   });
 
   factory _ConversationSummary.fromJson(Map<String, dynamic> json) {
+    final title = _readString(
+      json,
+      keys: const [
+        'title',
+        'request_message',
+        'first_request_message',
+        'first_message',
+        'interpretation_title',
+        'conversation_title',
+      ],
+    );
     return _ConversationSummary(
       id: (json['conversation_id'] ?? json['session_id'] ?? json['id'] ?? '').toString(),
-      title: (json['title'] ?? json['interpretation_title'] ?? json['conversation_title'] ?? '').toString(),
+      title: title,
       firstMessageAt: _parseDate(json['first_message_at']?.toString()),
       lastMessageAt: _parseDate(json['last_message_at']?.toString()),
       totalMessages: (json['total_messages'] as int?) ?? 0,
@@ -498,6 +524,8 @@ class _ConversationSummary {
   final DateTime? lastMessageAt;
   final int totalMessages;
 
+  String get displayTitle => title.trim().isNotEmpty ? title.trim() : '대화 기록';
+
   String get dateRangeLabel {
     final start = _formatDate(firstMessageAt);
     final end = _formatDate(lastMessageAt);
@@ -509,6 +537,20 @@ class _ConversationSummary {
   static DateTime? _parseDate(String? raw) {
     if (raw == null || raw.isEmpty) return null;
     return DateTime.tryParse(raw);
+  }
+
+  static String _readString(
+    Map<String, dynamic> json, {
+    required List<String> keys,
+  }) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value == null) continue;
+      final str = value.toString().trim();
+      if (str.isEmpty || str == 'null') continue;
+      return str;
+    }
+    return '';
   }
 
   static String _formatDate(DateTime? date) {
@@ -530,8 +572,11 @@ class _ConversationEntry {
     final interpretationRaw = json['interpretation'];
     final interpretation =
         interpretationRaw is Map ? interpretationRaw.cast<String, dynamic>() : null;
-    final title =
-        (interpretation?['title'] ?? json['title'] ?? json['interpretation_title'] ?? '').toString();
+    final title = _readString(
+      interpretation,
+      json,
+      keys: const ['title', 'interpretation_title', 'conversation_title'],
+    );
     final response =
         (interpretation?['response'] ?? json['response_message'] ?? '').toString();
     return _ConversationEntry(
@@ -559,5 +604,20 @@ class _ConversationEntry {
   static DateTime? _parseDate(String? raw) {
     if (raw == null || raw.isEmpty) return null;
     return DateTime.tryParse(raw);
+  }
+
+  static String _readString(
+    Map<String, dynamic>? nested,
+    Map<String, dynamic> json, {
+    required List<String> keys,
+  }) {
+    for (final key in keys) {
+      final value = (nested != null ? nested[key] : null) ?? json[key];
+      if (value == null) continue;
+      final str = value.toString().trim();
+      if (str.isEmpty || str == 'null') continue;
+      return str;
+    }
+    return '';
   }
 }

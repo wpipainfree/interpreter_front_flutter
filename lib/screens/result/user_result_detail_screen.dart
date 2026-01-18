@@ -1720,7 +1720,7 @@ class _LineChartPainter extends CustomPainter {
       axisTextPainter
         ..text = TextSpan(
           text: value.toStringAsFixed(0),
-          style: const TextStyle(fontSize: 10, color: Colors.grey),
+          style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
         )
         ..layout();
       axisTextPainter.paint(

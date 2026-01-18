@@ -42,7 +42,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.lock_outline, size: 56, color: AppColors.textHint),
+            const Icon(Icons.lock_outline, size: 56, color: AppColors.textSecondary),
             const SizedBox(height: 12),
             Text('로그인이 필요합니다.', style: AppTextStyles.h4),
             const SizedBox(height: 8),
@@ -303,7 +303,7 @@ class _SettingTile extends StatelessWidget {
           fontWeight: FontWeight.w600,
         ),
       ),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.textHint),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.textSecondary),
       onTap: onTap,
     );
   }

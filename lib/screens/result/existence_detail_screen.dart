@@ -329,7 +329,7 @@ class ExistenceDetailScreen extends StatelessWidget {
           description,
           style: TextStyle(
             fontSize: 13,
-            color: Colors.grey.shade600,
+            color: AppColors.textSecondary,
             height: 1.4,
           ),
         ),
@@ -407,7 +407,7 @@ class ExistenceDetailScreen extends StatelessWidget {
                   description,
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey.shade600,
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ],

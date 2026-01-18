@@ -297,7 +297,7 @@ class CommonWidgets {
                 subtitle,
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey.shade600,
+                  color: AppColors.textSecondary,
                 ),
                 textAlign: TextAlign.center,
               ),

@@ -43,7 +43,7 @@ class AppTheme {
         elevation: 0,
         centerTitle: true,
         surfaceTintColor: Colors.transparent,
-        titleTextStyle: AppTextStyles.h4,
+        titleTextStyle: AppTextStyles.appBarTitle,
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -76,12 +76,19 @@ class AppTheme {
           textStyle: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w600),
         ),
       ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: AppColors.backgroundWhite,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: AppColors.backgroundWhite,
+          labelStyle: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+          floatingLabelStyle:
+              AppTextStyles.bodySmall.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+          hintStyle: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary.withOpacity(0.6)),
+          helperStyle: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+          counterStyle: AppTextStyles.captionSmall,
+          errorStyle: AppTextStyles.caption.copyWith(color: AppColors.error),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

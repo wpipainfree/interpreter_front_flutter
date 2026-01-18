@@ -87,7 +87,10 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('준비 2/2', style: AppTextStyles.caption),
+                    Text(
+                      '준비 2/2',
+                      style: AppTextStyles.labelSmall,
+                    ),
                     const SizedBox(height: 12),
                     Text(
                       '지금, 어떤 마음을 알고 싶나요?',

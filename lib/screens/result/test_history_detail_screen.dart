@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/test_history.dart';
+import '../../utils/app_colors.dart';
 
 class TestHistoryDetailScreen extends StatelessWidget {
   final TestHistory history;
@@ -481,7 +482,7 @@ class TestHistoryDetailScreen extends StatelessWidget {
           description,
           style: TextStyle(
             fontSize: 13,
-            color: Colors.grey.shade700,
+            color: AppColors.textSecondary,
             height: 1.4,
           ),
         ),

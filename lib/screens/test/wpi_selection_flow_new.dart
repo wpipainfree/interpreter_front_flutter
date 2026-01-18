@@ -380,7 +380,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
         backgroundColor: AppColors.backgroundLight,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
-        title: Text('[New] ${widget.testTitle} · $stageLabel'),
+        title: Text('[New] ${widget.testTitle} \u00B7 $stageLabel'),
         actions: [
           IconButton(
             icon: const Icon(Icons.close),
@@ -403,12 +403,15 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
               children: [
                 Text(
                   checklist.question.isNotEmpty ? checklist.question : '순서대로 선택 후 제출해주세요.',
-                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   '1~${checklist.firstCount}개 1순위, 그 다음 ${checklist.secondCount}개 2순위, 나머지 3순위로 선택합니다.',
-                  style: AppTextStyles.caption.copyWith(color: AppColors.textHint),
+                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
                 ),
               ],
             ),
@@ -571,16 +574,23 @@ class _SummaryBar extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(stageLabel, style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+                Text(
+                  stageLabel,
+                  style: AppTextStyles.labelMedium,
+                ),
                 const SizedBox(height: 2),
                 Text(
                   '선택 ${selectedCount}/$totalTarget',
-                  style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    height: 1.25,
+                  ),
                 ),
                 const SizedBox(height: 1),
                 Text(
                   '목록에서 바로 선택/취소할 수 있습니다.',
-                  style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
                 ),
               ],
             ),
@@ -620,7 +630,7 @@ class _SelectableTile extends StatelessWidget {
           foregroundColor: AppColors.secondary,
           child: Text('$number', style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w700)),
         ),
-        title: Text(text, style: AppTextStyles.bodyMedium),
+        title: Text(text, style: AppTextStyles.bodyLarge.copyWith(height: 1.45)),
         trailing: selected
             ? IconButton(
                 icon: const Icon(Icons.close, color: AppColors.secondary),

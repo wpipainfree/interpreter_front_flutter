@@ -396,7 +396,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     '${_accounts.length}건',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.grey.shade600,
+                      color: AppColors.textSecondary,
                     ),
                   ),
           ],
@@ -487,13 +487,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            '첫 검사를 완료하면, 내 마음 구조 요약이 생깁니다.',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade600,
-            ),
-          ),
+           Text(
+             '첫 검사를 완료하면, 내 마음 구조 요약이 생깁니다.',
+             style: TextStyle(
+               fontSize: 14,
+               color: AppColors.textSecondary,
+             ),
+           ),
         ],
       ),
     );
@@ -576,21 +576,21 @@ class _AccountCard extends StatelessWidget {
                             child: Text(
                               '검사자 $tester',
                               style: TextStyle(
-                                  fontSize: 13, color: Colors.grey.shade700),
+                                  fontSize: 13, color: AppColors.textSecondary),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         if (tester.isNotEmpty && tester != '미입력') ...[
                           const SizedBox(width: 6),
-                          Text('·',
-                              style: TextStyle(color: Colors.grey.shade500)),
+                          const Text('·',
+                              style: TextStyle(color: AppColors.textSecondary)),
                           const SizedBox(width: 6),
                         ],
                         Text(
                           date,
                           style: TextStyle(
-                              fontSize: 12, color: Colors.grey.shade600),
+                              fontSize: 12, color: AppColors.textSecondary),
                         ),
                       ],
                     ),

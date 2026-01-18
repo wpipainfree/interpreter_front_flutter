@@ -59,7 +59,7 @@ class EntryScreen extends StatelessWidget {
               Text(
                 '몇 가지 질문으로 나를 이해하고 성장의 방향을 찾아보세요.',
                 style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.textHint,
+                  color: AppColors.textSecondary,
                 ),
               ),
               const SizedBox(height: 12),

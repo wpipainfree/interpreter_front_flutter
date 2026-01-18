@@ -49,7 +49,7 @@ class WelcomeScreen extends StatelessWidget {
               Text(
                 '간단한 온보딩 후 바로 경험을 시작할 수 있어요.',
                 style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.textHint,
+                  color: AppColors.textSecondary,
                 ),
               ),
               const Spacer(),

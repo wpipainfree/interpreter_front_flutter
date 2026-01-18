@@ -51,28 +51,37 @@ class AppTextStyles {
         height: 1.35,
       );
 
+  static TextStyle get appBarTitle => TextStyle(
+        fontFamily: _sansFamily,
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textPrimary,
+        height: 1.25,
+        letterSpacing: -0.2,
+      );
+
   // Body (sans)
   static TextStyle get bodyLarge => TextStyle(
         fontFamily: _sansFamily,
         fontSize: 17,
-        fontWeight: FontWeight.w400,
-        color: AppColors.textSecondary,
+        fontWeight: FontWeight.w500,
+        color: AppColors.textPrimary,
         height: 1.6,
       );
 
   static TextStyle get bodyMedium => TextStyle(
         fontFamily: _sansFamily,
         fontSize: 15,
-        fontWeight: FontWeight.w400,
-        color: AppColors.textSecondary,
+        fontWeight: FontWeight.w500,
+        color: AppColors.textPrimary,
         height: 1.6,
       );
 
   static TextStyle get bodySmall => TextStyle(
         fontFamily: _sansFamily,
         fontSize: 14,
-        fontWeight: FontWeight.w400,
-        color: AppColors.textSecondary,
+        fontWeight: FontWeight.w500,
+        color: AppColors.textPrimary,
         height: 1.55,
       );
 
@@ -101,9 +110,10 @@ class AppTextStyles {
   // Labels
   static TextStyle get labelLarge => TextStyle(
         fontFamily: _sansFamily,
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
+        height: 1.3,
       );
 
   static TextStyle get labelMedium => TextStyle(
@@ -111,28 +121,32 @@ class AppTextStyles {
         fontSize: 14,
         fontWeight: FontWeight.w600,
         color: AppColors.textSecondary,
+        height: 1.3,
       );
 
   static TextStyle get labelSmall => TextStyle(
         fontFamily: _sansFamily,
         fontSize: 12,
         fontWeight: FontWeight.w600,
-        color: AppColors.textTertiary,
+        color: AppColors.textSecondary,
+        height: 1.25,
       );
 
   // Caption
   static TextStyle get caption => TextStyle(
         fontFamily: _sansFamily,
         fontSize: 13,
-        fontWeight: FontWeight.w400,
-        color: AppColors.textTertiary,
+        fontWeight: FontWeight.w500,
+        color: AppColors.textSecondary,
+        height: 1.4,
       );
 
   static TextStyle get captionSmall => TextStyle(
         fontFamily: _sansFamily,
-        fontSize: 11,
-        fontWeight: FontWeight.w400,
-        color: AppColors.textHint,
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+        color: AppColors.textSecondary,
+        height: 1.3,
       );
 
   // On dark surfaces
