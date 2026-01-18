@@ -630,7 +630,14 @@ class _SelectableTile extends StatelessWidget {
           foregroundColor: AppColors.secondary,
           child: Text('$number', style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w700)),
         ),
-        title: Text(text, style: AppTextStyles.bodyLarge.copyWith(height: 1.45)),
+        title: Text(
+          text,
+          style: AppTextStyles.bodyLarge.copyWith(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w600,
+            height: 1.45,
+          ),
+        ),
         trailing: selected
             ? IconButton(
                 icon: const Icon(Icons.close, color: AppColors.secondary),

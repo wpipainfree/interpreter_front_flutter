@@ -545,7 +545,8 @@ class _WpiItemCardState extends State<_WpiItemCard> {
                   child: Text(
                     '${widget.number}. ${_cleanText(widget.item.text)}',
                     style: AppTextStyles.bodyMedium.copyWith(
-                      color: locked ? AppColors.textSecondary.withOpacity(0.6) : AppColors.textPrimary,
+                      color: locked ? AppColors.textSecondary : AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),

@@ -82,7 +82,7 @@ class AppTheme {
           labelStyle: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
           floatingLabelStyle:
               AppTextStyles.bodySmall.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
-          hintStyle: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary.withOpacity(0.6)),
+          hintStyle: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
           helperStyle: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
           counterStyle: AppTextStyles.captionSmall,
           errorStyle: AppTextStyles.caption.copyWith(color: AppColors.error),

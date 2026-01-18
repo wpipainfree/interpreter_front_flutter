@@ -174,7 +174,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 '오늘의 구조 상태',
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: AppColors.textOnDark.withOpacity(0.8),
+                                  color: AppColors.textOnDark,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -191,7 +191,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 '당신의 마음을 ‘설명 가능한 말’로 바꿔봅시다.',
                                 style: TextStyle(
                                   fontSize: 15,
-                                  color: AppColors.textOnDark.withOpacity(0.9),
+                                  color: AppColors.textOnDark,
                                 ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -265,7 +265,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       '약 10–15분 · 30문장 중 12개 선택',
                       style: TextStyle(
                         fontSize: 14,
-                        color: AppColors.textOnDark.withOpacity(0.85),
+                        color: AppColors.textOnDark,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -273,7 +273,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       '현실과 이상을 함께 보면 ‘현재’와 ‘변화 방향’이 분리됩니다.',
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.textOnDark.withOpacity(0.75),
+                        color: AppColors.textOnDark,
                       ),
                     ),
                     const SizedBox(height: 16),

@@ -382,7 +382,7 @@ class _ErrorBanner extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     debugMessage!,
-                    style: AppTextStyles.caption.copyWith(color: Colors.red.shade700.withOpacity(0.8)),
+                    style: AppTextStyles.caption.copyWith(color: Colors.red.shade700),
                   ),
                 ],
               ],

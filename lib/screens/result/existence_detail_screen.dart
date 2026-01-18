@@ -154,7 +154,7 @@ class ExistenceDetailScreen extends StatelessWidget {
                   Text(
                     result.gapAnalysis,
                     style: TextStyle(
-                      color: AppColors.gapAnalysisText.withOpacity(0.8),
+                      color: AppColors.gapAnalysisText,
                       height: 1.5,
                     ),
                   ),

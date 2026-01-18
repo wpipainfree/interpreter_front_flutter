@@ -99,7 +99,7 @@ class TestHistoryDetailScreen extends StatelessWidget {
                                     '${history.questionCount}문항 · ${history.duration.inMinutes}분 소요',
                                     style: TextStyle(
                                       fontSize: 14,
-                                      color: Colors.white.withOpacity(0.85),
+                                      color: Colors.white,
                                     ),
                                   ),
                                 ],
@@ -509,7 +509,7 @@ class TestHistoryDetailScreen extends StatelessWidget {
               text,
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.white.withOpacity(0.9),
+                color: Colors.white,
                 height: 1.5,
               ),
             ),
