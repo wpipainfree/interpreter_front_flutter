@@ -6,8 +6,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/app_config.dart';
 
+class AuthRequiredException implements Exception {
+  final String message;
+  const AuthRequiredException([this.message = '로그인이 필요합니다.']);
+
+  @override
+  String toString() => message;
+}
+
 /// Authentication and token management service powered by Dio.
-class AuthService {
+class AuthService extends ChangeNotifier {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
   AuthService._internal();
@@ -29,9 +37,10 @@ class AuthService {
 
   UserInfo? get currentUser => _currentUser;
   AuthTokens? get tokens => _tokens;
-  bool get isLoggedIn => _currentUser != null;
-  String? get authorizationHeader =>
-      _tokens != null ? '${_tokens!.tokenType} ${_tokens!.accessToken}' : null;
+  bool get isLoggedIn => _currentUser != null && (_tokens?.accessToken.isNotEmpty ?? false);
+  String? get authorizationHeader => (_tokens?.accessToken.isNotEmpty ?? false)
+      ? '${_tokens!.tokenType} ${_tokens!.accessToken}'
+      : null;
 
   /// Restore a previously stored session from local storage.
   Future<UserInfo?> restoreSession() async {
@@ -45,9 +54,13 @@ class AuthService {
       final token = AuthTokens.fromJson(jsonDecode(tokensRaw) as Map<String, dynamic>);
       _currentUser = user;
       _tokens = token;
+      notifyListeners();
       return user;
     } catch (_) {
       await _clearStoredSession();
+      _currentUser = null;
+      _tokens = null;
+      notifyListeners();
       return null;
     }
   }
@@ -78,6 +91,7 @@ class AuthService {
         final user = UserInfo.fromJson(data);
         _currentUser = user;
         _tokens = tokens;
+        notifyListeners();
         await _persistSession(user, tokens);
         return AuthResult.success(user);
       }
@@ -127,10 +141,15 @@ class AuthService {
         accessTokenExpiresAt: _parseAccessTokenExpiry(data['access_token'] as String?),
       );
       _tokens = updatedTokens;
+      notifyListeners();
       await _persistSession(_currentUser, updatedTokens);
       return updatedTokens;
     } on DioException catch (e) {
       _logNetworkError('refreshAccessToken', e);
+      final status = e.response?.statusCode;
+      if (status == 401 || status == 403) {
+        await logout();
+      }
       return null;
     }
   }
@@ -165,6 +184,7 @@ class AuthService {
     );
     _currentUser = guest;
     _tokens = null;
+    notifyListeners();
     await _clearStoredSession();
     return AuthResult.success(guest);
   }
@@ -172,7 +192,7 @@ class AuthService {
   /// Returns Authorization header value, refreshing the access token if it is
   /// close to expiry. Returns null if no valid token is available.
   Future<String?> getAuthorizationHeader({bool refreshIfNeeded = true}) async {
-    if (_tokens == null) return null;
+    if (_tokens == null || _tokens!.accessToken.isEmpty) return null;
     if (!refreshIfNeeded) {
       return '${_tokens!.tokenType} ${_tokens!.accessToken}';
     }
@@ -184,7 +204,7 @@ class AuthService {
         return null;
       }
     }
-    if (_tokens == null) return null;
+    if (_tokens == null || _tokens!.accessToken.isEmpty) return null;
     return '${_tokens!.tokenType} ${_tokens!.accessToken}';
   }
 
@@ -209,6 +229,7 @@ class AuthService {
 
     _currentUser = null;
     _tokens = null;
+    notifyListeners();
     await _clearStoredSession();
   }
 

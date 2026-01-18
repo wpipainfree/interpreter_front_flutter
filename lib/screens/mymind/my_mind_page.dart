@@ -4,6 +4,7 @@ import '../../services/auth_service.dart';
 import '../../services/psych_tests_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
+import '../auth/login_screen.dart';
 import '../result/user_result_detail_screen.dart';
 import 'interpretation_panel.dart';
 import 'interpretation_record_panel.dart';
@@ -109,6 +110,9 @@ class _ResultPanelState extends State<_ResultPanel> {
   final PsychTestsService _service = PsychTestsService();
   final AuthService _auth = AuthService();
   final ScrollController _scrollController = ScrollController();
+  late final VoidCallback _authListener;
+  bool _lastLoggedIn = false;
+  String? _lastUserId;
 
   bool _loading = true;
   bool _loadingMore = false;
@@ -120,15 +124,55 @@ class _ResultPanelState extends State<_ResultPanel> {
   @override
   void initState() {
     super.initState();
+    _lastLoggedIn = _auth.isLoggedIn;
+    _lastUserId = _auth.currentUser?.id;
+    _authListener = _handleAuthChanged;
+    _auth.addListener(_authListener);
     _scrollController.addListener(_onScroll);
     _loadPage(reset: true);
   }
 
   @override
   void dispose() {
+    _auth.removeListener(_authListener);
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _handleAuthChanged() {
+    if (!mounted) return;
+    final nowLoggedIn = _auth.isLoggedIn;
+    final nowUserId = _auth.currentUser?.id;
+    if (nowLoggedIn == _lastLoggedIn && nowUserId == _lastUserId) return;
+
+    _lastLoggedIn = nowLoggedIn;
+    _lastUserId = nowUserId;
+
+    if (nowLoggedIn) {
+      _loadPage(reset: true);
+      return;
+    }
+    setState(() {
+      _items.clear();
+      _loading = false;
+      _loadingMore = false;
+      _hasNext = true;
+      _page = 1;
+      _error = '로그인이 필요합니다.';
+    });
+  }
+
+  Future<void> _promptLoginAndReload() async {
+    final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => const LoginScreen(),
+      ),
+    );
+    if (ok == true && mounted) {
+      await _loadPage(reset: true);
+    }
   }
 
   void _onScroll() {
@@ -200,13 +244,24 @@ class _ResultPanelState extends State<_ResultPanel> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_error!, style: AppTextStyles.bodyMedium),
-            const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: () => _loadPage(reset: true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
+             Text(_error!, style: AppTextStyles.bodyMedium),
+             const SizedBox(height: 12),
+             if (!_auth.isLoggedIn) ...[
+               ElevatedButton(
+                 onPressed: _promptLoginAndReload,
+                 style: ElevatedButton.styleFrom(
+                   backgroundColor: AppColors.primary,
+                   foregroundColor: Colors.white,
+                 ),
+                 child: const Text('로그인하기'),
+               ),
+               const SizedBox(height: 12),
+             ],
+             ElevatedButton(
+               onPressed: () => _loadPage(reset: true),
+               style: ElevatedButton.styleFrom(
+                 backgroundColor: AppColors.primary,
+                 foregroundColor: Colors.white,
               ),
               child: const Text('다시 시도'),
             ),

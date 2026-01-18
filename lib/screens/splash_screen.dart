@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_text_styles.dart';
 import '../utils/constants.dart';
+import 'main_shell.dart';
 import 'onboarding/onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -15,6 +17,8 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
+  static const String _onboardingSeenKey = 'onboarding_seen';
+
   @override
   void initState() {
     super.initState();
@@ -23,12 +27,18 @@ class _SplashScreenState extends State<SplashScreen>
       duration: AppConstants.splashDuration,
     )..repeat(reverse: true);
 
-    Future.delayed(AppConstants.splashDuration, () {
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-      );
-    });
+    _routeAfterSplash();
+  }
+
+  Future<void> _routeAfterSplash() async {
+    await Future.delayed(AppConstants.splashDuration);
+    if (!mounted) return;
+    final prefs = await SharedPreferences.getInstance();
+    final seen = prefs.getBool(_onboardingSeenKey) ?? false;
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => seen ? const MainShell() : const OnboardingScreen()),
+    );
   }
 
   @override
@@ -54,9 +64,21 @@ class _SplashScreenState extends State<SplashScreen>
                 child: const _SplashMark(),
               ),
               const SizedBox(height: 20),
-              Text(
-                'WPI Structure',
-                style: AppTextStyles.h4,
+              Column(
+                children: [
+                  Text(
+                    '마음의 구조를 한눈에',
+                    style: AppTextStyles.h4,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '기준·믿음·감정·몸의 원자 구조로 읽습니다',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
               const Spacer(),
               const SizedBox(
@@ -65,6 +87,13 @@ class _SplashScreenState extends State<SplashScreen>
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   valueColor: AlwaysStoppedAnimation<Color>(AppColors.secondary),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '불러오는 중…',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
                 ),
               ),
               const SizedBox(height: 32),

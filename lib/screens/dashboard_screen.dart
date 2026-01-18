@@ -24,12 +24,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _pendingIdeal = false;
   String? _error;
   static const int _maxRecent = 3;
+  late final VoidCallback _authListener;
+  bool _lastLoggedIn = false;
+  String? _lastUserId;
 
   @override
   void initState() {
     super.initState();
+    _lastLoggedIn = _authService.isLoggedIn;
+    _lastUserId = _authService.currentUser?.id;
+    _authListener = _handleAuthChanged;
+    _authService.addListener(_authListener);
     _loadAccounts();
     _loadPendingIdeal();
+  }
+
+  @override
+  void dispose() {
+    _authService.removeListener(_authListener);
+    super.dispose();
+  }
+
+  void _handleAuthChanged() {
+    if (!mounted) return;
+    final nowLoggedIn = _authService.isLoggedIn;
+    final nowUserId = _authService.currentUser?.id;
+    if (nowLoggedIn == _lastLoggedIn && nowUserId == _lastUserId) return;
+
+    _lastLoggedIn = nowLoggedIn;
+    _lastUserId = nowUserId;
+
+    if (!nowLoggedIn) {
+      setState(() {
+        _accounts.clear();
+        _loading = false;
+        _error = '로그인이 필요합니다.';
+      });
+      return;
+    }
+    _loadAccounts();
+  }
+
+  Future<void> _promptLoginAndReload() async {
+    final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => const LoginScreen(),
+      ),
+    );
+    if (ok == true && mounted) {
+      await _loadAccounts();
+    }
   }
 
   Future<void> _loadAccounts() async {
@@ -143,7 +188,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                '당신의 이야기를 더 선명하게 보기 위한 인사이트를 준비했어요.',
+                                '당신의 마음을 ‘설명 가능한 말’로 바꿔봅시다.',
                                 style: TextStyle(
                                   fontSize: 15,
                                   color: AppColors.textOnDark.withOpacity(0.9),
@@ -164,7 +209,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   duration: const Duration(milliseconds: 180),
                   opacity: showTitle ? 1 : 0,
                   child: const Text(
-                    '홈',
+                    '오늘의 구조 상태',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -217,10 +262,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '약 10–15분 · 나를 표현하는 30문장 중 12개 선택',
+                      '약 10–15분 · 30문장 중 12개 선택',
                       style: TextStyle(
                         fontSize: 14,
                         color: AppColors.textOnDark.withOpacity(0.85),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '현실과 이상을 함께 보면 ‘현재’와 ‘변화 방향’이 분리됩니다.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textOnDark.withOpacity(0.75),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -285,7 +338,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        child: const Text('이상 검사 이어하기'),
+                        child: const Text('이상(변화 방향) 이어하기'),
                       ),
                     ],
                   ],
@@ -369,6 +422,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               Text(_error!, style: AppTextStyles.bodyMedium),
               const SizedBox(height: 8),
+              if (!_authService.isLoggedIn) ...[
+                ElevatedButton(
+                  onPressed: _promptLoginAndReload,
+                  style: ElevatedButton.styleFrom(splashFactory: NoSplash.splashFactory),
+                  child: const Text('로그인하기'),
+                ),
+                const SizedBox(height: 8),
+              ],
               ElevatedButton(
                 onPressed: _loadAccounts,
                 style: ElevatedButton.styleFrom(
@@ -427,7 +488,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            '첫 검사를 완료하고 기록을 쌓아보세요.',
+            '첫 검사를 완료하면, 내 마음 구조 요약이 생깁니다.',
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey.shade600,

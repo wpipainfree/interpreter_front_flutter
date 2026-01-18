@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../services/auth_service.dart';
 import '../../services/psych_tests_service.dart';
 import '../../test_flow/role_transition_screen.dart';
 import '../../test_flow/test_flow_models.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
+import '../auth/login_screen.dart';
 import '../result/user_result_detail_screen.dart';
 
 /// New free-order flow: users pick items up to target counts, then submit.
@@ -30,6 +32,7 @@ class WpiSelectionFlowNew extends StatefulWidget {
 }
 
 class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
+  final AuthService _authService = AuthService();
   final PsychTestsService _service = PsychTestsService();
   final ScrollController _listController = ScrollController();
   final GlobalKey _selectedAnchorKey = GlobalKey();
@@ -58,7 +61,23 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
   @override
   void initState() {
     super.initState();
-    _load();
+    _init();
+  }
+
+  Future<void> _init() async {
+    if (!_authService.isLoggedIn) {
+      final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (_) => const LoginScreen(),
+        ),
+      );
+      if (ok != true && mounted) {
+        Navigator.of(context).pop();
+        return;
+      }
+    }
+    await _load();
   }
 
   @override
@@ -135,8 +154,8 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
 
   void _toggleSelect(PsychTestItem item) {
     if (_selectedIds.contains(item.id)) return;
-    final messenger = ScaffoldMessenger.of(context);
     if (_selectedIds.length >= _totalTarget) {
+      final messenger = ScaffoldMessenger.of(context);
       if (_limitSnackVisible) return;
       _limitSnackVisible = true;
       messenger.hideCurrentSnackBar();
@@ -155,17 +174,6 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     setState(() {
       _selectedIds.add(item.id);
     });
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        content: const Text('선택되었습니다'),
-        action: SnackBarAction(
-          label: '취소',
-          onPressed: () => _deselect(item),
-        ),
-        duration: const Duration(milliseconds: 1200),
-      ),
-    );
   }
 
   void _deselect(PsychTestItem item) {
@@ -224,6 +232,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
   }
 
   Future<void> _submit() async {
+    if (_submitting) return;
     if (_checklist == null || _selectedIds.length != _totalTarget) return;
     setState(() => _submitting = true);
     final c = _checklist!;
@@ -252,7 +261,9 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       if (!mounted) return;
       final hasNext = _stageIndex + 1 < _checklists.length;
       if (hasNext) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
           const SnackBar(
             content: Text('다음 단계로 이동합니다.'),
             duration: Duration(seconds: 2),
@@ -342,6 +353,13 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
             children: [
               Text(_error!, style: AppTextStyles.bodyMedium),
               const SizedBox(height: 12),
+              if (!_authService.isLoggedIn) ...[
+                ElevatedButton(
+                  onPressed: _init,
+                  child: const Text('로그인하기'),
+                ),
+                const SizedBox(height: 12),
+              ],
               ElevatedButton(onPressed: _load, child: const Text('다시 시도')),
             ],
           ),

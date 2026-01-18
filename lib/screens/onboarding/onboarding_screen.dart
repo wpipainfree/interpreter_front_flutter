@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../main_shell.dart';
 import 'onboarding_page1.dart';
 import 'onboarding_page2.dart';
-import 'onboarding_page3.dart';
-import 'onboarding_page4.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -17,22 +16,30 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  bool _completing = false;
+
+  static const String _onboardingSeenKey = 'onboarding_seen';
 
   List<Widget> get _pages => [
         const OnboardingPage1(),
-        const OnboardingPage2(),
-        const OnboardingPage3(),
-        OnboardingPage4(onStart: _goToMain),
+        OnboardingPage2(onStart: _completeOnboarding),
       ];
 
   void _skipOnboarding() {
-    _goToMain();
+    _completeOnboarding();
   }
 
-  void _goToMain() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MainShell()),
-    );
+  void _completeOnboarding() {
+    if (_completing) return;
+    setState(() => _completing = true);
+    SharedPreferences.getInstance()
+        .then((prefs) => prefs.setBool(_onboardingSeenKey, true))
+        .whenComplete(() {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const MainShell()),
+      );
+    });
   }
 
   @override
@@ -72,7 +79,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Row(
       children: [
         Text(
-          'Onboarding',
+          '처음 안내',
           style: AppTextStyles.labelSmall.copyWith(
             color: AppColors.textHint,
             letterSpacing: 0.8,
@@ -82,7 +89,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         TextButton(
           onPressed: _skipOnboarding,
           child: Text(
-            'Skip',
+            '건너뛰기',
             style: AppTextStyles.labelSmall.copyWith(color: AppColors.textHint),
           ),
         ),

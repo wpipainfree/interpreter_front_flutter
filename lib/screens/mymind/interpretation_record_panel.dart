@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../../services/ai_assistant_service.dart';
+import '../../services/auth_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
+import '../auth/login_screen.dart';
 
 class InterpretationRecordPanel extends StatefulWidget {
   const InterpretationRecordPanel({super.key});
@@ -14,7 +16,11 @@ class InterpretationRecordPanel extends StatefulWidget {
 
 class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
   final AiAssistantService _aiService = AiAssistantService();
+  final AuthService _authService = AuthService();
   final ScrollController _scrollController = ScrollController();
+  late final VoidCallback _authListener;
+  bool _lastLoggedIn = false;
+  String? _lastUserId;
 
   final List<_ConversationSummary> _items = [];
   bool _loading = true;
@@ -28,15 +34,57 @@ class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
   @override
   void initState() {
     super.initState();
+    _lastLoggedIn = _authService.isLoggedIn;
+    _lastUserId = _authService.currentUser?.id;
+    _authListener = _handleAuthChanged;
+    _authService.addListener(_authListener);
     _scrollController.addListener(_onScroll);
     _loadPage(reset: true);
   }
 
   @override
   void dispose() {
+    _authService.removeListener(_authListener);
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _handleAuthChanged() {
+    if (!mounted) return;
+
+    final nowLoggedIn = _authService.isLoggedIn;
+    final nowUserId = _authService.currentUser?.id;
+    if (nowLoggedIn == _lastLoggedIn && nowUserId == _lastUserId) return;
+
+    _lastLoggedIn = nowLoggedIn;
+    _lastUserId = nowUserId;
+
+    if (nowLoggedIn) {
+      _loadPage(reset: true);
+      return;
+    }
+
+    setState(() {
+      _items.clear();
+      _loading = false;
+      _loadingMore = false;
+      _hasNext = true;
+      _skip = 0;
+      _error = '로그인이 필요합니다.';
+    });
+  }
+
+  Future<void> _promptLoginAndReload() async {
+    final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => const LoginScreen(),
+      ),
+    );
+    if (ok == true && mounted) {
+      await _loadPage(reset: true);
+    }
   }
 
   void _onScroll() {
@@ -66,7 +114,8 @@ class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
         skip: _skip,
         limit: _pageSize,
       );
-      final raw = res['conversations'] as List<dynamic>? ?? const [];
+      final raw =
+          (res['conversations'] ?? res['items'] ?? res['data']) as List<dynamic>? ?? const [];
       final fetched = raw
           .whereType<Map<String, dynamic>>()
           .map(_ConversationSummary.fromJson)
@@ -102,6 +151,17 @@ class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
           children: [
             Text(_error!, style: AppTextStyles.bodyMedium),
             const SizedBox(height: 12),
+            if (!_authService.isLoggedIn) ...[
+              ElevatedButton(
+                onPressed: _promptLoginAndReload,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('로그인하기'),
+              ),
+              const SizedBox(height: 12),
+            ],
             ElevatedButton(
               onPressed: () => _loadPage(reset: true),
               style: ElevatedButton.styleFrom(
@@ -256,6 +316,7 @@ class _InterpretationRecordDetailScreenState extends State<InterpretationRecordD
   final AiAssistantService _aiService = AiAssistantService();
   bool _loading = true;
   String? _error;
+  String? _resolvedTitle;
   final List<_ConversationEntry> _entries = [];
 
   @override
@@ -265,16 +326,25 @@ class _InterpretationRecordDetailScreenState extends State<InterpretationRecordD
   }
 
   Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
     try {
       final res = await _aiService.fetchConversation(widget.conversationId);
-      final raw = res['entries'] as List<dynamic>? ?? const [];
+      final raw = (res['entries'] ?? res['items'] ?? res['logs'] ?? res['data']) as List<dynamic>? ??
+          const [];
       final items = raw.whereType<Map<String, dynamic>>().map(_ConversationEntry.fromJson).toList();
       if (!mounted) return;
       setState(() {
+        if (widget.title.trim().isEmpty) {
+          final derived = items
+              .map((entry) => entry.title.trim())
+              .firstWhere((title) => title.isNotEmpty, orElse: () => '');
+          _resolvedTitle = derived.isNotEmpty ? derived : null;
+        } else {
+          _resolvedTitle = null;
+        }
         _entries
           ..clear()
           ..addAll(items);
@@ -297,7 +367,11 @@ class _InterpretationRecordDetailScreenState extends State<InterpretationRecordD
         backgroundColor: AppColors.backgroundLight,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
-        title: Text(widget.title.isNotEmpty ? widget.title : '해석 기록'),
+        title: Text(
+          (_resolvedTitle ?? widget.title).trim().isNotEmpty
+              ? (_resolvedTitle ?? widget.title).trim()
+              : '해석 기록',
+        ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -358,35 +432,40 @@ class _ConversationEntryCard extends StatelessWidget {
           Text('질문', style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
           SelectableText(entry.request, style: baseStyle),
-          if (entry.response.isNotEmpty) ...[
+          if (entry.response.isNotEmpty || entry.title.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text('응답', style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
-            SelectionArea(
-              child: MarkdownBody(
-                data: entry.response,
-                styleSheet: MarkdownStyleSheet(
-                  p: baseStyle,
-                  h1: baseStyle.copyWith(fontSize: 18, fontWeight: FontWeight.w700),
-                  h2: baseStyle.copyWith(fontSize: 16, fontWeight: FontWeight.w700),
-                  h3: baseStyle.copyWith(fontSize: 14, fontWeight: FontWeight.w700),
-                  strong: baseStyle.copyWith(fontWeight: FontWeight.w700),
-                  em: baseStyle.copyWith(fontStyle: FontStyle.italic),
-                  blockquotePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  blockquoteDecoration: BoxDecoration(
-                    color: AppColors.backgroundLight,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.border),
+            if (entry.title.isNotEmpty) ...[
+              Text(entry.title, style: baseStyle.copyWith(fontWeight: FontWeight.w700)),
+              if (entry.response.isNotEmpty) const SizedBox(height: 8),
+            ],
+            if (entry.response.isNotEmpty)
+              SelectionArea(
+                child: MarkdownBody(
+                  data: entry.response,
+                  styleSheet: MarkdownStyleSheet(
+                    p: baseStyle,
+                    h1: baseStyle.copyWith(fontSize: 18, fontWeight: FontWeight.w700),
+                    h2: baseStyle.copyWith(fontSize: 16, fontWeight: FontWeight.w700),
+                    h3: baseStyle.copyWith(fontSize: 14, fontWeight: FontWeight.w700),
+                    strong: baseStyle.copyWith(fontWeight: FontWeight.w700),
+                    em: baseStyle.copyWith(fontStyle: FontStyle.italic),
+                    blockquotePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    blockquoteDecoration: BoxDecoration(
+                      color: AppColors.backgroundLight,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    codeblockDecoration: BoxDecoration(
+                      color: AppColors.backgroundLight,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    code: baseStyle.copyWith(fontFamily: 'monospace', fontSize: 12),
                   ),
-                  codeblockDecoration: BoxDecoration(
-                    color: AppColors.backgroundLight,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  code: baseStyle.copyWith(fontFamily: 'monospace', fontSize: 12),
                 ),
               ),
-            ),
           ],
         ],
       ),
@@ -405,8 +484,8 @@ class _ConversationSummary {
 
   factory _ConversationSummary.fromJson(Map<String, dynamic> json) {
     return _ConversationSummary(
-      id: (json['conversation_id'] ?? '').toString(),
-      title: (json['title'] ?? '').toString(),
+      id: (json['conversation_id'] ?? json['session_id'] ?? json['id'] ?? '').toString(),
+      title: (json['title'] ?? json['interpretation_title'] ?? json['conversation_title'] ?? '').toString(),
       firstMessageAt: _parseDate(json['first_message_at']?.toString()),
       lastMessageAt: _parseDate(json['last_message_at']?.toString()),
       totalMessages: (json['total_messages'] as int?) ?? 0,
@@ -442,21 +521,31 @@ class _ConversationEntry {
   const _ConversationEntry({
     required this.status,
     required this.request,
+    required this.title,
     required this.response,
     required this.createdAt,
   });
 
   factory _ConversationEntry.fromJson(Map<String, dynamic> json) {
+    final interpretationRaw = json['interpretation'];
+    final interpretation =
+        interpretationRaw is Map ? interpretationRaw.cast<String, dynamic>() : null;
+    final title =
+        (interpretation?['title'] ?? json['title'] ?? json['interpretation_title'] ?? '').toString();
+    final response =
+        (interpretation?['response'] ?? json['response_message'] ?? '').toString();
     return _ConversationEntry(
       status: (json['status'] ?? '').toString(),
       request: (json['request_message'] ?? '').toString(),
-      response: (json['response_message'] ?? '').toString(),
+      title: title,
+      response: response,
       createdAt: _parseDate(json['created_at']?.toString()),
     );
   }
 
   final String status;
   final String request;
+  final String title;
   final String response;
   final DateTime? createdAt;
 

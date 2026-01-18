@@ -2,18 +2,37 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../services/ai_assistant_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/psych_tests_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
+import '../auth/login_screen.dart';
 import '../result/user_result_detail_screen.dart';
 
 enum _InterpretationUiState { idle, creating, polling, ready, failed }
 
 class InterpretationPanel extends StatefulWidget {
-  const InterpretationPanel({super.key});
+  const InterpretationPanel({
+    super.key,
+    this.initialRealityResultId,
+    this.initialIdealResultId,
+    this.mindFocus,
+    this.initialSessionId,
+    this.initialTurn,
+    this.initialPrompt,
+    this.phase3Only = false,
+  });
+
+  final int? initialRealityResultId;
+  final int? initialIdealResultId;
+  final String? mindFocus;
+  final String? initialSessionId;
+  final int? initialTurn;
+  final String? initialPrompt;
+  final bool phase3Only;
 
   @override
   State<InterpretationPanel> createState() => _InterpretationPanelState();
@@ -25,6 +44,9 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
   final AuthService _authService = AuthService();
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  late final VoidCallback _authListener;
+  bool _lastLoggedIn = false;
+  String? _lastUserId;
 
   final Map<int, _WpiScoreProfile> _profileCache = {};
   final List<UserAccountItem> _realityItems = [];
@@ -36,15 +58,19 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
   bool _loading = true;
   bool _submitting = false;
   bool _useIdeal = false;
+  bool _appliedInitialSelection = false;
   String? _error;
   String? _status;
   String? _conversationId;
+  String? _conversationTitle;
+  String? _mindFocus;
   int _turn = 1;
   int? _lastLogId;
   UserAccountItem? _selectedReality;
   UserAccountItem? _selectedIdeal;
   _InterpretationUiState _uiState = _InterpretationUiState.idle;
 
+  static const _mindFocusStorageKey = 'last_mind_focus_text';
   static const _selfKeys = ['realist', 'romantic', 'humanist', 'idealist', 'agent'];
   static const _standardKeys = ['relation', 'trust', 'manual', 'self', 'culture'];
   static const _suggestedQuestions = [
@@ -75,12 +101,32 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
   @override
   void initState() {
     super.initState();
+    _mindFocus = widget.mindFocus?.trim();
+
+    final initialSessionId = widget.initialSessionId?.trim();
+    if (initialSessionId != null && initialSessionId.isNotEmpty) {
+      _conversationId = initialSessionId;
+      final turn = widget.initialTurn ?? 1;
+      _turn = turn < 1 ? 1 : turn;
+      _uiState = _InterpretationUiState.ready;
+    }
+
+    final initialPrompt = widget.initialPrompt?.trim();
+    if (initialPrompt != null && initialPrompt.isNotEmpty) {
+      _inputController.text = initialPrompt;
+    }
+
+    _lastLoggedIn = _authService.isLoggedIn;
+    _lastUserId = _authService.currentUser?.id;
+    _authListener = _handleAuthChanged;
+    _authService.addListener(_authListener);
     _load();
   }
 
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _authService.removeListener(_authListener);
     _inputController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -91,6 +137,7 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
       _loading = true;
       _error = null;
     });
+    await _loadMindFocusIfNeeded();
     final userId = int.tryParse(_authService.currentUser?.id ?? '');
     if (userId == null) {
       setState(() {
@@ -108,16 +155,34 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
       _idealItems
         ..clear()
         ..addAll(ideal);
+      _ensureInitialItemPresent(userId: userId);
       _realityItems.sort((a, b) => _itemDate(b).compareTo(_itemDate(a)));
       _idealItems.sort((a, b) => _itemDate(b).compareTo(_itemDate(a)));
+
+      final selectedReality = _resolveSelected(
+        items: _realityItems,
+        initialResultId: _appliedInitialSelection ? null : widget.initialRealityResultId,
+        current: _selectedReality,
+      );
+      final selectedIdeal = _resolveSelected(
+        items: _idealItems,
+        initialResultId: _appliedInitialSelection ? null : widget.initialIdealResultId,
+        current: _selectedIdeal,
+      );
+
+      final bool useIdealFromInitial =
+          !_appliedInitialSelection && widget.initialIdealResultId != null;
+      final bool canUseIdeal = _idealItems.isNotEmpty;
+      final bool useIdeal = canUseIdeal && (useIdealFromInitial || _useIdeal);
       setState(() {
-        _selectedReality = _realityItems.isNotEmpty ? _realityItems.first : null;
-        _selectedIdeal = _idealItems.isNotEmpty ? _idealItems.first : null;
-        if (_idealItems.isEmpty) {
-          _useIdeal = false;
-        }
+        _selectedReality = selectedReality;
+        _selectedIdeal = selectedIdeal;
+        _useIdeal = useIdeal;
+        _appliedInitialSelection = true;
         _loading = false;
-        _uiState = _InterpretationUiState.idle;
+        _uiState = (_conversationId ?? '').trim().isNotEmpty
+            ? _InterpretationUiState.ready
+            : _InterpretationUiState.idle;
       });
     } catch (e) {
       if (!mounted) return;
@@ -125,6 +190,54 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
         _loading = false;
         _error = e.toString();
       });
+    }
+  }
+
+  void _handleAuthChanged() {
+    if (!mounted) return;
+
+    final nowLoggedIn = _authService.isLoggedIn;
+    final nowUserId = _authService.currentUser?.id;
+    if (nowLoggedIn == _lastLoggedIn && nowUserId == _lastUserId) return;
+
+    _lastLoggedIn = nowLoggedIn;
+    _lastUserId = nowUserId;
+
+    if (nowLoggedIn) {
+      _stopPolling();
+      _load();
+      return;
+    }
+
+    _stopPolling();
+    setState(() {
+      _realityItems.clear();
+      _idealItems.clear();
+      _messages.clear();
+      _selectedReality = null;
+      _selectedIdeal = null;
+      _useIdeal = false;
+      _conversationId = null;
+      _conversationTitle = null;
+      _turn = 1;
+      _lastLogId = null;
+      _status = null;
+      _submitting = false;
+      _loading = false;
+      _error = '로그인이 필요합니다.';
+      _uiState = _InterpretationUiState.idle;
+    });
+  }
+
+  Future<void> _promptLoginAndReload() async {
+    final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => const LoginScreen(),
+      ),
+    );
+    if (ok == true && mounted) {
+      await _load();
     }
   }
 
@@ -156,6 +269,69 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
     final raw = item.createDate ?? item.paymentDate ?? item.modifyDate;
     final parsed = raw != null ? DateTime.tryParse(raw) : null;
     return parsed ?? DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  Future<void> _loadMindFocusIfNeeded() async {
+    if ((_mindFocus ?? '').trim().isNotEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_mindFocusStorageKey)?.trim();
+    if (saved != null && saved.isNotEmpty) {
+      _mindFocus = saved;
+    }
+  }
+
+  void _ensureInitialItemPresent({required int userId}) {
+    final initialReality = widget.initialRealityResultId;
+    if (initialReality != null && !_realityItems.any((e) => e.resultId == initialReality)) {
+      _realityItems.insert(
+        0,
+        UserAccountItem(
+          id: 0,
+          userId: userId,
+          testId: 1,
+          resultId: initialReality,
+          createDate: DateTime.now().toIso8601String(),
+        ),
+      );
+    }
+
+    final initialIdeal = widget.initialIdealResultId;
+    if (initialIdeal != null && !_idealItems.any((e) => e.resultId == initialIdeal)) {
+      _idealItems.insert(
+        0,
+        UserAccountItem(
+          id: 0,
+          userId: userId,
+          testId: 3,
+          resultId: initialIdeal,
+          createDate: DateTime.now().toIso8601String(),
+        ),
+      );
+    }
+  }
+
+  UserAccountItem? _resolveSelected({
+    required List<UserAccountItem> items,
+    required int? initialResultId,
+    required UserAccountItem? current,
+  }) {
+    if (items.isEmpty) return null;
+
+    UserAccountItem? findByResultId(int? resultId) {
+      if (resultId == null) return null;
+      for (final item in items) {
+        if (item.resultId == resultId) return item;
+      }
+      return null;
+    }
+
+    final initial = findByResultId(initialResultId);
+    if (initial != null) return initial;
+
+    final stillExists = findByResultId(current?.resultId);
+    if (stillExists != null) return stillExists;
+
+    return items.first;
   }
 
   Future<_WpiScoreProfile?> _loadProfile(UserAccountItem item) async {
@@ -243,6 +419,7 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
     setState(() {
       _messages.clear();
       _conversationId = null;
+      _conversationTitle = null;
       _turn = 1;
       _status = null;
       _lastLogId = null;
@@ -251,6 +428,11 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
     });
     _stopPolling();
     await _submitInterpretation(phase: 1);
+    if (!mounted) return;
+    final focus = (_mindFocus ?? '').trim();
+    if (focus.isNotEmpty && (_conversationId ?? '').isNotEmpty) {
+      await _submitInterpretation(phase: 2);
+    }
   }
 
   Future<void> _submitInterpretation({
@@ -259,6 +441,33 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
   }) async {
     if (_selectedReality == null) return;
     if (_submitting) return;
+
+    final isPhase1 = phase == 1;
+    final isPhase2 = phase == 2;
+    final isPhase3 = phase == 3;
+    if (!isPhase1 && !isPhase2 && !isPhase3) {
+      _showMessage('Invalid phase: $phase');
+      return;
+    }
+
+    final trimmedMindFocus = (_mindFocus ?? '').trim();
+    final trimmedFollowup = (followup ?? '').trim();
+
+    if (isPhase2 && trimmedMindFocus.isEmpty) {
+      _showMessage('마음 포커스가 비어있어 Phase 2를 진행할 수 없습니다.');
+      return;
+    }
+    if (isPhase3) {
+      if ((_conversationId ?? '').isEmpty) {
+        _showMessage('세션이 없습니다. 먼저 해석을 시작해주세요.');
+        return;
+      }
+      if (trimmedFollowup.isEmpty) {
+        _showMessage('추가 질문을 입력해주세요.');
+        return;
+      }
+    }
+
     setState(() {
       _submitting = true;
       _status = 'in_progress';
@@ -285,8 +494,8 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
         }
       }
       final sessionPayload = <String, dynamic>{
+        'session_id': sessionId,
         'turn': _turn,
-        if (sessionId != null) 'session_id': sessionId,
       };
       final payload = <String, dynamic>{
         'session': sessionPayload,
@@ -296,11 +505,11 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
           'ideal': idealProfile.toJson(),
         },
         'model': 'gpt-5.2',
-        if (followup != null && followup.isNotEmpty)
-          'followup': {'question': followup},
+        'story': isPhase2 ? {'content': trimmedMindFocus} : <String, dynamic>{},
+        'followup': isPhase3 ? {'question': trimmedFollowup} : <String, dynamic>{},
       };
-      if (followup != null && followup.isNotEmpty) {
-        _appendMessage(_ChatMessage.user(followup));
+      if (isPhase3) {
+        _appendMessage(_ChatMessage.user(trimmedFollowup));
       }
       final response = await _aiService.interpret(payload);
       final session = response['session'] as Map<String, dynamic>?;
@@ -312,10 +521,26 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
       if (_conversationId != null && _pollTimer == null) {
         _startPolling(_conversationId!);
       }
-      final interpretation = response['interpretation'] as Map<String, dynamic>?;
-      final responseText = interpretation?['response']?.toString().trim() ?? '';
-      if (responseText.isNotEmpty) {
-        _appendMessage(_ChatMessage.assistant(responseText));
+      final interpretationRaw = response['interpretation'];
+      final interpretation =
+          interpretationRaw is Map ? interpretationRaw.cast<String, dynamic>() : null;
+      final responseTitle = interpretation?['title']?.toString().trim() ?? '';
+      final responseText = (interpretation?['response'] ?? interpretationRaw)
+              ?.toString()
+              .trim() ??
+          '';
+
+      if ((_conversationTitle ?? '').trim().isEmpty && responseTitle.isNotEmpty) {
+        setState(() => _conversationTitle = responseTitle);
+      }
+
+      if (responseText.isNotEmpty || responseTitle.isNotEmpty) {
+        _appendMessage(
+          _ChatMessage.assistant(
+            responseText,
+            title: responseTitle.isNotEmpty ? responseTitle : null,
+          ),
+        );
       }
       setState(() {
         _status = 'succeeded';
@@ -395,6 +620,11 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
     if (_messages.isNotEmpty) {
       final last = _messages.last;
       if (last.isUser == message.isUser && last.text == message.text) {
+        final lastTitle = (last.title ?? '').trim();
+        final nextTitle = (message.title ?? '').trim();
+        if (lastTitle.isEmpty && nextTitle.isNotEmpty) {
+          setState(() => _messages[_messages.length - 1] = last.copyWith(title: nextTitle));
+        }
         return;
       }
     }
@@ -459,6 +689,17 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
           children: [
             Text(_error!, style: AppTextStyles.bodyMedium),
             const SizedBox(height: 12),
+            if (!_authService.isLoggedIn) ...[
+              ElevatedButton(
+                onPressed: _promptLoginAndReload,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('로그인하기'),
+              ),
+              const SizedBox(height: 12),
+            ],
             ElevatedButton(
               onPressed: _load,
               style: ElevatedButton.styleFrom(
@@ -480,64 +721,87 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
             controller: _scrollController,
             padding: const EdgeInsets.all(20),
             children: [
-              Text('해석에 사용할 검사', style: AppTextStyles.h4),
-              const SizedBox(height: 12),
-              _buildSelector(
-                title: '지금의 나(현실)',
-                items: _realityItems,
-                selected: _selectedReality,
-                onChanged: (item) => setState(() => _selectedReality = item),
-                required: true,
-                onPreview: _selectedReality == null
-                    ? null
-                    : () => _openPreview(_selectedReality!),
-              ),
-              const SizedBox(height: 12),
-              _buildIdealToggle(),
-              if (_useIdeal) ...[
+              if (!widget.phase3Only) ...[
+                Text(
+                  (_conversationTitle ?? '').trim().isNotEmpty
+                      ? _conversationTitle!.trim()
+                      : '해석에 사용할 검사',
+                  style: AppTextStyles.h4,
+                ),
                 const SizedBox(height: 12),
+                if ((_mindFocus ?? '').trim().isNotEmpty) ...[
+                  _buildMindFocusCard(_mindFocus!.trim()),
+                  const SizedBox(height: 12),
+                ],
                 _buildSelector(
-                  title: '원하는 나(이상)',
-                  items: _idealItems,
-                  selected: _selectedIdeal,
-                  onChanged: (item) => setState(() => _selectedIdeal = item),
-                  required: false,
-                  onPreview: _selectedIdeal == null
+                  title: '지금의 나(현실)',
+                  items: _realityItems,
+                  selected: _selectedReality,
+                  onChanged: (item) => setState(() => _selectedReality = item),
+                  required: true,
+                  onPreview: _selectedReality == null
                       ? null
-                      : () => _openPreview(_selectedIdeal!),
+                      : () => _openPreview(_selectedReality!),
                 ),
-              ],
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _submitting ? null : _startInterpretation,
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(48),
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
+                const SizedBox(height: 12),
+                _buildIdealToggle(),
+                if (_useIdeal) ...[
+                  const SizedBox(height: 12),
+                  _buildSelector(
+                    title: '원하는 나(이상)',
+                    items: _idealItems,
+                    selected: _selectedIdeal,
+                    onChanged: (item) => setState(() => _selectedIdeal = item),
+                    required: false,
+                    onPreview: _selectedIdeal == null
+                        ? null
+                        : () => _openPreview(_selectedIdeal!),
                   ),
-                  child: _submitting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : Text(buttonLabel),
+                ],
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _submitting ? null : _startInterpretation,
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: _submitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : Text(buttonLabel),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '선택한 검사 결과를 바탕으로 기준–믿음 구조를 먼저 한 문장으로 정리합니다.',
-                style: AppTextStyles.caption
-                    .copyWith(color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 16),
-              if (_messages.isEmpty) _buildGuideCard(),
+                const SizedBox(height: 6),
+                Text(
+                  '선택한 검사 결과를 바탕으로 기준–믿음 구조를 먼저 한 문장으로 정리합니다.',
+                  style: AppTextStyles.caption
+                      .copyWith(color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 16),
+                if (_messages.isEmpty) _buildGuideCard(),
+              ] else ...[
+                Text('추가 질문', style: AppTextStyles.h4),
+                const SizedBox(height: 8),
+                Text(
+                  '자동 해석을 바탕으로 궁금한 점을 자유롭게 물어보세요.',
+                  style: AppTextStyles.caption
+                      .copyWith(color: AppColors.textSecondary),
+                ),
+                if (_messages.isEmpty) ...[
+                  const SizedBox(height: 12),
+                  _buildPhase3GuideCard(),
+                ],
+              ],
               ..._messages.map(_buildMessageBubble),
               if (_showTyping) ...[
                 const SizedBox(height: 4),
@@ -600,6 +864,28 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildMindFocusCard(String mindFocus) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Mind focus',
+            style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 6),
+          Text(mindFocus, style: AppTextStyles.bodyMedium),
+        ],
+      ),
     );
   }
 
@@ -763,6 +1049,29 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
     );
   }
 
+  Widget _buildPhase3GuideCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('추천 질문으로 시작해보세요', style: AppTextStyles.h5),
+          const SizedBox(height: 8),
+          Text(
+            '아래 칩을 누르거나, 궁금한 내용을 직접 입력하면 됩니다.',
+            style:
+                AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatusBubble(String text) {
     return Align(
       alignment: Alignment.centerLeft,
@@ -847,6 +1156,8 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
     final textColor = isUser ? AppColors.primary : AppColors.textPrimary;
     final baseTextStyle =
         AppTextStyles.bodySmall.copyWith(color: textColor, height: 1.4);
+    final title = (message.title ?? '').trim();
+    final body = message.text.trim();
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: Align(
@@ -862,41 +1173,54 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
           child: isUser
               ? SelectableText(message.text, style: baseTextStyle)
               : SelectionArea(
-                  child: MarkdownBody(
-                    data: message.text,
-                    styleSheet: MarkdownStyleSheet(
-                      p: baseTextStyle,
-                      h1: baseTextStyle.copyWith(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      h2: baseTextStyle.copyWith(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      h3: baseTextStyle.copyWith(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      strong: baseTextStyle.copyWith(fontWeight: FontWeight.w700),
-                      em: baseTextStyle.copyWith(fontStyle: FontStyle.italic),
-                      blockquotePadding:
-                          const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      blockquoteDecoration: BoxDecoration(
-                        color: AppColors.backgroundLight,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      codeblockDecoration: BoxDecoration(
-                        color: AppColors.backgroundLight,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      code: baseTextStyle.copyWith(
-                        fontFamily: 'monospace',
-                        fontSize: 12,
-                      ),
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (title.isNotEmpty) ...[
+                        Text(
+                          title,
+                          style: baseTextStyle.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        if (body.isNotEmpty) const SizedBox(height: 8),
+                      ],
+                      if (body.isNotEmpty)
+                        MarkdownBody(
+                          data: message.text,
+                          styleSheet: MarkdownStyleSheet(
+                            p: baseTextStyle,
+                            h1: baseTextStyle.copyWith(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            h2: baseTextStyle.copyWith(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            h3: baseTextStyle.copyWith(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            strong: baseTextStyle.copyWith(fontWeight: FontWeight.w700),
+                            em: baseTextStyle.copyWith(fontStyle: FontStyle.italic),
+                            blockquotePadding:
+                                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            blockquoteDecoration: BoxDecoration(
+                              color: AppColors.backgroundLight,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            codeblockDecoration: BoxDecoration(
+                              color: AppColors.backgroundLight,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            code: baseTextStyle.copyWith(
+                              fontFamily: 'monospace',
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
         ),
@@ -925,11 +1249,19 @@ class _WpiScoreProfile {
 }
 
 class _ChatMessage {
-  const _ChatMessage({required this.isUser, required this.text});
+  const _ChatMessage({required this.isUser, required this.text, this.title});
+
+  _ChatMessage copyWith({String? text, String? title}) => _ChatMessage(
+        isUser: isUser,
+        text: text ?? this.text,
+        title: title ?? this.title,
+      );
+
   factory _ChatMessage.user(String text) =>
       _ChatMessage(isUser: true, text: text);
-  factory _ChatMessage.assistant(String text) =>
-      _ChatMessage(isUser: false, text: text);
+  factory _ChatMessage.assistant(String text, {String? title}) =>
+      _ChatMessage(isUser: false, text: text, title: title);
   final bool isUser;
   final String text;
+  final String? title;
 }

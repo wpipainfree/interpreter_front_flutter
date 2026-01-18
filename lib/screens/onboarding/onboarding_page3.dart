@@ -20,18 +20,20 @@ class OnboardingPage3 extends StatelessWidget {
               children: [
                 Positioned(
                   left: 24,
-                  child: _circle(AppColors.primary, 'I\n(Belief)'),
+                  child: _circle(AppColors.primary, '믿음'),
                 ),
                 Positioned(
                   right: 24,
-                  child: _circle(AppColors.secondary, 'ME\n(Standard)'),
+                  child: _circle(AppColors.secondary, '기준'),
                 ),
               ],
             ),
           ),
           const Spacer(),
           Text(
-            'Explore the space where belief and standards intersect.\nYour analytical diagram of inner structure.',
+            '마음의 핵은 ‘기준’과 ‘믿음’입니다.\n'
+            '이 둘의 간격이 커질수록 감정과 몸이 먼저 반응합니다.\n'
+            '검사는 그 간격을 ‘보이게’ 만드는 첫 단계예요.',
             textAlign: TextAlign.center,
             style: AppTextStyles.bodyMedium.copyWith(
               color: AppColors.textSecondary,

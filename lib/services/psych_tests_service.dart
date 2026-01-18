@@ -249,14 +249,33 @@ class PsychTestsService {
     Future<Response<T>> Function(String? authHeader) send,
   ) async {
     String? auth = await _authService.getAuthorizationHeader();
+    if (auth == null) {
+      throw const AuthRequiredException();
+    }
     try {
       return await send(auth);
     } on DioException catch (e) {
       final is401 = e.response?.statusCode == 401;
       final refreshed = is401 ? await _authService.refreshAccessToken() : null;
-      if (!is401 || refreshed == null) rethrow;
+      if (!is401) rethrow;
+      if (refreshed == null) {
+        await _authService.logout();
+        throw const AuthRequiredException();
+      }
       auth = await _authService.getAuthorizationHeader(refreshIfNeeded: false);
-      return await send(auth);
+      if (auth == null) {
+        await _authService.logout();
+        throw const AuthRequiredException();
+      }
+      try {
+        return await send(auth);
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 401) {
+          await _authService.logout();
+          throw const AuthRequiredException();
+        }
+        rethrow;
+      }
     }
   }
 }

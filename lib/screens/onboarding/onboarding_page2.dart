@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
+import 'onboarding_atom_graphic.dart';
 
-/// S01-2: Reality vs Ideal.
+/// S01-2: Reality + Ideal overview with CTA.
 class OnboardingPage2 extends StatelessWidget {
-  const OnboardingPage2({super.key});
+  const OnboardingPage2({super.key, required this.onStart});
+
+  final VoidCallback onStart;
 
   @override
   Widget build(BuildContext context) {
@@ -12,67 +15,93 @@ class OnboardingPage2 extends StatelessWidget {
       padding: const EdgeInsets.all(32),
       child: Column(
         children: [
-          const Spacer(),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _pillCard(
-                label: 'Reality',
-                fillColor: AppColors.secondary,
-                textColor: Colors.white,
-                outline: false,
-              ),
-              Container(
-                width: 1,
-                height: 120,
-                margin: const EdgeInsets.symmetric(horizontal: 28),
-                color: AppColors.border,
-              ),
-              _pillCard(
-                label: 'Ideal',
-                fillColor: Colors.transparent,
-                textColor: AppColors.primary,
-                outline: true,
-              ),
-            ],
-          ),
-          const Spacer(),
+          const Spacer(flex: 2),
           Text(
-            'Clarify the concept between what is and what should be,\nthen interpret the gap through your own structure.',
+            '내 구조를\n확인해보세요',
             textAlign: TextAlign.center,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
+            style: AppTextStyles.h1,
+          ),
+          const SizedBox(height: 22),
+          const _RealityIdealAtomPair(),
+          const SizedBox(height: 22),
+          Text(
+            '현실은 지금 나를 지탱하는 기준과 믿음을 확인합니다.\n'
+            '이상은 내가 향하는 변화 방향을 확인합니다(회복/도피는 해석에서 정리).\n'
+            '검사 후 결과는 먼저 요약으로 보고, 더 궁금하면 추가 설명을 요청하면 됩니다.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+          ),
+          const Spacer(flex: 3),
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              onPressed: onStart,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.textOnPrimary,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                '내 마음의 MRI 보기',
+                style: AppTextStyles.buttonMedium,
+              ),
             ),
           ),
-          const SizedBox(height: 36),
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
+}
 
-  Widget _pillCard({
-    required String label,
-    required Color fillColor,
-    required Color textColor,
-    required bool outline,
-  }) {
-    return Container(
-      width: 120,
-      height: 170,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: outline ? Colors.transparent : fillColor,
-        border: outline ? Border.all(color: AppColors.primary, width: 2) : null,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        label,
-        style: AppTextStyles.h4.copyWith(
-          color: textColor,
-          fontSize: 18,
-          letterSpacing: 0.4,
+class _RealityIdealAtomPair extends StatelessWidget {
+  const _RealityIdealAtomPair();
+
+  static const double _atomSize = 120;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: const [
+        _AtomBlock(title: '현실(지금)', showDirectionArrow: false),
+        _AtomBlock(title: '이상(방향)', showDirectionArrow: true),
+      ],
+    );
+  }
+}
+
+class _AtomBlock extends StatelessWidget {
+  const _AtomBlock({
+    required this.title,
+    required this.showDirectionArrow,
+  });
+
+  final String title;
+  final bool showDirectionArrow;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          title,
+          style: AppTextStyles.labelLarge.copyWith(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
         ),
-      ),
+        const SizedBox(height: 10),
+        OnboardingAtomGraphic(
+          size: _RealityIdealAtomPair._atomSize,
+          showCoreLabels: false,
+          showDirectionArrow: showDirectionArrow,
+        ),
+      ],
     );
   }
 }

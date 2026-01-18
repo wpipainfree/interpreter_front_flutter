@@ -31,6 +31,28 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_lints: ^4.0.0
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/wpi_atom/
+  fonts:
+    - family: NotoSansKR
+      fonts:
+        - asset: assets/fonts/NotoSansKR-Variable.ttf
+          weight: 400
+        - asset: assets/fonts/NotoSansKR-Variable.ttf
+          weight: 500
+        - asset: assets/fonts/NotoSansKR-Variable.ttf
+          weight: 600
+        - asset: assets/fonts/NotoSansKR-Variable.ttf
+          weight: 700
+    - family: NotoSerifKR
+      fonts:
+        - asset: assets/fonts/NotoSerifKR-Variable.ttf
+          weight: 400
+        - asset: assets/fonts/NotoSerifKR-Variable.ttf
+          weight: 600
+        - asset: assets/fonts/NotoSerifKR-Variable.ttf
+          weight: 700

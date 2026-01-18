@@ -21,11 +21,23 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   late int _index;
   final AuthService _authService = AuthService();
+  late final VoidCallback _authListener;
 
   @override
   void initState() {
     super.initState();
     _index = widget.initialIndex.clamp(0, 3);
+    _authListener = () {
+      if (!mounted) return;
+      setState(() {});
+    };
+    _authService.addListener(_authListener);
+  }
+
+  @override
+  void dispose() {
+    _authService.removeListener(_authListener);
+    super.dispose();
   }
 
   @override

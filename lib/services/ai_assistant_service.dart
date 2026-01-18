@@ -39,8 +39,9 @@ class AiAssistantService {
           'status': response.statusCode,
           'data': response.data,
         });
-        throw AiAssistantException(
+        throw AiAssistantHttpException(
           'GPT 해석 요청에 실패했습니다. (${response.statusCode})',
+          statusCode: response.statusCode,
           debug: response.data?.toString(),
         );
       }
@@ -56,8 +57,9 @@ class AiAssistantService {
         'url': e.requestOptions.uri.toString(),
         'query': e.requestOptions.queryParameters,
       });
-      throw AiAssistantException(
+      throw AiAssistantHttpException(
         'GPT 해석 요청에 실패했습니다. (${e.response?.statusCode ?? e.error})',
+        statusCode: e.response?.statusCode,
         debug: e.response?.data?.toString(),
       );
     }
@@ -78,8 +80,9 @@ class AiAssistantService {
           'status': response.statusCode,
           'data': response.data,
         });
-        throw AiAssistantException(
+        throw AiAssistantHttpException(
           '대화 상태 조회에 실패했습니다. (${response.statusCode})',
+          statusCode: response.statusCode,
           debug: response.data?.toString(),
         );
       }
@@ -90,8 +93,9 @@ class AiAssistantService {
         'message': e.message,
         'data': e.response?.data,
       });
-      throw AiAssistantException(
+      throw AiAssistantHttpException(
         '대화 상태 조회에 실패했습니다. (${e.response?.statusCode ?? e.error})',
+        statusCode: e.response?.statusCode,
         debug: e.response?.data?.toString(),
       );
     }
@@ -119,8 +123,9 @@ class AiAssistantService {
           'status': response.statusCode,
           'data': response.data,
         });
-        throw AiAssistantException(
+        throw AiAssistantHttpException(
           '대화 목록을 불러오지 못했습니다. (${response.statusCode})',
+          statusCode: response.statusCode,
           debug: response.data?.toString(),
         );
       }
@@ -131,8 +136,9 @@ class AiAssistantService {
         'message': e.message,
         'data': e.response?.data,
       });
-      throw AiAssistantException(
+      throw AiAssistantHttpException(
         '대화 목록을 불러오지 못했습니다. (${e.response?.statusCode ?? e.error})',
+        statusCode: e.response?.statusCode,
         debug: e.response?.data?.toString(),
       );
     }
@@ -172,14 +178,33 @@ class AiAssistantService {
     Future<Response<T>> Function(String? authHeader) send,
   ) async {
     String? auth = await _authService.getAuthorizationHeader();
+    if (auth == null) {
+      throw const AuthRequiredException();
+    }
     try {
       return await send(auth);
     } on DioException catch (e) {
       final is401 = e.response?.statusCode == 401;
       final refreshed = is401 ? await _authService.refreshAccessToken() : null;
-      if (!is401 || refreshed == null) rethrow;
+      if (!is401) rethrow;
+      if (refreshed == null) {
+        await _authService.logout();
+        throw const AuthRequiredException();
+      }
       auth = await _authService.getAuthorizationHeader(refreshIfNeeded: false);
-      return await send(auth);
+      if (auth == null) {
+        await _authService.logout();
+        throw const AuthRequiredException();
+      }
+      try {
+        return await send(auth);
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 401) {
+          await _authService.logout();
+          throw const AuthRequiredException();
+        }
+        rethrow;
+      }
     }
   }
 }
@@ -191,4 +216,13 @@ class AiAssistantException implements Exception {
 
   @override
   String toString() => message;
+}
+
+class AiAssistantHttpException extends AiAssistantException {
+  final int? statusCode;
+  const AiAssistantHttpException(
+    super.message, {
+    this.statusCode,
+    super.debug,
+  });
 }

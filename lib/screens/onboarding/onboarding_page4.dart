@@ -16,13 +16,14 @@ class OnboardingPage4 extends StatelessWidget {
         children: [
           const Spacer(flex: 2),
           Text(
-            'One Sentence\nSummary',
+            '한 문장으로\n정리됩니다',
             textAlign: TextAlign.center,
             style: AppTextStyles.h1,
           ),
           const SizedBox(height: 24),
           Text(
-            'Here are the concise insights that capture\nthe structure beneath your story.',
+            '검사를 마치면, 내 결과가 원자 구조 언어로 먼저 요약됩니다.\n'
+            '더 알고 싶으면 결과에서 바로 ‘추가 설명’을 요청하면 됩니다.',
             textAlign: TextAlign.center,
             style: AppTextStyles.bodyMedium.copyWith(
               color: AppColors.textSecondary,
@@ -43,7 +44,7 @@ class OnboardingPage4 extends StatelessWidget {
                 ),
               ),
               child: Text(
-                'Analyze My Structure',
+                '내 구조 분석 시작',
                 style: AppTextStyles.buttonMedium,
               ),
             ),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 import 'app_text_styles.dart';
 
@@ -10,7 +9,7 @@ class AppTheme {
   static ThemeData get lightTheme {
     final base = ThemeData.light(useMaterial3: true);
 
-    final textTheme = GoogleFonts.notoSansKrTextTheme(base.textTheme).copyWith(
+    final textTheme = base.textTheme.copyWith(
       headlineLarge: AppTextStyles.h1,
       headlineMedium: AppTextStyles.h2,
       headlineSmall: AppTextStyles.h3,
@@ -112,8 +111,7 @@ class AppTheme {
       ),
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.emotionalSignalBg,
-        labelStyle: GoogleFonts.notoSansKr(
-          fontSize: 14,
+        labelStyle: AppTextStyles.bodySmall.copyWith(
           fontWeight: FontWeight.w600,
           color: AppColors.emotionalSignalText,
         ),
