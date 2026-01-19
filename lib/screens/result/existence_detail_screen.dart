@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 import '../../models/wpi_result.dart';
 import '../../utils/app_colors.dart';
-import '../dashboard_screen.dart';
+import '../../utils/main_shell_tab_controller.dart';
+import '../main_shell.dart';
 
 class ExistenceDetailScreen extends StatelessWidget {
   final WpiResult result;
   const ExistenceDetailScreen({super.key, required this.result});
 
   void _navigateToDashboard(BuildContext context) {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const DashboardScreen()),
-      (route) => false,
+    MainShellTabController.index.value = 0;
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.popUntil((route) => route.isFirst);
+      return;
+    }
+    navigator.pushReplacement(
+      MaterialPageRoute(builder: (_) => const MainShell(initialIndex: 0)),
     );
   }
 

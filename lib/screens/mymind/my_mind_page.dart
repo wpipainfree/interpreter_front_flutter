@@ -4,6 +4,7 @@ import '../../services/auth_service.dart';
 import '../../services/psych_tests_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
+import '../../utils/main_shell_tab_controller.dart';
 import '../../utils/strings.dart';
 import '../auth/login_screen.dart';
 import '../result/user_result_detail_screen.dart';
@@ -112,8 +113,10 @@ class _ResultPanelState extends State<_ResultPanel> {
   final AuthService _auth = AuthService();
   final ScrollController _scrollController = ScrollController();
   late final VoidCallback _authListener;
+  late final VoidCallback _shellTabListener;
   bool _lastLoggedIn = false;
   String? _lastUserId;
+  int _lastShellIndex = 0;
 
   bool _loading = true;
   bool _loadingMore = false;
@@ -129,6 +132,9 @@ class _ResultPanelState extends State<_ResultPanel> {
     _lastUserId = _auth.currentUser?.id;
     _authListener = _handleAuthChanged;
     _auth.addListener(_authListener);
+    _lastShellIndex = MainShellTabController.index.value;
+    _shellTabListener = _handleShellTabChanged;
+    MainShellTabController.index.addListener(_shellTabListener);
     _scrollController.addListener(_onScroll);
     _loadPage(reset: true);
   }
@@ -136,6 +142,7 @@ class _ResultPanelState extends State<_ResultPanel> {
   @override
   void dispose() {
     _auth.removeListener(_authListener);
+    MainShellTabController.index.removeListener(_shellTabListener);
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
@@ -174,6 +181,15 @@ class _ResultPanelState extends State<_ResultPanel> {
     if (ok == true && mounted) {
       await _loadPage(reset: true);
     }
+  }
+
+  void _handleShellTabChanged() {
+    if (!mounted) return;
+    final idx = MainShellTabController.index.value;
+    if (idx == _lastShellIndex) return;
+    _lastShellIndex = idx;
+    if (idx != 2) return;
+    _loadPage(reset: true);
   }
 
   void _onScroll() {

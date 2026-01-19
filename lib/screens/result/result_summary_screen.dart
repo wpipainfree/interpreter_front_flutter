@@ -1,11 +1,24 @@
 import 'package:flutter/material.dart';
 import '../../models/wpi_result.dart';
 import 'existence_detail_screen.dart';
-import '../dashboard_screen.dart';
+import '../../utils/main_shell_tab_controller.dart';
+import '../main_shell.dart';
 
 class ResultSummaryScreen extends StatelessWidget {
   final WpiResult result;
   const ResultSummaryScreen({super.key, required this.result});
+
+  void _goHome(BuildContext context) {
+    MainShellTabController.index.value = 0;
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.popUntil((route) => route.isFirst);
+      return;
+    }
+    navigator.pushReplacement(
+      MaterialPageRoute(builder: (_) => const MainShell(initialIndex: 0)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,14 +57,20 @@ class ResultSummaryScreen extends StatelessWidget {
                       children: [
                         Row(
                           children: const [
-                            Icon(Icons.format_quote, color: Color(0xFFF57C00), size: 28),
+                            Icon(Icons.format_quote,
+                                color: Color(0xFFF57C00), size: 28),
                             SizedBox(width: 12),
-                            Text('핵심 메시지', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            Text('핵심 메시지',
+                                style: TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.bold)),
                           ],
                         ),
                         const SizedBox(height: 16),
                         Text(result.coreMessage,
-                            style: const TextStyle(fontSize: 16, height: 1.6, color: Color(0xFF424242))),
+                            style: const TextStyle(
+                                fontSize: 16,
+                                height: 1.6,
+                                color: Color(0xFF424242))),
                       ],
                     ),
                   ),
@@ -61,7 +80,8 @@ class ResultSummaryScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text('당신의 마음 구조',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 20),
                         _lineIndicator(
                           label: '빨간선 (자기 믿음)',
@@ -87,10 +107,13 @@ class ResultSummaryScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text('Gap 분석',
-                                  style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF795548))),
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF795548))),
                               const SizedBox(height: 8),
                               Text(result.gapAnalysis,
-                                  style: const TextStyle(color: Color(0xFF5D4037), height: 1.5)),
+                                  style: const TextStyle(
+                                      color: Color(0xFF5D4037), height: 1.5)),
                             ],
                           ),
                         ),
@@ -104,10 +127,12 @@ class ResultSummaryScreen extends StatelessWidget {
                       children: [
                         Row(
                           children: const [
-                            Icon(Icons.favorite, color: Color(0xFFE91E63), size: 24),
+                            Icon(Icons.favorite,
+                                color: Color(0xFFE91E63), size: 24),
                             SizedBox(width: 12),
                             Text('감정 신호',
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                style: TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.bold)),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -118,7 +143,8 @@ class ResultSummaryScreen extends StatelessWidget {
                               .map((signal) => Chip(
                                     label: Text(signal),
                                     backgroundColor: const Color(0xFFFFE0EC),
-                                    labelStyle: const TextStyle(color: Color(0xFF880E4F)),
+                                    labelStyle: const TextStyle(
+                                        color: Color(0xFF880E4F)),
                                   ))
                               .toList(),
                         ),
@@ -132,10 +158,12 @@ class ResultSummaryScreen extends StatelessWidget {
                       children: [
                         Row(
                           children: const [
-                            Icon(Icons.accessibility_new, color: Color(0xFF4CAF50), size: 24),
+                            Icon(Icons.accessibility_new,
+                                color: Color(0xFF4CAF50), size: 24),
                             SizedBox(width: 12),
                             Text('몸 신호',
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                style: TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.bold)),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -145,11 +173,13 @@ class ResultSummaryScreen extends StatelessWidget {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(Icons.check_circle, size: 20, color: Color(0xFF4CAF50)),
+                                const Icon(Icons.check_circle,
+                                    size: 20, color: Color(0xFF4CAF50)),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(signal,
-                                      style: const TextStyle(fontSize: 14, height: 1.4)),
+                                      style: const TextStyle(
+                                          fontSize: 14, height: 1.4)),
                                 ),
                               ],
                             ),
@@ -174,17 +204,15 @@ class ResultSummaryScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text('존재 구조 상세 분석 보기', style: TextStyle(fontSize: 18)),
+                      child: const Text('존재 구조 상세 분석 보기',
+                          style: TextStyle(fontSize: 18)),
                     ),
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (_) => const DashboardScreen()),
-                        (route) => false,
-                      ),
+                      onPressed: () => _goHome(context),
                       child: const Text('대시보드로 이동'),
                     ),
                   ),

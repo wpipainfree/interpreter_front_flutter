@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/auth_ui.dart';
+import '../utils/main_shell_tab_controller.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dashboard_screen.dart';
 import 'test/test_intro_screen.dart';
@@ -22,11 +23,20 @@ class _MainShellState extends State<MainShell> {
   late int _index;
   final AuthService _authService = AuthService();
   late final VoidCallback _authListener;
+  late final VoidCallback _tabListener;
 
   @override
   void initState() {
     super.initState();
     _index = widget.initialIndex.clamp(0, 3);
+    MainShellTabController.index.value = _index;
+    _tabListener = () {
+      if (!mounted) return;
+      final next = MainShellTabController.index.value.clamp(0, 3);
+      if (next == _index) return;
+      setState(() => _index = next);
+    };
+    MainShellTabController.index.addListener(_tabListener);
     _authListener = () {
       if (!mounted) return;
       setState(() {});
@@ -36,6 +46,7 @@ class _MainShellState extends State<MainShell> {
 
   @override
   void dispose() {
+    MainShellTabController.index.removeListener(_tabListener);
     _authService.removeListener(_authListener);
     super.dispose();
   }
@@ -78,11 +89,11 @@ class _MainShellState extends State<MainShell> {
     if (i == 3 && !_authService.isLoggedIn) {
       final ok = await AuthUi.promptLogin(context: context);
       if (ok && mounted) {
-        setState(() => _index = 3);
+        MainShellTabController.index.value = 3;
       }
       return;
     }
-    setState(() => _index = i);
+    MainShellTabController.index.value = i;
   }
 }
 

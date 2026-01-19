@@ -4,9 +4,8 @@ import '../services/psych_tests_service.dart';
 import '../test_flow/test_flow_coordinator.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_text_styles.dart';
-import 'auth/login_screen.dart';
-import 'test/test_intro_screen.dart';
-import 'mymind/my_mind_page.dart';
+import '../utils/auth_ui.dart';
+import '../utils/main_shell_tab_controller.dart';
 import '../screens/result/user_result_detail_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -25,8 +24,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String? _error;
   static const int _maxRecent = 3;
   late final VoidCallback _authListener;
+  late final VoidCallback _tabListener;
   bool _lastLoggedIn = false;
   String? _lastUserId;
+  int _lastShellIndex = 0;
 
   @override
   void initState() {
@@ -35,6 +36,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _lastUserId = _authService.currentUser?.id;
     _authListener = _handleAuthChanged;
     _authService.addListener(_authListener);
+    _lastShellIndex = MainShellTabController.index.value;
+    _tabListener = _handleShellTabChanged;
+    MainShellTabController.index.addListener(_tabListener);
     _loadAccounts();
     _loadPendingIdeal();
   }
@@ -42,6 +46,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void dispose() {
     _authService.removeListener(_authListener);
+    MainShellTabController.index.removeListener(_tabListener);
     super.dispose();
   }
 
@@ -65,14 +70,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _loadAccounts();
   }
 
+  void _handleShellTabChanged() {
+    if (!mounted) return;
+    final idx = MainShellTabController.index.value;
+    if (idx == _lastShellIndex) return;
+    _lastShellIndex = idx;
+    if (idx != 0) return;
+    _loadPendingIdeal();
+    if (_authService.isLoggedIn) {
+      _loadAccounts();
+    }
+  }
+
   Future<void> _promptLoginAndReload() async {
-    final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => const LoginScreen(),
-      ),
-    );
-    if (ok == true && mounted) {
+    final ok = await AuthUi.promptLogin(context: context);
+    if (ok && mounted) {
       await _loadAccounts();
     }
   }
@@ -280,23 +292,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ElevatedButton(
                       onPressed: () async {
                         if (!_authService.isLoggedIn) {
-                          final ok =
-                              await Navigator.of(context, rootNavigator: true)
-                                  .push<bool>(
-                            MaterialPageRoute(
-                              fullscreenDialog: true,
-                              builder: (_) => const LoginScreen(),
-                            ),
-                          );
-                          if (ok != true || !mounted) return;
+                          final ok = await AuthUi.promptLogin(context: context);
+                          if (!ok || !mounted) return;
                         }
-                        await Navigator.of(context).push(
-                          MaterialPageRoute(
-                              builder: (_) => const TestIntroScreen()),
-                        );
-                        if (!mounted) return;
-                        await _loadPendingIdeal();
-                        await _loadAccounts();
+                        MainShellTabController.index.value = 1;
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.backgroundWhite,
@@ -384,8 +383,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             hasMore
                 ? TextButton(
                     onPressed: () {
-                      Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => const MyMindPage()));
+                      MainShellTabController.index.value = 2;
                     },
                     style: TextButton.styleFrom(
                       splashFactory: NoSplash.splashFactory,

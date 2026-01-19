@@ -12,56 +12,82 @@ class ContinueToIdealScreen extends StatelessWidget {
     );
   }
 
+  void _close(BuildContext context, bool value) {
+    Navigator.of(context).pop(value);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundWhite,
-      appBar: AppBar(
-        title: const Text('이상 검사로 이어서 진행할까요?'),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          _close(context, false);
+        }
+      },
+      child: Scaffold(
         backgroundColor: AppColors.backgroundWhite,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 0,
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('이상은 "내가 되고 싶은 모습"을 선택하는 단계예요.', style: AppTextStyles.bodyMedium),
-              const SizedBox(height: 6),
-              Text('지금 이어서 진행하면 결과가 더 선명해집니다.', style: AppTextStyles.bodyMedium),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.secondary,
-                    foregroundColor: AppColors.textOnPrimary,
-                    minimumSize: const Size(double.infinity, 56),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+        appBar: AppBar(
+          title: const Text('Н?\'НЯ? И¤?Н,кЙнo Н?\'Н-\'Н,o Н,б-%б И1OНs"?'),
+          backgroundColor: AppColors.backgroundWhite,
+          foregroundColor: AppColors.textPrimary,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          actions: [
+            IconButton(
+              onPressed: () => _close(context, false),
+              icon: const Icon(Icons.close),
+            ),
+          ],
+        ),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Н?\'НЯ?Н?? "Й,\'И°? Й?~И3  Н<Н?? Йж"НSц"Н?, Н, бЯ?б~ЙS" Й<"И3,Н~^Нs".',
+                  style: AppTextStyles.bodyMedium,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Н?И,^ Н?\'Н-\'Н,o Н,б-%б~Йc\' И¤°И3мИ°? Й?" Н, Йж.б\'Н`Й<^Й<.',
+                  style: AppTextStyles.bodyMedium,
+                ),
+                const Spacer(),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => _close(context, true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.secondary,
+                      foregroundColor: AppColors.textOnPrimary,
+                      minimumSize: const Size(double.infinity, 56),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Н?\'НЯ?НoмЙнo И3,Н+?',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
                   ),
-                  child: const Text(
-                    '이상으로 계속',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => _close(context, false),
+                    child: const Text('Й,~Н`Н-? б~И,°'),
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('나중에 하기'),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 }
+
