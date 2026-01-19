@@ -4,6 +4,7 @@ import '../../services/auth_service.dart';
 import '../../services/psych_tests_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
+import '../../utils/strings.dart';
 import '../auth/login_screen.dart';
 import '../result/user_result_detail_screen.dart';
 import 'interpretation_panel.dart';
@@ -159,7 +160,7 @@ class _ResultPanelState extends State<_ResultPanel> {
       _loadingMore = false;
       _hasNext = true;
       _page = 1;
-      _error = '로그인이 필요합니다.';
+      _error = AppStrings.loginRequired;
     });
   }
 
@@ -225,11 +226,15 @@ class _ResultPanelState extends State<_ResultPanel> {
       if (!mounted) return;
       setState(() => _error = e.toString());
     } finally {
-      if (!mounted) return;
-      setState(() {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadingMore = false;
+        });
+      } else {
         _loading = false;
         _loadingMore = false;
-      });
+      }
     }
   }
 
@@ -248,27 +253,19 @@ class _ResultPanelState extends State<_ResultPanel> {
              const SizedBox(height: 12),
              if (!_auth.isLoggedIn) ...[
                ElevatedButton(
-                 onPressed: _promptLoginAndReload,
-                 style: ElevatedButton.styleFrom(
-                   backgroundColor: AppColors.primary,
-                   foregroundColor: Colors.white,
-                 ),
-                 child: const Text('로그인하기'),
-               ),
-               const SizedBox(height: 12),
-             ],
-             ElevatedButton(
-               onPressed: () => _loadPage(reset: true),
-               style: ElevatedButton.styleFrom(
-                 backgroundColor: AppColors.primary,
-                 foregroundColor: Colors.white,
-              ),
-              child: const Text('다시 시도'),
-            ),
-          ],
-        ),
-      );
-    }
+                  onPressed: _promptLoginAndReload,
+                  child: const Text(AppStrings.login),
+                ),
+                const SizedBox(height: 12),
+              ],
+              ElevatedButton(
+                onPressed: () => _loadPage(reset: true),
+                child: const Text(AppStrings.retry),
+             ),
+           ],
+         ),
+       );
+     }
 
     if (_items.isEmpty) {
       return _card(

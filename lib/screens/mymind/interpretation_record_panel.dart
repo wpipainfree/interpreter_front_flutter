@@ -5,6 +5,7 @@ import '../../services/ai_assistant_service.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
+import '../../utils/strings.dart';
 import '../auth/login_screen.dart';
 
 class InterpretationRecordPanel extends StatefulWidget {
@@ -71,7 +72,7 @@ class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
       _loadingMore = false;
       _hasNext = true;
       _skip = 0;
-      _error = '로그인이 필요합니다.';
+      _error = AppStrings.loginRequired;
     });
   }
 
@@ -130,11 +131,15 @@ class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
       if (!mounted) return;
       setState(() => _error = e.toString());
     } finally {
-      if (!mounted) return;
-      setState(() {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadingMore = false;
+        });
+      } else {
         _loading = false;
         _loadingMore = false;
-      });
+      }
     }
   }
 
@@ -154,21 +159,13 @@ class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
             if (!_authService.isLoggedIn) ...[
               ElevatedButton(
                 onPressed: _promptLoginAndReload,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('로그인하기'),
+                child: const Text(AppStrings.login),
               ),
               const SizedBox(height: 12),
             ],
             ElevatedButton(
               onPressed: () => _loadPage(reset: true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('다시 시도'),
+              child: const Text(AppStrings.retry),
             ),
           ],
         ),
@@ -177,8 +174,8 @@ class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
 
     if (_items.isEmpty) {
       return _infoCard(
-        '질문 기록이 없습니다.',
-        '해석 탭에서 질문을 보내면 기록 탭에서 다시 확인할 수 있어요.',
+        AppStrings.recordEmptyTitle,
+        AppStrings.recordEmptySubtitle,
       );
     }
 
@@ -201,7 +198,7 @@ class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
                 child: OutlinedButton(
                   onPressed: () => _loadPage(reset: false),
                   style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44)),
-                  child: const Text('더 보기'),
+                  child: const Text(AppStrings.seeMore),
                 ),
               );
             }

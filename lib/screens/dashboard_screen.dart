@@ -576,7 +576,7 @@ class _AccountCard extends StatelessWidget {
                             child: Text(
                               '검사자 $tester',
                               style: TextStyle(
-                                  fontSize: 13, color: AppColors.textSecondary),
+                                  fontSize: 13, color: AppColors.textPrimary),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -584,13 +584,13 @@ class _AccountCard extends StatelessWidget {
                         if (tester.isNotEmpty && tester != '미입력') ...[
                           const SizedBox(width: 6),
                           const Text('·',
-                              style: TextStyle(color: AppColors.textSecondary)),
+                              style: TextStyle(color: AppColors.textPrimary)),
                           const SizedBox(width: 6),
                         ],
                         Text(
                           date,
                           style: TextStyle(
-                              fontSize: 12, color: AppColors.textSecondary),
+                              fontSize: 12, color: AppColors.textPrimary),
                         ),
                       ],
                     ),
@@ -610,7 +610,7 @@ class _AccountCard extends StatelessWidget {
               ),
               const Icon(
                 Icons.chevron_right,
-                color: AppColors.textSecondary,
+                color: AppColors.textPrimary,
               ),
             ],
           ),

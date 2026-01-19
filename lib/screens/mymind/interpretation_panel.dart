@@ -9,6 +9,7 @@ import '../../services/auth_service.dart';
 import '../../services/psych_tests_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
+import '../../utils/strings.dart';
 import '../auth/login_screen.dart';
 import '../result/user_result_detail_screen.dart';
 
@@ -552,8 +553,11 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
       setState(() => _uiState = _InterpretationUiState.failed);
       _showMessage(e.toString());
     } finally {
-      if (!mounted) return;
-      setState(() => _submitting = false);
+      if (mounted) {
+        setState(() => _submitting = false);
+      } else {
+        _submitting = false;
+      }
       if (_status != null && _terminalStatuses.contains(_status)) {
         _stopPolling();
       }
@@ -651,7 +655,7 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
     final text = _inputController.text.trim();
     if (text.isEmpty || _submitting) return;
     if (!_canChat || _conversationId == null) {
-      _showMessage('해석을 먼저 생성한 뒤 질문할 수 있어요.');
+      _showMessage(AppStrings.interpretationNeedsFirstAnswer);
       return;
     }
     _inputController.clear();

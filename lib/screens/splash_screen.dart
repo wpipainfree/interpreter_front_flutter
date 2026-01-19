@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_text_styles.dart';
 import '../utils/constants.dart';
+import '../utils/strings.dart';
 import 'main_shell.dart';
 import 'onboarding/onboarding_screen.dart';
 
@@ -32,9 +33,9 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _routeAfterSplash() async {
     await Future.delayed(AppConstants.splashDuration);
-    if (!mounted) return;
     final prefs = await SharedPreferences.getInstance();
     final seen = prefs.getBool(_onboardingSeenKey) ?? false;
+    if (!mounted) return;
 
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => seen ? const MainShell() : const OnboardingScreen()),
@@ -67,12 +68,12 @@ class _SplashScreenState extends State<SplashScreen>
               Column(
                 children: [
                   Text(
-                    '마음의 구조를 한눈에',
+                    AppStrings.splashHeadline,
                     style: AppTextStyles.h4,
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    '기준·믿음·감정·몸의 원자 구조로 읽습니다',
+                    AppStrings.splashSubtitle,
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.textSecondary,
                     ),
@@ -91,7 +92,7 @@ class _SplashScreenState extends State<SplashScreen>
               ),
               const SizedBox(height: 12),
               Text(
-                '불러오는 중…',
+                AppStrings.loading,
                 style: AppTextStyles.caption.copyWith(
                   color: AppColors.textSecondary,
                 ),
