@@ -188,19 +188,19 @@ class AiAssistantService {
       final refreshed = is401 ? await _authService.refreshAccessToken() : null;
       if (!is401) rethrow;
       if (refreshed == null) {
-        await _authService.logout();
+        await _authService.logout(reason: LogoutReason.sessionExpired);
         throw const AuthRequiredException();
       }
       auth = await _authService.getAuthorizationHeader(refreshIfNeeded: false);
       if (auth == null) {
-        await _authService.logout();
+        await _authService.logout(reason: LogoutReason.sessionExpired);
         throw const AuthRequiredException();
       }
       try {
         return await send(auth);
       } on DioException catch (e) {
         if (e.response?.statusCode == 401) {
-          await _authService.logout();
+          await _authService.logout(reason: LogoutReason.sessionExpired);
           throw const AuthRequiredException();
         }
         rethrow;

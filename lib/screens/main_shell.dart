@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../utils/app_colors.dart';
+import '../utils/auth_ui.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'auth/login_screen.dart';
 import 'dashboard_screen.dart';
 import 'test/test_intro_screen.dart';
 import 'mymind/my_mind_page.dart';
@@ -43,10 +43,10 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     final pages = <Widget>[
-      const DashboardScreen(),
-      const TestIntroScreen(),
-      const MyMindPage(),
-      const MyPageScreen(),
+      DashboardScreen(),
+      TestIntroScreen(),
+      MyMindPage(),
+      MyPageScreen(),
     ];
 
     return Scaffold(
@@ -76,13 +76,8 @@ class _MainShellState extends State<MainShell> {
   Future<void> _onTabSelected(int i) async {
     // Gate MyPage behind login; keep other tabs free.
     if (i == 3 && !_authService.isLoggedIn) {
-      final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
-        MaterialPageRoute(
-          fullscreenDialog: true,
-          builder: (_) => const LoginScreen(),
-        ),
-      );
-      if (ok == true && mounted) {
+      final ok = await AuthUi.promptLogin(context: context);
+      if (ok && mounted) {
         setState(() => _index = 3);
       }
       return;

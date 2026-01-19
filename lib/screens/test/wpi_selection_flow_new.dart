@@ -6,7 +6,7 @@ import '../../test_flow/role_transition_screen.dart';
 import '../../test_flow/test_flow_models.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
-import '../auth/login_screen.dart';
+import '../../utils/auth_ui.dart';
 import '../result/user_result_detail_screen.dart';
 
 /// New free-order flow: users pick items up to target counts, then submit.
@@ -64,15 +64,20 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     _init();
   }
 
+  Future<T?> _withLoginRetry<T>(Future<T> Function() action) async {
+    try {
+      return await action();
+    } on AuthRequiredException {
+      final ok = await AuthUi.promptLogin(context: context);
+      if (!ok) return null;
+      return await action();
+    }
+  }
+
   Future<void> _init() async {
     if (!_authService.isLoggedIn) {
-      final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
-        MaterialPageRoute(
-          fullscreenDialog: true,
-          builder: (_) => const LoginScreen(),
-        ),
-      );
-      if (ok != true && mounted) {
+      final ok = await AuthUi.promptLogin(context: context);
+      if (!ok && mounted) {
         Navigator.of(context).pop();
         return;
       }
@@ -92,7 +97,15 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       _error = null;
     });
     try {
-      final lists = await _service.fetchChecklists(widget.testId);
+      final lists = await _withLoginRetry(() => _service.fetchChecklists(widget.testId));
+      if (lists == null) {
+        if (!mounted) return;
+        setState(() {
+          _loading = false;
+          _error = const AuthRequiredException().toString();
+        });
+        return;
+      }
       if (lists.isEmpty) {
         throw const PsychTestException('No checklist data.');
       }
@@ -246,17 +259,20 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       rank3: rank3,
     );
     try {
-      final result = _resultId == null
-          ? await _service.submitResults(
-              testId: widget.testId,
-              selections: selections,
-              processSequence: c.sequence == 0 ? _stageIndex + 1 : c.sequence,
-            )
-          : await _service.updateResults(
-              resultId: _resultId!,
-              selections: selections,
-              processSequence: c.sequence == 0 ? _stageIndex + 1 : c.sequence,
-            );
+      final result = await _withLoginRetry(
+        () => _resultId == null
+            ? _service.submitResults(
+                testId: widget.testId,
+                selections: selections,
+                processSequence: c.sequence == 0 ? _stageIndex + 1 : c.sequence,
+              )
+            : _service.updateResults(
+                resultId: _resultId!,
+                selections: selections,
+                processSequence: c.sequence == 0 ? _stageIndex + 1 : c.sequence,
+              ),
+      );
+      if (result == null) return;
       _resultId ??= _extractResultId(result);
       if (!mounted) return;
       final hasNext = _stageIndex + 1 < _checklists.length;

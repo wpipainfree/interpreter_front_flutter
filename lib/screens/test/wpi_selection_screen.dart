@@ -6,7 +6,7 @@ import '../../services/auth_service.dart';
 import '../../services/psych_tests_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
-import '../auth/login_screen.dart';
+import '../../utils/auth_ui.dart';
 import 'wpi_review_screen.dart';
 
 /// Classic round-based flow. Now iterates through all checklists (self/other) sequentially.
@@ -54,15 +54,20 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
     _init();
   }
 
+  Future<T?> _withLoginRetry<T>(Future<T> Function() action) async {
+    try {
+      return await action();
+    } on AuthRequiredException {
+      final ok = await AuthUi.promptLogin(context: context);
+      if (!ok) return null;
+      return await action();
+    }
+  }
+
   Future<void> _init() async {
     if (!_auth.isLoggedIn) {
-      final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
-        MaterialPageRoute(
-          fullscreenDialog: true,
-          builder: (_) => const LoginScreen(),
-        ),
-      );
-      if (ok != true && mounted) {
+      final ok = await AuthUi.promptLogin(context: context);
+      if (!ok && mounted) {
         Navigator.of(context).pop();
         return;
       }
@@ -76,7 +81,15 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
       _error = null;
     });
     try {
-      final lists = await _service.fetchChecklists(widget.testId);
+      final lists = await _withLoginRetry(() => _service.fetchChecklists(widget.testId));
+      if (lists == null) {
+        if (!mounted) return;
+        setState(() {
+          _loading = false;
+          _error = const AuthRequiredException().toString();
+        });
+        return;
+      }
       if (!mounted) return;
       if (lists.isEmpty) {
         setState(() {

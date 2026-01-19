@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../services/auth_service.dart';
 import '../../services/psych_tests_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
+import '../../utils/auth_ui.dart';
 import '../result/raw_result_screen.dart';
 
 class WpiReviewScreen extends StatefulWidget {
@@ -179,18 +181,22 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
       rank2: _buckets[2]?.map((e) => e.id).toList() ?? [],
       rank3: _buckets[3]?.map((e) => e.id).toList() ?? [],
     );
-    try {
-      final result = widget.existingResultId == null
-          ? await _service.submitResults(
+
+    Future<Map<String, dynamic>> send() {
+      return widget.existingResultId == null
+          ? _service.submitResults(
               testId: widget.testId,
               selections: selections,
               processSequence: widget.processSequence ?? 99,
             )
-          : await _service.updateResults(
+          : _service.updateResults(
               resultId: widget.existingResultId!,
               selections: selections,
               processSequence: widget.processSequence ?? 99,
             );
+    }
+    try {
+      final result = await send();
       if (!mounted) return;
       if (widget.deferNavigation) {
         Navigator.of(context).pop(result);
@@ -202,6 +208,30 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
               payload: result,
             ),
           ),
+        );
+      }
+    } on AuthRequiredException {
+      final ok = await AuthUi.promptLogin(context: context);
+      if (!ok || !mounted) return;
+      try {
+        final result = await send();
+        if (!mounted) return;
+        if (widget.deferNavigation) {
+          Navigator.of(context).pop(result);
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => RawResultScreen(
+                title: '?? ??',
+                payload: result,
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
         );
       }
     } catch (e) {
@@ -308,7 +338,15 @@ class _DraggableTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(child: Text(item.text, style: AppTextStyles.bodyMedium)),
+          Expanded(
+            child: Text(
+              item.text,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
           const SizedBox(width: 12),
           const Icon(Icons.drag_indicator_rounded, color: AppColors.textSecondary),
         ],
@@ -334,7 +372,13 @@ class _DraggableTile extends StatelessWidget {
           ],
           border: Border.all(color: AppColors.secondary),
         ),
-        child: Text(text, style: AppTextStyles.bodyMedium),
+        child: Text(
+          text,
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }

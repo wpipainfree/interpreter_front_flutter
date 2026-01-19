@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
-import '../auth/login_screen.dart';
+import '../../utils/auth_ui.dart';
 import '../entry_screen.dart';
 import '../settings/notification_settings_screen.dart';
 
@@ -15,8 +15,25 @@ class MyPageScreen extends StatefulWidget {
 
 class _MyPageScreenState extends State<MyPageScreen> {
   final AuthService _authService = AuthService();
+  late final VoidCallback _authListener;
 
   UserInfo? get _user => _authService.currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+    _authListener = () {
+      if (!mounted) return;
+      setState(() {});
+    };
+    _authService.addListener(_authListener);
+  }
+
+  @override
+  void dispose() {
+    _authService.removeListener(_authListener);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,13 +71,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () async {
-                final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
-                  MaterialPageRoute(
-                    fullscreenDialog: true,
-                    builder: (_) => const LoginScreen(),
-                  ),
-                );
-                if (ok == true && mounted) {
+                final ok = await AuthUi.promptLogin(context: context);
+                if (ok && mounted) {
                   setState(() {});
                 }
               },

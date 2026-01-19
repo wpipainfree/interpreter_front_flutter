@@ -14,6 +14,11 @@ class AuthRequiredException implements Exception {
   String toString() => message;
 }
 
+enum LogoutReason {
+  userInitiated,
+  sessionExpired,
+}
+
 /// Authentication and token management service powered by Dio.
 class AuthService extends ChangeNotifier {
   static final AuthService _instance = AuthService._internal();
@@ -34,9 +39,11 @@ class AuthService extends ChangeNotifier {
 
   UserInfo? _currentUser;
   AuthTokens? _tokens;
+  LogoutReason? _lastLogoutReason;
 
   UserInfo? get currentUser => _currentUser;
   AuthTokens? get tokens => _tokens;
+  LogoutReason? get lastLogoutReason => _lastLogoutReason;
   bool get isLoggedIn => _currentUser != null && (_tokens?.accessToken.isNotEmpty ?? false);
   String? get authorizationHeader => (_tokens?.accessToken.isNotEmpty ?? false)
       ? '${_tokens!.tokenType} ${_tokens!.accessToken}'
@@ -54,12 +61,14 @@ class AuthService extends ChangeNotifier {
       final token = AuthTokens.fromJson(jsonDecode(tokensRaw) as Map<String, dynamic>);
       _currentUser = user;
       _tokens = token;
+      _lastLogoutReason = null;
       notifyListeners();
       return user;
     } catch (_) {
       await _clearStoredSession();
       _currentUser = null;
       _tokens = null;
+      _lastLogoutReason = LogoutReason.sessionExpired;
       notifyListeners();
       return null;
     }
@@ -91,6 +100,7 @@ class AuthService extends ChangeNotifier {
         final user = UserInfo.fromJson(data);
         _currentUser = user;
         _tokens = tokens;
+        _lastLogoutReason = null;
         notifyListeners();
         await _persistSession(user, tokens);
         return AuthResult.success(user);
@@ -127,7 +137,7 @@ class AuthService extends ChangeNotifier {
       );
 
       if (response.statusCode != 200) {
-        await logout();
+        await logout(reason: LogoutReason.sessionExpired);
         return null;
       }
 
@@ -141,6 +151,7 @@ class AuthService extends ChangeNotifier {
         accessTokenExpiresAt: _parseAccessTokenExpiry(data['access_token'] as String?),
       );
       _tokens = updatedTokens;
+      _lastLogoutReason = null;
       notifyListeners();
       await _persistSession(_currentUser, updatedTokens);
       return updatedTokens;
@@ -148,7 +159,7 @@ class AuthService extends ChangeNotifier {
       _logNetworkError('refreshAccessToken', e);
       final status = e.response?.statusCode;
       if (status == 401 || status == 403) {
-        await logout();
+        await logout(reason: LogoutReason.sessionExpired);
       }
       return null;
     }
@@ -184,6 +195,7 @@ class AuthService extends ChangeNotifier {
     );
     _currentUser = guest;
     _tokens = null;
+    _lastLogoutReason = null;
     notifyListeners();
     await _clearStoredSession();
     return AuthResult.success(guest);
@@ -200,7 +212,7 @@ class AuthService extends ChangeNotifier {
     if (_tokens!.isAccessTokenExpiring(_refreshBuffer)) {
       final refreshed = await refreshAccessToken();
       if (refreshed == null) {
-        await logout();
+        await logout(reason: LogoutReason.sessionExpired);
         return null;
       }
     }
@@ -208,7 +220,7 @@ class AuthService extends ChangeNotifier {
     return '${_tokens!.tokenType} ${_tokens!.accessToken}';
   }
 
-  Future<void> logout() async {
+  Future<void> logout({LogoutReason reason = LogoutReason.userInitiated}) async {
     final refreshCookie = _tokens?.refreshTokenCookie;
     final authHeader = await getAuthorizationHeader(refreshIfNeeded: false);
     try {
@@ -229,6 +241,7 @@ class AuthService extends ChangeNotifier {
 
     _currentUser = null;
     _tokens = null;
+    _lastLogoutReason = reason;
     notifyListeners();
     await _clearStoredSession();
   }
