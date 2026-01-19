@@ -163,7 +163,7 @@ class PsychTestsService {
 
   /// Fetch paginated psych-test account/result rows for a user.
   Future<PagedUserAccounts> fetchUserAccounts({
-    required int userId,
+    required String userId,
     int page = 1,
     int pageSize = 50,
     bool fetchAll = false,

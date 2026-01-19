@@ -157,7 +157,7 @@ class UserResultDetailService {
     while (hasNext && safety < 50) {
       safety += 1;
       final res = await _psychTestsService.fetchUserAccounts(
-        userId: userId,
+        userId: userId.toString(),
         page: page,
         pageSize: 50,
         fetchAll: false,
@@ -253,7 +253,6 @@ class UserResultDetailService {
       },
       'model': 'gpt-5.2',
       'story': <String, dynamic>{'content': story},
-      'output_format': 'cards_v1',
     };
   }
 
@@ -287,8 +286,8 @@ class UserResultDetailService {
   }
 
   Map<String, dynamic> _emptyProfileJson() => <String, dynamic>{
-        'self_scores': {for (final key in _profileSelfKeys) key: 0},
-        'standard_scores': {for (final key in _profileStandardKeys) key: 0},
+        'self_scores': <String, double>{},
+        'standard_scores': <String, double>{},
       };
 
   String _normalizeProfileKey(String raw) {
@@ -316,4 +315,3 @@ class UserResultDetailService {
     return hash.toRadixString(16).padLeft(8, '0');
   }
 }
-

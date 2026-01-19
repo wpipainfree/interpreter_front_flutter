@@ -9,8 +9,8 @@ import '../../services/auth_service.dart';
 import '../../services/psych_tests_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
+import '../../utils/auth_ui.dart';
 import '../../utils/strings.dart';
-import '../auth/login_screen.dart';
 import '../result/user_result_detail_screen.dart';
 
 enum _InterpretationUiState { idle, creating, polling, ready, failed }
@@ -139,8 +139,8 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
       _error = null;
     });
     await _loadMindFocusIfNeeded();
-    final userId = int.tryParse(_authService.currentUser?.id ?? '');
-    if (userId == null) {
+    final userId = (_authService.currentUser?.id ?? '').trim();
+    if (userId.isEmpty) {
       setState(() {
         _loading = false;
         _error = '사용자 정보를 불러올 수 없습니다.';
@@ -156,7 +156,7 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
       _idealItems
         ..clear()
         ..addAll(ideal);
-      _ensureInitialItemPresent(userId: userId);
+      _ensureInitialItemPresent(userId: int.tryParse(userId) ?? 0);
       _realityItems.sort((a, b) => _itemDate(b).compareTo(_itemDate(a)));
       _idealItems.sort((a, b) => _itemDate(b).compareTo(_itemDate(a)));
 
@@ -231,19 +231,14 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
   }
 
   Future<void> _promptLoginAndReload() async {
-    final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => const LoginScreen(),
-      ),
-    );
-    if (ok == true && mounted) {
+    final ok = await AuthUi.promptLogin(context: context);
+    if (ok && mounted) {
       await _load();
     }
   }
 
   Future<List<UserAccountItem>> _fetchAllAccounts({
-    required int userId,
+    required String userId,
     required int testId,
   }) async {
     final items = <UserAccountItem>[];

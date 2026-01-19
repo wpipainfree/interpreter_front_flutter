@@ -90,8 +90,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _loadAccounts() async {
-    final userId = int.tryParse(_authService.currentUser?.id ?? '');
-    if (userId == null) {
+    final userId = (_authService.currentUser?.id ?? '').trim();
+    if (userId.isEmpty) {
       setState(() {
         _loading = false;
         _error = '로그인이 필요합니다.';

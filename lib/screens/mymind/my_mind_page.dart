@@ -4,9 +4,9 @@ import '../../services/auth_service.dart';
 import '../../services/psych_tests_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
+import '../../utils/auth_ui.dart';
 import '../../utils/main_shell_tab_controller.dart';
 import '../../utils/strings.dart';
-import '../auth/login_screen.dart';
 import '../result/user_result_detail_screen.dart';
 import 'interpretation_panel.dart';
 import 'interpretation_record_panel.dart';
@@ -172,13 +172,8 @@ class _ResultPanelState extends State<_ResultPanel> {
   }
 
   Future<void> _promptLoginAndReload() async {
-    final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => const LoginScreen(),
-      ),
-    );
-    if (ok == true && mounted) {
+    final ok = await AuthUi.promptLogin(context: context);
+    if (ok && mounted) {
       await _loadPage(reset: true);
     }
   }
@@ -213,8 +208,8 @@ class _ResultPanelState extends State<_ResultPanel> {
       setState(() => _loadingMore = true);
     }
 
-    final userId = int.tryParse(_auth.currentUser?.id ?? '');
-    if (userId == null) {
+    final userId = (_auth.currentUser?.id ?? '').trim();
+    if (userId.isEmpty) {
       if (!mounted) return;
       setState(() {
         _error = '사용자 정보를 불러올 수 없습니다.';

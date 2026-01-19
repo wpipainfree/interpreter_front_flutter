@@ -8,8 +8,8 @@ import '../../services/psych_tests_service.dart';
 import '../../services/user_result_detail_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
+import '../../utils/auth_ui.dart';
 import '../../utils/strings.dart';
-import '../auth/login_screen.dart';
 import '../mymind/interpretation_screen.dart';
 import 'user_result_detail/sections/ideal_profile_section.dart';
 import 'user_result_detail/sections/initial_interpretation_section.dart';
@@ -178,13 +178,8 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
   }
 
   Future<void> _promptLoginAndReload() async {
-    final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => const LoginScreen(),
-      ),
-    );
-    if (ok == true && mounted) {
+    final ok = await AuthUi.promptLogin(context: context);
+    if (ok && mounted) {
       await _load();
     }
   }

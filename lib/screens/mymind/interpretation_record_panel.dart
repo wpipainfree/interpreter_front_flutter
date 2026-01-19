@@ -5,8 +5,8 @@ import '../../services/ai_assistant_service.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
+import '../../utils/auth_ui.dart';
 import '../../utils/strings.dart';
-import '../auth/login_screen.dart';
 
 class InterpretationRecordPanel extends StatefulWidget {
   const InterpretationRecordPanel({super.key});
@@ -77,13 +77,8 @@ class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
   }
 
   Future<void> _promptLoginAndReload() async {
-    final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => const LoginScreen(),
-      ),
-    );
-    if (ok == true && mounted) {
+    final ok = await AuthUi.promptLogin(context: context);
+    if (ok && mounted) {
       await _loadPage(reset: true);
     }
   }
