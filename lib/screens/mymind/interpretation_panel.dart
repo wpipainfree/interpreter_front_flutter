@@ -490,7 +490,7 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
         }
       }
       final sessionPayload = <String, dynamic>{
-        'session_id': sessionId,
+        if (sessionId != null) 'session_id': sessionId,
         'turn': _turn,
       };
       final payload = <String, dynamic>{
@@ -501,8 +501,8 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
           'ideal': idealProfile.toJson(),
         },
         'model': 'gpt-5.2',
-        'story': isPhase2 ? {'content': trimmedMindFocus} : <String, dynamic>{},
-        'followup': isPhase3 ? {'question': trimmedFollowup} : <String, dynamic>{},
+        if (isPhase2) 'story': {'content': trimmedMindFocus},
+        if (isPhase3) 'followup': {'question': trimmedFollowup},
       };
       if (isPhase3) {
         _appendMessage(_ChatMessage.user(trimmedFollowup));

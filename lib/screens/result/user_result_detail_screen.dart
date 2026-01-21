@@ -260,17 +260,25 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
     final ideal = _idealDetail;
     if (reality == null && ideal == null) {
       return Center(
-        child: Text(AppStrings.resultDetailLoadFail, style: AppTextStyles.bodyMedium),
+        child: Text(AppStrings.resultDetailLoadFail,
+            style: AppTextStyles.bodyMedium),
       );
     }
 
     final headerDate = _formatDateTime((reality ?? ideal)!.result.createdAt);
 
-    const selfLabels = ['Realist', 'Romanticist', 'Humanist', 'Idealist', 'Agent'];
+    const selfLabels = [
+      'Realist',
+      'Romanticist',
+      'Humanist',
+      'Idealist',
+      'Agent'
+    ];
     const otherLabels = ['Relation', 'Trust', 'Manual', 'Self', 'Culture'];
 
     final storyForAi = (reality != null) ? (_mindFocus ?? '') : '';
-    final canOpenPhase3 = (_initialInterpretation?.session?.sessionId ?? '').trim().isNotEmpty;
+    final canOpenPhase3 =
+        (_initialInterpretation?.session?.sessionId ?? '').trim().isNotEmpty;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -325,13 +333,13 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
         children: [
           Text(
             date,
-            style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+            style: AppTextStyles.caption.copyWith(color: AppColors.textPrimary),
           ),
           if (trimmedFocus.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
               '내가 알고 싶은 마음: $trimmedFocus',
-              style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+              style: AppTextStyles.bodySmall,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -339,7 +347,7 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
           const SizedBox(height: 10),
           Text(
             AppStrings.resultDetailPurposeText,
-            style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+            style: AppTextStyles.bodySmall,
           ),
         ],
       ),

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/psych_tests_service.dart';
@@ -71,8 +71,10 @@ class _MyMindPageState extends State<MyMindPage> {
       child: TextButton(
         onPressed: () => setState(() => _tab = idx),
         style: TextButton.styleFrom(
-          foregroundColor: selected ? AppColors.primary : AppColors.textSecondary,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          foregroundColor:
+              selected ? AppColors.primary : AppColors.textSecondary,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           padding: const EdgeInsets.symmetric(vertical: 12),
           splashFactory: NoSplash.splashFactory,
         ),
@@ -260,23 +262,23 @@ class _ResultPanelState extends State<_ResultPanel> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-             Text(_error!, style: AppTextStyles.bodyMedium),
-             const SizedBox(height: 12),
-             if (!_auth.isLoggedIn) ...[
-               ElevatedButton(
-                  onPressed: _promptLoginAndReload,
-                  child: const Text(AppStrings.login),
-                ),
-                const SizedBox(height: 12),
-              ],
+            Text(_error!, style: AppTextStyles.bodyMedium),
+            const SizedBox(height: 12),
+            if (!_auth.isLoggedIn) ...[
               ElevatedButton(
-                onPressed: () => _loadPage(reset: true),
-                child: const Text(AppStrings.retry),
-             ),
-           ],
-         ),
-       );
-     }
+                onPressed: _promptLoginAndReload,
+                child: const Text(AppStrings.login),
+              ),
+              const SizedBox(height: 12),
+            ],
+            ElevatedButton(
+              onPressed: () => _loadPage(reset: true),
+              child: const Text(AppStrings.retry),
+            ),
+          ],
+        ),
+      );
+    }
 
     if (_items.isEmpty) {
       return _card(
@@ -394,8 +396,7 @@ class _ResultCard extends StatelessWidget {
                       if (tester.isNotEmpty && tester != '미지정')
                         Text(
                           '검사자 $tester',
-                          style: AppTextStyles.bodySmall
-                              .copyWith(color: AppColors.textSecondary),
+                          style: AppTextStyles.bodySmall,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -403,13 +404,13 @@ class _ResultCard extends StatelessWidget {
                       Text(
                         date,
                         style: AppTextStyles.caption
-                            .copyWith(color: AppColors.textSecondary),
+                            .copyWith(color: AppColors.textPrimary),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                const Icon(Icons.chevron_right, color: AppColors.textPrimary),
               ],
             ),
             const SizedBox(height: 8),
@@ -551,7 +552,7 @@ Widget _card(String title, String subtitle) {
         const SizedBox(height: 6),
         Text(
           subtitle,
-          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+          style: AppTextStyles.bodySmall,
         ),
       ],
     ),

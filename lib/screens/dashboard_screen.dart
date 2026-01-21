@@ -333,9 +333,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         },
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.textOnDark,
-                          side: BorderSide(color: AppColors.textOnDark.withOpacity(0.6)),
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          side: BorderSide(
+                              color: AppColors.textOnDark.withOpacity(0.6)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
                         ),
                         child: const Text('이상(변화 방향) 이어하기'),
                       ),
@@ -423,7 +426,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               if (!_authService.isLoggedIn) ...[
                 ElevatedButton(
                   onPressed: _promptLoginAndReload,
-                  style: ElevatedButton.styleFrom(splashFactory: NoSplash.splashFactory),
+                  style: ElevatedButton.styleFrom(
+                      splashFactory: NoSplash.splashFactory),
                   child: const Text('로그인하기'),
                 ),
                 const SizedBox(height: 8),
@@ -485,13 +489,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           const SizedBox(height: 8),
-           Text(
-             '첫 검사를 완료하면, 내 마음 구조 요약이 생깁니다.',
-             style: TextStyle(
-               fontSize: 14,
-               color: AppColors.textSecondary,
-             ),
-           ),
+          Text(
+            '첫 검사를 완료하면, 내 마음 구조 요약이 생깁니다.',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );
@@ -558,10 +562,10 @@ class _AccountCard extends StatelessWidget {
                   children: [
                     Text(
                       testName,
-                      style: const TextStyle(
+                      style: AppTextStyles.bodyMedium.copyWith(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
+                        height: 1.25,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -573,22 +577,28 @@ class _AccountCard extends StatelessWidget {
                           Flexible(
                             child: Text(
                               '검사자 $tester',
-                              style: TextStyle(
-                                  fontSize: 13, color: AppColors.textPrimary),
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.textPrimary,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         if (tester.isNotEmpty && tester != '미입력') ...[
                           const SizedBox(width: 6),
-                          const Text('·',
-                              style: TextStyle(color: AppColors.textPrimary)),
+                          Text(
+                            '·',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
                           const SizedBox(width: 6),
                         ],
                         Text(
                           date,
-                          style: TextStyle(
-                              fontSize: 12, color: AppColors.textPrimary),
+                          style: AppTextStyles.captionSmall.copyWith(
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ],
                     ),

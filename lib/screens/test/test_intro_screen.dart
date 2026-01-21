@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
@@ -38,7 +38,8 @@ class TestIntroScreen extends StatelessWidget {
             children: [
               Text(
                 '준비 1/2',
-                style: AppTextStyles.labelSmall,
+                style: AppTextStyles.labelMedium
+                    .copyWith(color: AppColors.textPrimary),
               ),
               const SizedBox(height: 12),
               Text(
@@ -49,7 +50,7 @@ class TestIntroScreen extends StatelessWidget {
               Text(
                 '마음은 원자 구조처럼 구성됩니다.\n'
                 '기준·믿음·감정·몸의 구조를 확인해 봅니다.',
-                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                style: AppTextStyles.bodyMedium,
               ),
               const Spacer(),
               SizedBox(

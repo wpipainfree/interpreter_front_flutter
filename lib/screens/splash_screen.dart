@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_text_styles.dart';
 import '../utils/constants.dart';
+import '../utils/feature_flags.dart';
 import '../utils/strings.dart';
 import 'main_shell.dart';
 import 'onboarding/onboarding_screen.dart';
@@ -35,10 +36,14 @@ class _SplashScreenState extends State<SplashScreen>
     await Future.delayed(AppConstants.splashDuration);
     final prefs = await SharedPreferences.getInstance();
     final seen = prefs.getBool(_onboardingSeenKey) ?? false;
+    final shouldShowOnboarding = FeatureFlags.alwaysShowOnboarding || !seen;
     if (!mounted) return;
 
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => seen ? const MainShell() : const OnboardingScreen()),
+      MaterialPageRoute(
+        builder: (_) =>
+            shouldShowOnboarding ? const OnboardingScreen() : const MainShell(),
+      ),
     );
   }
 
@@ -87,7 +92,8 @@ class _SplashScreenState extends State<SplashScreen>
                 height: 22,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.secondary),
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(AppColors.secondary),
                 ),
               ),
               const SizedBox(height: 12),

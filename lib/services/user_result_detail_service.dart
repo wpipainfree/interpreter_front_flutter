@@ -243,7 +243,6 @@ class UserResultDetailService {
     final idealProfile = ideal != null ? _buildProfileJson(ideal) : _emptyProfileJson();
     return <String, dynamic>{
       'session': <String, dynamic>{
-        'session_id': null,
         'turn': 1,
       },
       'phase': 2,
