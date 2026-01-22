@@ -3,34 +3,29 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
-import '../utils/app_config.dart';
-import 'auth_service.dart';
+import 'api_client.dart';
 
 class AiAssistantService {
-  AiAssistantService({Dio? client})
-      : _client = client ??
-            Dio(
-              BaseOptions(
-                connectTimeout: null,
-                receiveTimeout: null,
-              ),
-            );
+  AiAssistantService({ApiClient? apiClient})
+      : _apiClient = apiClient ?? ApiClient.instance();
 
-  final Dio _client;
-  final AuthService _authService = AuthService();
+  final ApiClient _apiClient;
 
   Future<Map<String, dynamic>> interpret(Map<String, dynamic> payload) async {
-    final uri = _uri('/api/v1/ai-assistant/interpret');
+    final uri = _apiClient.uri('/api/v1/ai-assistant/interpret');
     _log('interpret request', {
       'url': uri.toString(),
       'payload': payload,
     });
     try {
-      final response = await _requestWithAuthRetry(
-        (auth) => _client.post(
+      final response = await _apiClient.requestWithAuthRetry(
+        (auth) => _apiClient.dio.post(
           uri.toString(),
           data: payload,
-          options: _optionsWithAuth(auth, contentType: 'application/json'),
+          options: _apiClient.options(
+            authHeader: auth,
+            contentType: 'application/json',
+          ),
         ),
       );
 
@@ -40,7 +35,7 @@ class AiAssistantService {
           'data': response.data,
         });
         throw AiAssistantHttpException(
-          'GPT 해석 요청에 실패했습니다. (${response.statusCode})',
+          'AI 해석 요청에 실패했습니다. (${response.statusCode})',
           statusCode: response.statusCode,
           debug: response.data?.toString(),
         );
@@ -58,7 +53,7 @@ class AiAssistantService {
         'query': e.requestOptions.queryParameters,
       });
       throw AiAssistantHttpException(
-        'GPT 해석 요청에 실패했습니다. (${e.response?.statusCode ?? e.error})',
+        'AI 해석 요청에 실패했습니다. (${e.response?.statusCode ?? e.error})',
         statusCode: e.response?.statusCode,
         debug: e.response?.data?.toString(),
       );
@@ -66,12 +61,12 @@ class AiAssistantService {
   }
 
   Future<Map<String, dynamic>> fetchConversation(String conversationId) async {
-    final uri = _uri('/api/v1/ai-logs/conversations/$conversationId');
+    final uri = _apiClient.uri('/api/v1/ai-logs/conversations/$conversationId');
     try {
-      final response = await _requestWithAuthRetry(
-        (auth) => _client.get(
+      final response = await _apiClient.requestWithAuthRetry(
+        (auth) => _apiClient.dio.get(
           uri.toString(),
-          options: _optionsWithAuth(auth),
+          options: _apiClient.options(authHeader: auth),
         ),
       );
 
@@ -81,7 +76,7 @@ class AiAssistantService {
           'data': response.data,
         });
         throw AiAssistantHttpException(
-          '대화 상태 조회에 실패했습니다. (${response.statusCode})',
+          '대화 내용을 불러오지 못했습니다. (${response.statusCode})',
           statusCode: response.statusCode,
           debug: response.data?.toString(),
         );
@@ -94,7 +89,7 @@ class AiAssistantService {
         'data': e.response?.data,
       });
       throw AiAssistantHttpException(
-        '대화 상태 조회에 실패했습니다. (${e.response?.statusCode ?? e.error})',
+        '대화 내용을 불러오지 못했습니다. (${e.response?.statusCode ?? e.error})',
         statusCode: e.response?.statusCode,
         debug: e.response?.data?.toString(),
       );
@@ -105,16 +100,16 @@ class AiAssistantService {
     int skip = 0,
     int limit = 50,
   }) async {
-    final uri = _uri('/api/v1/ai-logs/conversations');
+    final uri = _apiClient.uri('/api/v1/ai-logs/conversations');
     try {
-      final response = await _requestWithAuthRetry(
-        (auth) => _client.get(
+      final response = await _apiClient.requestWithAuthRetry(
+        (auth) => _apiClient.dio.get(
           uri.toString(),
           queryParameters: {
             'skip': skip,
             'limit': limit,
           },
-          options: _optionsWithAuth(auth),
+          options: _apiClient.options(authHeader: auth),
         ),
       );
 
@@ -143,6 +138,7 @@ class AiAssistantService {
       );
     }
   }
+
   void _log(String label, Object? data) {
     if (!kDebugMode) return;
     debugPrint('[AiAssistant] $label');
@@ -152,59 +148,6 @@ class AiAssistantService {
       debugPrint(pretty);
     } catch (_) {
       debugPrint(data.toString());
-    }
-  }
-
-  Uri _uri(String path) {
-    final base = AppConfig.apiBaseUrl.endsWith('/')
-        ? AppConfig.apiBaseUrl.substring(0, AppConfig.apiBaseUrl.length - 1)
-        : AppConfig.apiBaseUrl;
-    final normalized = path.startsWith('/') ? path : '/$path';
-    return Uri.parse('$base$normalized');
-  }
-
-  Options _optionsWithAuth(String? auth, {String? contentType}) {
-    return Options(
-      headers: {
-        if (contentType != null) 'Content-Type': contentType,
-        if (auth != null) 'Authorization': auth,
-      },
-      sendTimeout: null,
-      receiveTimeout: null,
-    );
-  }
-
-  Future<Response<T>> _requestWithAuthRetry<T>(
-    Future<Response<T>> Function(String? authHeader) send,
-  ) async {
-    String? auth = await _authService.getAuthorizationHeader();
-    if (auth == null) {
-      throw const AuthRequiredException();
-    }
-    try {
-      return await send(auth);
-    } on DioException catch (e) {
-      final is401 = e.response?.statusCode == 401;
-      final refreshed = is401 ? await _authService.refreshAccessToken() : null;
-      if (!is401) rethrow;
-      if (refreshed == null) {
-        await _authService.logout(reason: LogoutReason.sessionExpired);
-        throw const AuthRequiredException();
-      }
-      auth = await _authService.getAuthorizationHeader(refreshIfNeeded: false);
-      if (auth == null) {
-        await _authService.logout(reason: LogoutReason.sessionExpired);
-        throw const AuthRequiredException();
-      }
-      try {
-        return await send(auth);
-      } on DioException catch (e) {
-        if (e.response?.statusCode == 401) {
-          await _authService.logout(reason: LogoutReason.sessionExpired);
-          throw const AuthRequiredException();
-        }
-        rethrow;
-      }
     }
   }
 }
@@ -226,3 +169,4 @@ class AiAssistantHttpException extends AiAssistantException {
     super.debug,
   });
 }
+

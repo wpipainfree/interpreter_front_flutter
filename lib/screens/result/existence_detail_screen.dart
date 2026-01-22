@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../models/wpi_result.dart';
+import '../../router/app_routes.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/main_shell_tab_controller.dart';
-import '../main_shell.dart';
 
 class ExistenceDetailScreen extends StatelessWidget {
   final WpiResult result;
@@ -15,8 +15,9 @@ class ExistenceDetailScreen extends StatelessWidget {
       navigator.popUntil((route) => route.isFirst);
       return;
     }
-    navigator.pushReplacement(
-      MaterialPageRoute(builder: (_) => const MainShell(initialIndex: 0)),
+    navigator.pushReplacementNamed(
+      AppRoutes.main,
+      arguments: const MainShellArgs(initialIndex: 0),
     );
   }
 
@@ -334,7 +335,7 @@ class ExistenceDetailScreen extends StatelessWidget {
         Text(
           description,
           style: TextStyle(
-            fontSize: 13,
+            fontSize: 14,
             color: AppColors.textSecondary,
             height: 1.4,
           ),
@@ -412,7 +413,7 @@ class ExistenceDetailScreen extends StatelessWidget {
                 Text(
                   description,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     color: AppColors.textSecondary,
                   ),
                 ),

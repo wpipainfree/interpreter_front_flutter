@@ -4,10 +4,11 @@ import 'package:flutter/services.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/psych_tests_service.dart';
+import '../../router/app_routes.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/auth_ui.dart';
-import 'wpi_review_screen.dart';
+import '../../widgets/app_error_view.dart';
 
 /// Classic round-based flow. Now iterates through all checklists (self/other) sequentially.
 class WpiSelectionScreen extends StatefulWidget {
@@ -54,16 +55,6 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
     _init();
   }
 
-  Future<T?> _withLoginRetry<T>(Future<T> Function() action) async {
-    try {
-      return await action();
-    } on AuthRequiredException {
-      final ok = await AuthUi.promptLogin(context: context);
-      if (!ok) return null;
-      return await action();
-    }
-  }
-
   Future<void> _init() async {
     if (!_auth.isLoggedIn) {
       final ok = await AuthUi.promptLogin(context: context);
@@ -81,7 +72,10 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
       _error = null;
     });
     try {
-      final lists = await _withLoginRetry(() => _service.fetchChecklists(widget.testId));
+      final lists = await AuthUi.withLoginRetry(
+        context: context,
+        action: () => _service.fetchChecklists(widget.testId),
+      );
       if (lists == null) {
         if (!mounted) return;
         setState(() {
@@ -196,17 +190,16 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
 
     if (!mounted) return;
     final isLastStage = _stageIndex + 1 >= _checklists.length;
-    final result = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => WpiReviewScreen(
-          testId: widget.testId,
-          testTitle: '${widget.testTitle} · ${checklist.name}',
-          items: checklist.questions,
-          selections: selections,
-          processSequence: checklist.sequence == 0 ? _stageIndex + 1 : checklist.sequence,
-          deferNavigation: !isLastStage,
-          existingResultId: _resultId,
-        ),
+    final result = await Navigator.of(context).pushNamed(
+      AppRoutes.wpiReview,
+      arguments: WpiReviewArgs(
+        testId: widget.testId,
+        testTitle: '${widget.testTitle} · ${checklist.name}',
+        items: checklist.questions,
+        selections: selections,
+        processSequence: checklist.sequence == 0 ? _stageIndex + 1 : checklist.sequence,
+        deferNavigation: !isLastStage,
+        existingResultId: _resultId,
       ),
     );
 
@@ -238,18 +231,12 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
           backgroundColor: AppColors.backgroundLight,
           foregroundColor: AppColors.textPrimary,
         ),
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(_error!, style: AppTextStyles.bodyMedium),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: _loadChecklist,
-                child: const Text('다시 시도'),
-              ),
-            ],
-          ),
+        body: AppErrorView(
+          title: '불러오지 못했어요',
+          message: _error!,
+          primaryActionLabel: '다시 시도',
+          primaryActionStyle: AppErrorPrimaryActionStyle.outlined,
+          onPrimaryAction: () => _loadChecklist(),
         ),
       );
     }

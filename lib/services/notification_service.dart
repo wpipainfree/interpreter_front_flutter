@@ -4,6 +4,10 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../router/app_routes.dart';
+import '../utils/app_navigator.dart';
+import '../utils/main_shell_tab_controller.dart';
+
 /// WPI 알림 서비스
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -25,6 +29,8 @@ class NotificationService {
   static const String _keyReminderEnabled = 'reminder_enabled';
   static const String _keyLastTestDate = 'last_test_date';
   static const String _keyReminderDays = 'reminder_days';
+
+  int? _pendingInitialTabIndex;
 
   /// 알림 서비스 초기화
   Future<void> initialize() async {
@@ -88,8 +94,38 @@ class NotificationService {
 
   /// 알림 탭 처리
   void _onNotificationTap(NotificationResponse response) {
-    debugPrint('알림 클릭: ${response.payload}');
-    // TODO: 알림 클릭 시 해당 화면으로 이동
+    final payload = (response.payload ?? '').trim();
+    debugPrint('알림 클릭: $payload');
+
+    final tabIndex = switch (payload) {
+      'test_reminder' => 1,
+      'test_complete' => 2,
+      _ => 0,
+    };
+
+    _openMainShell(tabIndex);
+  }
+
+  void handlePendingNavigation() {
+    final tabIndex = _pendingInitialTabIndex;
+    if (tabIndex == null) return;
+    _pendingInitialTabIndex = null;
+    _openMainShell(tabIndex);
+  }
+
+  void _openMainShell(int tabIndex) {
+    final navigator = AppNavigator.key.currentState;
+    if (navigator == null) {
+      _pendingInitialTabIndex = tabIndex;
+      return;
+    }
+
+    MainShellTabController.index.value = tabIndex;
+    navigator.pushNamedAndRemoveUntil(
+      AppRoutes.main,
+      (route) => false,
+      arguments: MainShellArgs(initialIndex: tabIndex),
+    );
   }
 
   /// 알림 권한 요청

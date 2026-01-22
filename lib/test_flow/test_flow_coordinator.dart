@@ -1,20 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../screens/result/user_result_detail_screen.dart';
-import '../screens/test/wpi_selection_flow_new.dart';
+import '../router/app_routes.dart';
 import 'continue_to_ideal_screen.dart';
 import 'test_flow_models.dart';
 
 class TestFlowCoordinator {
   TestFlowCoordinator({
     this.idealTestId = 3,
-    this.idealTestTitle = 'Н?\'НЯ? И¤?Н,к',
+    this.idealTestTitle = '이상(변화 방향) 검사',
   });
 
   static const String _pendingIdealKey = 'wpi_pending_ideal';
   static const String _pendingIdealFromResultKey = 'wpi_pending_ideal_from_reality_result_id';
-  static const String _resultIdParseFailMessage = 'ˆýøˆ3¬ ID‰¬ ¡T?,¡ÿ ^~ -+Sæ‰<^‰<.';
+  static const String _resultIdParseFailMessage = '결과 ID를 확인할 수 없습니다. 다시 시도해 주세요.';
 
   final int idealTestId;
   final String idealTestTitle;
@@ -36,15 +35,14 @@ class TestFlowCoordinator {
     required String realityTestTitle,
     String? mindFocus,
   }) async {
-    final completion = await Navigator.of(context).push<FlowCompletion>(
-      MaterialPageRoute(
-        builder: (_) => WpiSelectionFlowNew(
-          testId: realityTestId,
-          testTitle: realityTestTitle,
-          mindFocus: mindFocus,
-          kind: WpiTestKind.reality,
-          exitMode: FlowExitMode.popWithResult,
-        ),
+    final completion = await Navigator.of(context).pushNamed<FlowCompletion>(
+      AppRoutes.wpiSelectionFlow,
+      arguments: WpiSelectionFlowArgs(
+        testId: realityTestId,
+        testTitle: realityTestTitle,
+        mindFocus: mindFocus,
+        kind: WpiTestKind.reality,
+        exitMode: FlowExitMode.popWithResult,
       ),
     );
 
@@ -66,15 +64,14 @@ class TestFlowCoordinator {
       await clearPendingIdeal();
       if (!context.mounted) return;
 
-      final idealCompletion = await Navigator.of(context).push<FlowCompletion>(
-        MaterialPageRoute(
-          builder: (_) => WpiSelectionFlowNew(
-            testId: idealTestId,
-            testTitle: idealTestTitle,
-            mindFocus: mindFocus,
-            kind: WpiTestKind.ideal,
-            exitMode: FlowExitMode.popWithResult,
-          ),
+      final idealCompletion = await Navigator.of(context).pushNamed<FlowCompletion>(
+        AppRoutes.wpiSelectionFlow,
+        arguments: WpiSelectionFlowArgs(
+          testId: idealTestId,
+          testTitle: idealTestTitle,
+          mindFocus: mindFocus,
+          kind: WpiTestKind.ideal,
+          exitMode: FlowExitMode.popWithResult,
         ),
       );
       if (!context.mounted) return;
@@ -89,10 +86,9 @@ class TestFlowCoordinator {
     }
 
     if (!context.mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => UserResultDetailScreen(resultId: realityResultId, testId: realityTestId),
-      ),
+    Navigator.of(context).pushReplacementNamed(
+      AppRoutes.userResultDetail,
+      arguments: UserResultDetailArgs(resultId: realityResultId, testId: realityTestId),
     );
   }
 
@@ -104,15 +100,14 @@ class TestFlowCoordinator {
     await clearPendingIdeal();
     if (!context.mounted) return;
 
-    final completion = await Navigator.of(context).push<FlowCompletion>(
-      MaterialPageRoute(
-        builder: (_) => WpiSelectionFlowNew(
-          testId: idealTestId,
-          testTitle: idealTestTitle,
-          mindFocus: mindFocus,
-          kind: WpiTestKind.ideal,
-          exitMode: FlowExitMode.popWithResult,
-        ),
+    final completion = await Navigator.of(context).pushNamed<FlowCompletion>(
+      AppRoutes.wpiSelectionFlow,
+      arguments: WpiSelectionFlowArgs(
+        testId: idealTestId,
+        testTitle: idealTestTitle,
+        mindFocus: mindFocus,
+        kind: WpiTestKind.ideal,
+        exitMode: FlowExitMode.popWithResult,
       ),
     );
 
@@ -137,12 +132,11 @@ class TestFlowCoordinator {
       return;
     }
 
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => UserResultDetailScreen(
-          resultId: anchorId,
-          testId: pendingRealityId != null ? 1 : idealTestId,
-        ),
+    Navigator.of(context).pushNamed(
+      AppRoutes.userResultDetail,
+      arguments: UserResultDetailArgs(
+        resultId: anchorId,
+        testId: pendingRealityId != null ? 1 : idealTestId,
       ),
     );
   }

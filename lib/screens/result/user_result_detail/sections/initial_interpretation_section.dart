@@ -359,7 +359,7 @@ class _MarkdownCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: AppColors.border),
           ),
-          code: baseTextStyle.copyWith(fontFamily: 'monospace', fontSize: 12),
+          code: baseTextStyle.copyWith(fontFamily: 'monospace', fontSize: 13),
         ),
       ),
     );

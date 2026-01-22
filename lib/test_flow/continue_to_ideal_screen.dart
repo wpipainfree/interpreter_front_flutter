@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../router/app_routes.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_text_styles.dart';
 
@@ -7,9 +8,7 @@ class ContinueToIdealScreen extends StatelessWidget {
   const ContinueToIdealScreen({super.key});
 
   static Future<bool?> show(BuildContext context) {
-    return Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const ContinueToIdealScreen()),
-    );
+    return Navigator.of(context).pushNamed<bool>(AppRoutes.continueToIdeal);
   }
 
   void _close(BuildContext context, bool value) {
@@ -28,7 +27,7 @@ class ContinueToIdealScreen extends StatelessWidget {
       child: Scaffold(
         backgroundColor: AppColors.backgroundWhite,
         appBar: AppBar(
-          title: const Text('Н?\'НЯ? И¤?Н,кЙнo Н?\'Н-\'Н,o Н,б-%б И1OНs"?'),
+          title: const Text('이상(변화 방향)도 이어서 할까요?'),
           backgroundColor: AppColors.backgroundWhite,
           foregroundColor: AppColors.textPrimary,
           elevation: 0,
@@ -47,12 +46,12 @@ class ContinueToIdealScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Н?\'НЯ?Н?? "Й,\'И°? Й?~И3  Н<Н?? Йж"НSц"Н?, Н, бЯ?б~ЙS" Й<"И3,Н~^Нs".',
+                  '이상(변화 방향) 검사는 “앞으로 어떤 방향으로 바뀌고 싶은지”를 보는 검사예요.',
                   style: AppTextStyles.bodyMedium,
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Н?И,^ Н?\'Н-\'Н,o Н,б-%б~Йc\' И¤°И3мИ°? Й?" Н, Йж.б\'Н`Й<^Й<.',
+                  '지금 이어서 진행하거나, 나중에 홈에서 “이상(변화 방향) 이어하기”로 계속할 수 있어요.',
                   style: AppTextStyles.bodyMedium,
                 ),
                 const Spacer(),
@@ -69,7 +68,7 @@ class ContinueToIdealScreen extends StatelessWidget {
                       ),
                     ),
                     child: const Text(
-                      'Н?\'НЯ?НoмЙнo И3,Н+?',
+                      '이상(변화 방향) 이어하기',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
                   ),
@@ -79,7 +78,7 @@ class ContinueToIdealScreen extends StatelessWidget {
                   width: double.infinity,
                   child: TextButton(
                     onPressed: () => _close(context, false),
-                    child: const Text('Й,~Н`Н-? б~И,°'),
+                    child: const Text('나중에 하기'),
                   ),
                 ),
               ],
@@ -90,4 +89,3 @@ class ContinueToIdealScreen extends StatelessWidget {
     );
   }
 }
-

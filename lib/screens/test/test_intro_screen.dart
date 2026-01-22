@@ -1,20 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../../router/app_routes.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
-import 'test_note_screen.dart';
 
 class TestIntroScreen extends StatelessWidget {
   const TestIntroScreen({super.key});
 
   void _start(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const TestNoteScreen(
-          testId: 1,
-          testTitle: '현실 검사',
-        ),
-      ),
+    Navigator.of(context).pushNamed(
+      AppRoutes.testNote,
+      arguments: const TestNoteArgs(testId: 1, testTitle: '현실 검사'),
     );
   }
 

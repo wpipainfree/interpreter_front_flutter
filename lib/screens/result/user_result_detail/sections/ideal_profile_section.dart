@@ -15,11 +15,15 @@ class IdealProfileSection extends StatelessWidget {
     required this.detail,
     required this.selfLabels,
     required this.otherLabels,
+    this.selfDisplayLabels,
+    this.otherDisplayLabels,
   });
 
   final UserResultDetail? detail;
   final List<String> selfLabels;
   final List<String> otherLabels;
+  final List<String>? selfDisplayLabels;
+  final List<String>? otherDisplayLabels;
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +46,9 @@ class IdealProfileSection extends StatelessWidget {
       checklistNameContains: '타인',
     );
 
+    final selfLabelsForUi = selfDisplayLabels ?? selfLabels;
+    final otherLabelsForUi = otherDisplayLabels ?? otherLabels;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -60,8 +67,8 @@ class IdealProfileSection extends StatelessWidget {
         InteractiveLineChart(
           selfScores: selfScores,
           otherScores: otherScores,
-          selfLabels: selfLabels,
-          otherLabels: otherLabels,
+          selfLabels: selfLabelsForUi,
+          otherLabels: otherLabelsForUi,
         ),
         const SizedBox(height: 16),
         Text(
@@ -70,9 +77,9 @@ class IdealProfileSection extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         ScoreTable(
-          selfLabels: selfLabels,
+          selfLabels: selfLabelsForUi,
           selfScores: selfScores,
-          otherLabels: otherLabels,
+          otherLabels: otherLabelsForUi,
           otherScores: otherScores,
         ),
         const SizedBox(height: 10),
@@ -84,4 +91,3 @@ class IdealProfileSection extends StatelessWidget {
     );
   }
 }
-

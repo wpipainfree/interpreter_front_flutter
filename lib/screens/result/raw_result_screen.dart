@@ -44,7 +44,7 @@ class RawResultScreen extends StatelessWidget {
                 child: SingleChildScrollView(
                   child: Text(
                     pretty,
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 14),
                   ),
                 ),
               ),

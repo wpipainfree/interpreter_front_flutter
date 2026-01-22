@@ -148,7 +148,7 @@ class _LineChartAreaState extends State<_LineChartArea> {
                   Text(
                     selfLabels[i],
                     style:
-                        AppTextStyles.caption.copyWith(color: Colors.red, fontWeight: FontWeight.w700, fontSize: 11),
+                        AppTextStyles.captionSmall.copyWith(color: Colors.red, fontWeight: FontWeight.w700, fontSize: 12),
                     textAlign: TextAlign.center,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -156,7 +156,7 @@ class _LineChartAreaState extends State<_LineChartArea> {
                   Text(
                     otherLabels[i],
                     style:
-                        AppTextStyles.caption.copyWith(color: Colors.blue, fontWeight: FontWeight.w700, fontSize: 11),
+                        AppTextStyles.captionSmall.copyWith(color: Colors.blue, fontWeight: FontWeight.w700, fontSize: 12),
                     textAlign: TextAlign.center,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -263,7 +263,11 @@ class _LineChartPainter extends CustomPainter {
       axisTextPainter
         ..text = TextSpan(
           text: value.toStringAsFixed(0),
-          style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+          ),
         )
         ..layout();
       axisTextPainter.paint(
@@ -336,8 +340,8 @@ class _LineChartPainter extends CustomPainter {
     const safeInset = 4.0;
     const corridorPad = 8.0;
     const corridorSidePad = 4.0;
-    const fontSizePrimary = 11.0;
-    const fontSizeFallback = 10.0;
+    const fontSizePrimary = 12.0;
+    const fontSizeFallback = 11.0;
 
     final labelSafeRect = Rect.fromLTWH(0, 0, size.width, size.height).deflate(safeInset);
 
@@ -683,4 +687,3 @@ class _TooltipBox extends StatelessWidget {
     );
   }
 }
-

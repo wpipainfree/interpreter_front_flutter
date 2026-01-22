@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../router/app_routes.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
-import 'login_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -113,12 +113,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     onPressed: _isLoading
                         ? null
                         : () {
-                            Navigator.of(context, rootNavigator: true).pushReplacement(
-                              MaterialPageRoute(
-                                fullscreenDialog: true,
-                                builder: (_) => const LoginScreen(),
-                              ),
-                            );
+                            Navigator.of(context, rootNavigator: true)
+                                .pushReplacementNamed(AppRoutes.login);
                           },
                     child: Text(
                       '이미 계정이 있으신가요? 로그인',

@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/psych_tests_service.dart';
+import '../../router/app_routes.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/auth_ui.dart';
 import '../../utils/main_shell_tab_controller.dart';
 import '../../utils/strings.dart';
-import '../result/user_result_detail_screen.dart';
+import '../../widgets/app_error_view.dart';
 import 'interpretation_panel.dart';
 import 'interpretation_record_panel.dart';
 
@@ -258,25 +259,17 @@ class _ResultPanelState extends State<_ResultPanel> {
     }
 
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(_error!, style: AppTextStyles.bodyMedium),
-            const SizedBox(height: 12),
-            if (!_auth.isLoggedIn) ...[
-              ElevatedButton(
-                onPressed: _promptLoginAndReload,
-                child: const Text(AppStrings.login),
-              ),
-              const SizedBox(height: 12),
-            ],
-            ElevatedButton(
-              onPressed: () => _loadPage(reset: true),
-              child: const Text(AppStrings.retry),
-            ),
-          ],
-        ),
+      final loggedIn = _auth.isLoggedIn;
+      return AppErrorView(
+        title: loggedIn ? '불러오지 못했어요' : '로그인이 필요합니다',
+        message: _error!,
+        primaryActionLabel: loggedIn ? AppStrings.retry : AppStrings.login,
+        primaryActionStyle: loggedIn
+            ? AppErrorPrimaryActionStyle.outlined
+            : AppErrorPrimaryActionStyle.filled,
+        onPrimaryAction: loggedIn
+            ? () => _loadPage(reset: true)
+            : () => _promptLoginAndReload(),
       );
     }
 
@@ -332,13 +325,9 @@ class _ResultCard extends StatelessWidget {
 
   void _openDetail(BuildContext context) {
     if (item.resultId == null) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => UserResultDetailScreen(
-          resultId: item.resultId!,
-          testId: item.testId,
-        ),
-      ),
+    Navigator.of(context).pushNamed(
+      AppRoutes.userResultDetail,
+      arguments: UserResultDetailArgs(resultId: item.resultId!, testId: item.testId),
     );
   }
 
@@ -359,7 +348,7 @@ class _ResultCard extends StatelessWidget {
       onTap: () => _openDetail(context),
       splashColor: Colors.transparent,
       highlightColor: Colors.transparent,
-      overlayColor: MaterialStateProperty.all(Colors.transparent),
+      overlayColor: WidgetStateProperty.all(Colors.transparent),
       splashFactory: NoSplash.splashFactory,
       child: Container(
         padding: const EdgeInsets.all(14),

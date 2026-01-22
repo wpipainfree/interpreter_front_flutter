@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import '../../router/app_routes.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
-import 'signup_screen.dart';
+import '../../utils/feature_flags.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -93,6 +94,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final socialEnabled = FeatureFlags.enableSocialLogin;
+    final signUpEnabled = FeatureFlags.enableEmailSignUp;
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -118,31 +122,33 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const _LoginHeader(),
                 const SizedBox(height: 28),
-                _SocialButton(
-                  label: '카카오로 계속하기',
-                  backgroundColor: AppColors.kakao,
-                  textColor: AppColors.kakaoText,
-                  icon: Icons.chat_bubble_outline_rounded,
-                  onPressed: () => _handleSocialLogin('kakao'),
-                ),
-                const SizedBox(height: 12),
-                _SocialButton(
-                  label: 'Apple로 계속하기',
-                  backgroundColor: Colors.black,
-                  textColor: Colors.white,
-                  icon: Icons.apple,
-                  onPressed: () => _handleSocialLogin('apple'),
-                ),
-                const SizedBox(height: 12),
-                _SocialButton(
-                  label: 'Google로 계속하기',
-                  backgroundColor: Colors.white,
-                  textColor: AppColors.textPrimary,
-                  icon: Icons.public,
-                  borderColor: AppColors.border,
-                  onPressed: () => _handleSocialLogin('google'),
-                ),
-                const SizedBox(height: 20),
+                if (socialEnabled) ...[
+                  _SocialButton(
+                    label: '카카오로 계속하기',
+                    backgroundColor: AppColors.kakao,
+                    textColor: AppColors.kakaoText,
+                    icon: Icons.chat_bubble_outline_rounded,
+                    onPressed: _isLoading ? null : () => _handleSocialLogin('kakao'),
+                  ),
+                  const SizedBox(height: 12),
+                  _SocialButton(
+                    label: 'Apple로 계속하기',
+                    backgroundColor: Colors.black,
+                    textColor: Colors.white,
+                    icon: Icons.apple,
+                    onPressed: _isLoading ? null : () => _handleSocialLogin('apple'),
+                  ),
+                  const SizedBox(height: 12),
+                  _SocialButton(
+                    label: 'Google로 계속하기',
+                    backgroundColor: Colors.white,
+                    textColor: AppColors.textPrimary,
+                    icon: Icons.public,
+                    borderColor: AppColors.border,
+                    onPressed: _isLoading ? null : () => _handleSocialLogin('google'),
+                  ),
+                  const SizedBox(height: 20),
+                ],
                 if (_errorMessage != null)
                   _ErrorBanner(
                     message: _errorMessage!,
@@ -151,7 +157,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 12),
                 Center(
                   child: Text(
-                    '또는 이메일로 로그인',
+                    socialEnabled ? '또는 이메일로 로그인' : '이메일로 로그인',
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.textSecondary,
                     ),
@@ -166,28 +172,26 @@ class _LoginScreenState extends State<LoginScreen> {
                   onSubmit: _handleEmailLogin,
                 ),
                 const SizedBox(height: 20),
-                Center(
-                  child: TextButton(
-                    onPressed: _isLoading
-                        ? null
-                        : () {
-                            Navigator.of(context, rootNavigator: true).pushReplacement(
-                              MaterialPageRoute(
-                                fullscreenDialog: true,
-                                builder: (_) => const SignUpScreen(),
-                              ),
-                            );
-                          },
-                    child: Text(
-                      '아직 계정이 없으신가요? 회원가입',
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.secondary,
-                        decoration: TextDecoration.underline,
+                if (signUpEnabled) ...[
+                  Center(
+                    child: TextButton(
+                      onPressed: _isLoading
+                          ? null
+                          : () {
+                              Navigator.of(context, rootNavigator: true)
+                                  .pushReplacementNamed(AppRoutes.signup);
+                            },
+                      child: Text(
+                        '아직 계정이 없으신가요? 회원가입',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.secondary,
+                          decoration: TextDecoration.underline,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 8),
+                  const SizedBox(height: 8),
+                ],
                 Center(
                   child: TextButton(
                     onPressed: _isLoading ? null : _handleGuestLogin,
@@ -221,13 +225,8 @@ class _LoginHeader extends StatelessWidget {
           '로그인',
           style: AppTextStyles.h2,
           textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'WPI 구조를 계속 이용하려면 로그인하세요.',
-          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
-          textAlign: TextAlign.center,
-        ),
+        )
+        
       ],
     );
   }
@@ -239,19 +238,21 @@ class _SocialButton extends StatelessWidget {
   final Color textColor;
   final IconData icon;
   final Color? borderColor;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   const _SocialButton({
     required this.label,
     required this.backgroundColor,
     required this.textColor,
     required this.icon,
-    required this.onPressed,
     this.borderColor,
+    this.onPressed,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isEnabled = onPressed != null;
+    final effectiveTextColor = isEnabled ? textColor : textColor.withOpacity(0.7);
     return SizedBox(
       width: double.infinity,
       height: 52,
@@ -260,18 +261,22 @@ class _SocialButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: backgroundColor,
           foregroundColor: textColor,
+          disabledBackgroundColor: backgroundColor.withOpacity(0.45),
+          disabledForegroundColor: textColor.withOpacity(0.7),
           elevation: 0,
           minimumSize: const Size.fromHeight(52),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
-            side: borderColor != null ? BorderSide(color: borderColor!) : BorderSide.none,
+            side: borderColor != null
+                ? BorderSide(color: borderColor!.withOpacity(isEnabled ? 1 : 0.4))
+                : BorderSide.none,
           ),
         ),
-        icon: Icon(icon, size: 20, color: textColor),
+        icon: Icon(icon, size: 20, color: effectiveTextColor),
         label: Text(
           label,
           style: AppTextStyles.buttonMedium.copyWith(
-            color: textColor,
+            color: effectiveTextColor,
             fontWeight: FontWeight.w600,
           ),
         ),

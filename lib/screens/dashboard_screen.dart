@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/psych_tests_service.dart';
 import '../test_flow/test_flow_coordinator.dart';
+import '../router/app_routes.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_text_styles.dart';
 import '../utils/auth_ui.dart';
 import '../utils/main_shell_tab_controller.dart';
-import '../screens/result/user_result_detail_screen.dart';
+import '../widgets/app_error_view.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -275,17 +276,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 8),
                     Text(
                       '약 10–15분 · 30문장 중 12개 선택',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textOnDark,
-                      ),
+                      style: AppTextStyles.bodySmall.copyWith(color: AppColors.textOnDark),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       '현실과 이상을 함께 보면 ‘현재’와 ‘변화 방향’이 분리됩니다.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textOnDark,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textOnDark.withOpacity(0.9),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -416,30 +413,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
     if (_error != null) {
+      final loggedIn = _authService.isLoggedIn;
       return SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              Text(_error!, style: AppTextStyles.bodyMedium),
-              const SizedBox(height: 8),
-              if (!_authService.isLoggedIn) ...[
-                ElevatedButton(
-                  onPressed: _promptLoginAndReload,
-                  style: ElevatedButton.styleFrom(
-                      splashFactory: NoSplash.splashFactory),
-                  child: const Text('로그인하기'),
-                ),
-                const SizedBox(height: 8),
-              ],
-              ElevatedButton(
-                onPressed: _loadAccounts,
-                style: ElevatedButton.styleFrom(
-                    splashFactory: NoSplash.splashFactory),
-                child: const Text('다시 시도'),
-              ),
-            ],
-          ),
+        child: AppErrorView(
+          title: loggedIn ? '불러오지 못했어요' : '로그인이 필요합니다',
+          message: _error!,
+          primaryActionLabel: loggedIn ? '다시 시도' : '로그인하기',
+          primaryActionStyle: loggedIn
+              ? AppErrorPrimaryActionStyle.outlined
+              : AppErrorPrimaryActionStyle.filled,
+          onPrimaryAction: loggedIn
+              ? () => _loadAccounts()
+              : () => _promptLoginAndReload(),
         ),
       );
     }
@@ -523,22 +508,21 @@ class _AccountCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: item.resultId != null
-            ? () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => UserResultDetailScreen(
+          onTap: item.resultId != null
+              ? () {
+                  Navigator.of(context).pushNamed(
+                    AppRoutes.userResultDetail,
+                    arguments: UserResultDetailArgs(
                       resultId: item.resultId!,
                       testId: item.testId,
                     ),
-                  ),
-                );
-              }
-            : null,
+                  );
+                }
+              : null,
         borderRadius: BorderRadius.circular(18),
         splashColor: Colors.transparent,
         highlightColor: Colors.transparent,
-        overlayColor: MaterialStateProperty.all(Colors.transparent),
+        overlayColor: WidgetStateProperty.all(Colors.transparent),
         splashFactory: NoSplash.splashFactory,
         child: Container(
           padding: const EdgeInsets.all(18),

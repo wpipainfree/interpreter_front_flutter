@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/app_config.dart';
@@ -30,6 +31,8 @@ class AuthService extends ChangeNotifier {
   static const _timeout = Duration(seconds: 15);
   static const _refreshBuffer = Duration(seconds: 60);
 
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+
   final Dio _dio = Dio(
     BaseOptions(
       connectTimeout: _timeout,
@@ -51,9 +54,9 @@ class AuthService extends ChangeNotifier {
 
   /// Restore a previously stored session from local storage.
   Future<UserInfo?> restoreSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userRaw = prefs.getString(_storageUserKey);
-    final tokensRaw = prefs.getString(_storageTokensKey);
+    final stored = await _readStoredSession();
+    final userRaw = stored.userRaw;
+    final tokensRaw = stored.tokensRaw;
     if (userRaw == null || tokensRaw == null) return null;
 
     try {
@@ -63,6 +66,10 @@ class AuthService extends ChangeNotifier {
       _tokens = token;
       _lastLogoutReason = null;
       notifyListeners();
+
+      if (stored.needsMigration) {
+        await _persistSession(user, token);
+      }
       return user;
     } catch (_) {
       await _clearStoredSession();
@@ -247,21 +254,96 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> _persistSession(UserInfo? user, AuthTokens? tokens) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (user != null) {
-      await prefs.setString(_storageUserKey, jsonEncode(user.toJson()));
-    }
-    if (tokens != null) {
-      await prefs.setString(_storageTokensKey, jsonEncode(tokens.toJson()));
-    } else {
-      await prefs.remove(_storageTokensKey);
-    }
-  }
+    final userJson = user != null ? jsonEncode(user.toJson()) : null;
+    final tokensJson = tokens != null ? jsonEncode(tokens.toJson()) : null;
 
-  Future<void> _clearStoredSession() async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      if (userJson != null) {
+        await prefs.setString(_storageUserKey, userJson);
+      } else {
+        await prefs.remove(_storageUserKey);
+      }
+      if (tokensJson != null) {
+        await prefs.setString(_storageTokensKey, tokensJson);
+      } else {
+        await prefs.remove(_storageTokensKey);
+      }
+      return;
+    }
+
+    try {
+      if (userJson != null) {
+        await _secureStorage.write(key: _storageUserKey, value: userJson);
+      } else {
+        await _secureStorage.delete(key: _storageUserKey);
+      }
+      if (tokensJson != null) {
+        await _secureStorage.write(key: _storageTokensKey, value: tokensJson);
+      } else {
+        await _secureStorage.delete(key: _storageTokensKey);
+      }
+    } catch (e) {
+      _logStorageError('persist', e);
+      final prefs = await SharedPreferences.getInstance();
+      if (userJson != null) {
+        await prefs.setString(_storageUserKey, userJson);
+      } else {
+        await prefs.remove(_storageUserKey);
+      }
+      if (tokensJson != null) {
+        await prefs.setString(_storageTokensKey, tokensJson);
+      } else {
+        await prefs.remove(_storageTokensKey);
+      }
+      return;
+    }
+
+    // Remove any legacy SharedPreferences values after a successful secure write.
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_storageUserKey);
     await prefs.remove(_storageTokensKey);
+  }
+
+  Future<void> _clearStoredSession() async {
+    if (!kIsWeb) {
+      try {
+        await _secureStorage.delete(key: _storageUserKey);
+        await _secureStorage.delete(key: _storageTokensKey);
+      } catch (e) {
+        _logStorageError('clear', e);
+      }
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_storageUserKey);
+    await prefs.remove(_storageTokensKey);
+  }
+
+  Future<_StoredSession> _readStoredSession() async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      return _StoredSession(
+        userRaw: prefs.getString(_storageUserKey),
+        tokensRaw: prefs.getString(_storageTokensKey),
+      );
+    }
+
+    try {
+      final userRaw = await _secureStorage.read(key: _storageUserKey);
+      final tokensRaw = await _secureStorage.read(key: _storageTokensKey);
+      if (userRaw != null && tokensRaw != null) {
+        return _StoredSession(userRaw: userRaw, tokensRaw: tokensRaw);
+      }
+    } catch (e) {
+      _logStorageError('read', e);
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    return _StoredSession(
+      userRaw: prefs.getString(_storageUserKey),
+      tokensRaw: prefs.getString(_storageTokensKey),
+      needsMigration: prefs.containsKey(_storageUserKey) || prefs.containsKey(_storageTokensKey),
+    );
   }
 
   Uri _uri(String path) {
@@ -338,6 +420,23 @@ class AuthService extends ChangeNotifier {
     if (!kDebugMode) return;
     debugPrint('[AuthService][$where] network error: $error');
   }
+
+  void _logStorageError(String where, Object error) {
+    if (!kDebugMode) return;
+    debugPrint('[AuthService][$where] storage error: $error');
+  }
+}
+
+class _StoredSession {
+  final String? userRaw;
+  final String? tokensRaw;
+  final bool needsMigration;
+
+  const _StoredSession({
+    required this.userRaw,
+    required this.tokensRaw,
+    this.needsMigration = false,
+  });
 }
 
 class UserInfo {

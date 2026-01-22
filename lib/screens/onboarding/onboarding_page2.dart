@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
-import 'onboarding_atom_graphic.dart';
 
 /// S01-2: Reality + Ideal overview with CTA.
 class OnboardingPage2 extends StatelessWidget {
@@ -21,9 +20,7 @@ class OnboardingPage2 extends StatelessWidget {
             textAlign: TextAlign.center,
             style: AppTextStyles.h1,
           ),
-          const SizedBox(height: 22),
-          const _RealityIdealAtomPair(),
-          const SizedBox(height: 22),
+          const SizedBox(height: 16),
           Text(
             '현실은 지금 나를 지탱하는 기준과 믿음을 확인합니다.\n'
             '이상은 내가 향하는 변화 방향을 확인합니다(회복/도피는 해석에서 정리).\n'
@@ -54,54 +51,6 @@ class OnboardingPage2 extends StatelessWidget {
           const SizedBox(height: 24),
         ],
       ),
-    );
-  }
-}
-
-class _RealityIdealAtomPair extends StatelessWidget {
-  const _RealityIdealAtomPair();
-
-  static const double _atomSize = 120;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: const [
-        _AtomBlock(title: '현실(지금)', showDirectionArrow: false),
-        _AtomBlock(title: '이상(방향)', showDirectionArrow: true),
-      ],
-    );
-  }
-}
-
-class _AtomBlock extends StatelessWidget {
-  const _AtomBlock({
-    required this.title,
-    required this.showDirectionArrow,
-  });
-
-  final String title;
-  final bool showDirectionArrow;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          title,
-          style: AppTextStyles.labelLarge.copyWith(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 10),
-        OnboardingAtomGraphic(
-          size: _RealityIdealAtomPair._atomSize,
-          showCoreLabels: false,
-          showDirectionArrow: showDirectionArrow,
-        ),
-      ],
     );
   }
 }

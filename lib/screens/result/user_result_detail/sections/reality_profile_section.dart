@@ -22,11 +22,15 @@ class RealityProfileSection extends StatelessWidget {
     required this.detail,
     required this.selfLabels,
     required this.otherLabels,
+    this.selfDisplayLabels,
+    this.otherDisplayLabels,
   });
 
   final UserResultDetail? detail;
   final List<String> selfLabels;
   final List<String> otherLabels;
+  final List<String>? selfDisplayLabels;
+  final List<String>? otherDisplayLabels;
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +52,9 @@ class RealityProfileSection extends StatelessWidget {
       otherLabels,
       checklistNameContains: '타인',
     );
+
+    final selfLabelsForUi = selfDisplayLabels ?? selfLabels;
+    final otherLabelsForUi = otherDisplayLabels ?? otherLabels;
 
     final atomType = _resolvePrimaryType(selfLabels, selfScores);
     final atomState = _resolveAtomState(atomType, selfScores, otherScores);
@@ -90,14 +97,14 @@ class RealityProfileSection extends StatelessWidget {
         InteractiveLineChart(
           selfScores: selfScores,
           otherScores: otherScores,
-          selfLabels: selfLabels,
-          otherLabels: otherLabels,
+          selfLabels: selfLabelsForUi,
+          otherLabels: otherLabelsForUi,
         ),
         const SizedBox(height: 12),
         ScoreTable(
-          selfLabels: selfLabels,
+          selfLabels: selfLabelsForUi,
           selfScores: selfScores,
-          otherLabels: otherLabels,
+          otherLabels: otherLabelsForUi,
           otherScores: otherScores,
         ),
       ],

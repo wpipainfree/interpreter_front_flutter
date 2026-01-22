@@ -7,11 +7,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/ai_assistant_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/psych_tests_service.dart';
+import '../../router/app_routes.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/auth_ui.dart';
 import '../../utils/strings.dart';
-import '../result/user_result_detail_screen.dart';
+import '../../widgets/app_error_view.dart';
 
 enum _InterpretationUiState { idle, creating, polling, ready, failed }
 
@@ -659,13 +660,9 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
 
   void _openPreview(UserAccountItem item) {
     if (item.resultId == null) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => UserResultDetailScreen(
-          resultId: item.resultId!,
-          testId: item.testId,
-        ),
-      ),
+    Navigator.of(context).pushNamed(
+      AppRoutes.userResultDetail,
+      arguments: UserResultDetailArgs(resultId: item.resultId!, testId: item.testId),
     );
   }
 
@@ -682,33 +679,16 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
       return const Center(child: CircularProgressIndicator());
     }
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(_error!, style: AppTextStyles.bodyMedium),
-            const SizedBox(height: 12),
-            if (!_authService.isLoggedIn) ...[
-              ElevatedButton(
-                onPressed: _promptLoginAndReload,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('로그인하기'),
-              ),
-              const SizedBox(height: 12),
-            ],
-            ElevatedButton(
-              onPressed: _load,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('다시 시도'),
-            ),
-          ],
-        ),
+      final loggedIn = _authService.isLoggedIn;
+      return AppErrorView(
+        title: loggedIn ? '불러오지 못했어요' : '로그인이 필요합니다',
+        message: _error!,
+        primaryActionLabel: loggedIn ? AppStrings.retry : AppStrings.login,
+        primaryActionStyle: loggedIn
+            ? AppErrorPrimaryActionStyle.outlined
+            : AppErrorPrimaryActionStyle.filled,
+        onPrimaryAction:
+            loggedIn ? () => _load() : () => _promptLoginAndReload(),
       );
     }
     final buttonLabel =
@@ -1215,7 +1195,7 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
                             ),
                             code: baseTextStyle.copyWith(
                               fontFamily: 'monospace',
-                              fontSize: 12,
+                              fontSize: 13,
                             ),
                           ),
                         ),

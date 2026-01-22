@@ -1,31 +1,23 @@
 import 'package:dio/dio.dart';
 
-import '../utils/app_config.dart';
-import 'auth_service.dart';
+import 'api_client.dart';
 
 class PsychTestsService {
-  PsychTestsService({Dio? client})
-      : _client = client ??
-            Dio(
-              BaseOptions(
-                connectTimeout: _timeout,
-                receiveTimeout: _timeout,
-              ),
-            );
+  PsychTestsService({ApiClient? apiClient})
+      : _apiClient = apiClient ?? ApiClient.instance();
 
-  final Dio _client;
-  final AuthService _authService = AuthService();
+  final ApiClient _apiClient;
 
   static const _timeout = Duration(seconds: 15);
 
   /// 문항 목록을 불러옵니다.
   Future<List<PsychTestChecklist>> fetchChecklists(int testId) async {
-    final uri = _uri('/api/v1/psych-tests/$testId/items');
+    final uri = _apiClient.uri('/api/v1/psych-tests/$testId/items');
     try {
-      final response = await _requestWithAuthRetry(
-        (auth) => _client.get(
+      final response = await _apiClient.requestWithAuthRetry(
+        (auth) => _apiClient.dio.get(
           uri.toString(),
-          options: _optionsWithAuth(auth),
+          options: _apiClient.options(authHeader: auth, timeout: _timeout),
         ),
       );
 
@@ -81,7 +73,7 @@ class PsychTestsService {
     String? note,
     int processSequence = 99,
   }) async {
-    final uri = _uri('/api/v1/psych-tests/$testId/results');
+    final uri = _apiClient.uri('/api/v1/psych-tests/$testId/results');
     final payload = {
       if (worry?.isNotEmpty ?? false) 'worry': worry,
       if (targetName?.isNotEmpty ?? false) 'test_target_name': targetName,
@@ -91,11 +83,15 @@ class PsychTestsService {
     };
 
     try {
-      final response = await _requestWithAuthRetry(
-        (auth) => _client.post(
+      final response = await _apiClient.requestWithAuthRetry(
+        (auth) => _apiClient.dio.post(
           uri.toString(),
           data: payload,
-          options: _optionsWithAuth(auth, contentType: 'application/json'),
+          options: _apiClient.options(
+            authHeader: auth,
+            contentType: 'application/json',
+            timeout: _timeout,
+          ),
         ),
       );
 
@@ -125,7 +121,7 @@ class PsychTestsService {
     String? note,
     int processSequence = 99,
   }) async {
-    final uri = _uri('/api/v1/psych-tests/results/$resultId');
+    final uri = _apiClient.uri('/api/v1/psych-tests/results/$resultId');
     final payload = {
       if (worry?.isNotEmpty ?? false) 'worry': worry,
       if (targetName?.isNotEmpty ?? false) 'test_target_name': targetName,
@@ -135,17 +131,21 @@ class PsychTestsService {
     };
 
     try {
-      final response = await _requestWithAuthRetry(
-        (auth) => _client.patch(
+      final response = await _apiClient.requestWithAuthRetry(
+        (auth) => _apiClient.dio.patch(
           uri.toString(),
           data: payload,
-          options: _optionsWithAuth(auth, contentType: 'application/json'),
+          options: _apiClient.options(
+            authHeader: auth,
+            contentType: 'application/json',
+            timeout: _timeout,
+          ),
         ),
       );
 
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw PsychTestException(
-          '?? ??? ??????. (${response.statusCode})',
+          '결과 수정에 실패했습니다. (${response.statusCode})',
           debug: response.data?.toString(),
         );
       }
@@ -155,7 +155,7 @@ class PsychTestsService {
       return {'result': data};
     } on DioException catch (e) {
       throw PsychTestException(
-        '?? ??? ??????. (${e.response?.statusCode ?? e.error})',
+        '결과 수정에 실패했습니다. (${e.response?.statusCode ?? e.error})',
         debug: e.response?.data?.toString(),
       );
     }
@@ -169,10 +169,10 @@ class PsychTestsService {
     bool fetchAll = false,
     List<int>? testIds,
   }) async {
-    final uri = _uri('/api/v1/psych-tests/accounts/$userId');
+    final uri = _apiClient.uri('/api/v1/psych-tests/accounts/$userId');
     try {
-      final response = await _requestWithAuthRetry(
-        (auth) => _client.get(
+      final response = await _apiClient.requestWithAuthRetry(
+        (auth) => _apiClient.dio.get(
           uri.toString(),
           queryParameters: {
             'page': page,
@@ -180,7 +180,7 @@ class PsychTestsService {
             'fetch_all': fetchAll,
             if (testIds != null && testIds.isNotEmpty) 'test_ids': testIds,
           },
-          options: _optionsWithAuth(auth),
+          options: _apiClient.options(authHeader: auth, timeout: _timeout),
         ),
       );
 
@@ -202,12 +202,12 @@ class PsychTestsService {
 
   /// Fetch a single saved result by RESULT_ID.
   Future<UserResultDetail> fetchResultDetail(int resultId) async {
-    final uri = _uri('/api/v1/psych-tests/results/$resultId');
+    final uri = _apiClient.uri('/api/v1/psych-tests/results/$resultId');
     try {
-      final response = await _requestWithAuthRetry(
-        (auth) => _client.get(
+      final response = await _apiClient.requestWithAuthRetry(
+        (auth) => _apiClient.dio.get(
           uri.toString(),
-          options: _optionsWithAuth(auth),
+          options: _apiClient.options(authHeader: auth, timeout: _timeout),
         ),
       );
 
@@ -223,59 +223,6 @@ class PsychTestsService {
         '결과를 불러오지 못했습니다. (${e.response?.statusCode ?? e.error})',
         debug: e.response?.data?.toString(),
       );
-    }
-  }
-
-  Uri _uri(String path) {
-    final base = AppConfig.apiBaseUrl.endsWith('/')
-        ? AppConfig.apiBaseUrl.substring(0, AppConfig.apiBaseUrl.length - 1)
-        : AppConfig.apiBaseUrl;
-    final normalized = path.startsWith('/') ? path : '/$path';
-    return Uri.parse('$base$normalized');
-  }
-
-  Options _optionsWithAuth(String? auth, {String? contentType}) {
-    return Options(
-      headers: {
-        if (contentType != null) 'Content-Type': contentType,
-        if (auth != null) 'Authorization': auth,
-      },
-      sendTimeout: _timeout,
-      receiveTimeout: _timeout,
-    );
-  }
-
-  Future<Response<T>> _requestWithAuthRetry<T>(
-    Future<Response<T>> Function(String? authHeader) send,
-  ) async {
-    String? auth = await _authService.getAuthorizationHeader();
-    if (auth == null) {
-      throw const AuthRequiredException();
-    }
-    try {
-      return await send(auth);
-    } on DioException catch (e) {
-      final is401 = e.response?.statusCode == 401;
-      final refreshed = is401 ? await _authService.refreshAccessToken() : null;
-      if (!is401) rethrow;
-      if (refreshed == null) {
-        await _authService.logout(reason: LogoutReason.sessionExpired);
-        throw const AuthRequiredException();
-      }
-      auth = await _authService.getAuthorizationHeader(refreshIfNeeded: false);
-      if (auth == null) {
-        await _authService.logout(reason: LogoutReason.sessionExpired);
-        throw const AuthRequiredException();
-      }
-      try {
-        return await send(auth);
-      } on DioException catch (e) {
-        if (e.response?.statusCode == 401) {
-          await _authService.logout(reason: LogoutReason.sessionExpired);
-          throw const AuthRequiredException();
-        }
-        rethrow;
-      }
     }
   }
 }

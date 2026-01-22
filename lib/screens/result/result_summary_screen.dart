@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/wpi_result.dart';
-import 'existence_detail_screen.dart';
+import '../../router/app_routes.dart';
 import '../../utils/main_shell_tab_controller.dart';
-import '../main_shell.dart';
 
 class ResultSummaryScreen extends StatelessWidget {
   final WpiResult result;
@@ -15,8 +14,9 @@ class ResultSummaryScreen extends StatelessWidget {
       navigator.popUntil((route) => route.isFirst);
       return;
     }
-    navigator.pushReplacement(
-      MaterialPageRoute(builder: (_) => const MainShell(initialIndex: 0)),
+    navigator.pushReplacementNamed(
+      AppRoutes.main,
+      arguments: const MainShellArgs(initialIndex: 0),
     );
   }
 
@@ -192,10 +192,9 @@ class ResultSummaryScreen extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => ExistenceDetailScreen(result: result),
-                        ),
+                      onPressed: () => Navigator.of(context).pushNamed(
+                        AppRoutes.existenceDetail,
+                        arguments: ExistenceDetailArgs(result: result),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF7B1FA2),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
-import '../main_shell.dart';
+import '../../router/app_routes.dart';
 import 'onboarding_page1.dart';
 import 'onboarding_page2.dart';
 
@@ -36,9 +36,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         .then((prefs) => prefs.setBool(_onboardingSeenKey, true))
         .whenComplete(() {
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const MainShell()),
-      );
+      Navigator.of(context).pushReplacementNamed(AppRoutes.main);
     });
   }
 

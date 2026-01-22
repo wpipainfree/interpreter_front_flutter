@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'auth/login_screen.dart';
-import 'auth/signup_screen.dart';
+import '../router/app_routes.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_text_styles.dart';
-import 'main_shell.dart';
+import '../utils/feature_flags.dart';
 
 class EntryScreen extends StatelessWidget {
   const EntryScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final signUpEnabled = FeatureFlags.enableEmailSignUp;
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       body: SafeArea(
@@ -29,16 +29,11 @@ class EntryScreen extends StatelessWidget {
                 height: 56,
                 child: ElevatedButton(
                   onPressed: () async {
-                    final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
-                      MaterialPageRoute(
-                        fullscreenDialog: true,
-                        builder: (_) => const SignUpScreen(),
-                      ),
+                    final ok = await Navigator.of(context, rootNavigator: true).pushNamed<bool>(
+                      signUpEnabled ? AppRoutes.signup : AppRoutes.login,
                     );
                     if (ok == true && context.mounted) {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (_) => const MainShell()),
-                      );
+                      Navigator.of(context).pushReplacementNamed(AppRoutes.main);
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -50,7 +45,7 @@ class EntryScreen extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    '이메일로 회원가입',
+                    signUpEnabled ? '이메일로 회원가입' : '이메일로 로그인',
                     style: AppTextStyles.buttonMedium,
                   ),
                 ),
@@ -63,30 +58,25 @@ class EntryScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              Center(
-                child: TextButton(
-                  onPressed: () async {
-                    final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
-                      MaterialPageRoute(
-                        fullscreenDialog: true,
-                        builder: (_) => const LoginScreen(),
+              if (signUpEnabled)
+                Center(
+                  child: TextButton(
+                    onPressed: () async {
+                      final ok =
+                          await Navigator.of(context, rootNavigator: true).pushNamed<bool>(AppRoutes.login);
+                      if (ok == true && context.mounted) {
+                        Navigator.of(context).pushReplacementNamed(AppRoutes.main);
+                      }
+                    },
+                    child: Text(
+                      '이미 계정이 있으신가요? 로그인',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.secondary,
+                        decoration: TextDecoration.underline,
                       ),
-                    );
-                    if (ok == true && context.mounted) {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (_) => const MainShell()),
-                      );
-                    }
-                  },
-                  child: Text(
-                    '이미 계정이 있으신가요? 로그인',
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.secondary,
-                      decoration: TextDecoration.underline,
                     ),
                   ),
                 ),
-              ),
               const Spacer(),
             ],
           ),
