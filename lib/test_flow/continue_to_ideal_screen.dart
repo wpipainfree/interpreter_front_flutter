@@ -46,12 +46,12 @@ class ContinueToIdealScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '이상(변화 방향) 검사는 “앞으로 어떤 방향으로 바뀌고 싶은지”를 보는 검사예요.',
+                  '이상(변화 방향) 검사는 "앞으로 어떤 방향으로 바꾸고 싶은지"를 보는 검사예요.',
                   style: AppTextStyles.bodyMedium,
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '지금 이어서 진행하거나, 나중에 홈에서 “이상(변화 방향) 이어하기”로 계속할 수 있어요.',
+                  '지금 이어서 진행하거나, 나중에 홈에서 "이상(변화 방향) 이어하기"로 계속할 수 있어요.',
                   style: AppTextStyles.bodyMedium,
                 ),
                 const Spacer(),

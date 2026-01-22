@@ -45,7 +45,7 @@ class TestIntroScreen extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 '마음은 원자 구조처럼 구성됩니다.\n'
-                '기준·믿음·감정·몸의 구조를 확인해 봅니다.',
+                '기준 / 믿음 / 감정 / 몸의 구조를 확인해 봅니다.',
                 style: AppTextStyles.bodyMedium,
               ),
               const Spacer(),

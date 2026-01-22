@@ -194,7 +194,7 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
       AppRoutes.wpiReview,
       arguments: WpiReviewArgs(
         testId: widget.testId,
-        testTitle: '${widget.testTitle} · ${checklist.name}',
+        testTitle: '${widget.testTitle} / ${checklist.name}',
         items: checklist.questions,
         selections: selections,
         processSequence: checklist.sequence == 0 ? _stageIndex + 1 : checklist.sequence,
@@ -255,7 +255,7 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
         backgroundColor: AppColors.backgroundLight,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
-        title: Text('${widget.testTitle} · $stageLabel'),
+        title: Text('${widget.testTitle} / $stageLabel'),
         actions: [
           IconButton(
             icon: const Icon(Icons.close),
