@@ -104,7 +104,7 @@ class AppTheme {
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 3,
         color: AppColors.cardBackground,
         surfaceTintColor: Colors.transparent,

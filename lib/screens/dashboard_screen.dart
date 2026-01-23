@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/payment_service.dart';
 import '../services/psych_tests_service.dart';
 import '../test_flow/test_flow_coordinator.dart';
 import '../utils/app_colors.dart';
@@ -7,6 +8,7 @@ import '../utils/app_text_styles.dart';
 import '../utils/auth_ui.dart';
 import '../utils/main_shell_tab_controller.dart';
 import '../screens/result/user_result_detail_screen.dart';
+import '../screens/payment/payment_webview_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -127,6 +129,126 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final pending = await TestFlowCoordinator.hasPendingIdeal();
     if (!mounted) return;
     setState(() => _pendingIdeal = pending);
+  }
+
+  /// 결제 처리
+  Future<void> _handlePayment() async {
+    // 1. 로그인 확인
+    if (!_authService.isLoggedIn) {
+      final ok = await AuthUi.promptLogin(context: context);
+      if (!ok || !mounted) return;
+    }
+
+    final user = _authService.currentUser;
+    if (user == null) return;
+
+    // 2. 결제 수단 선택 다이얼로그
+    final paymentType = await _showPaymentMethodDialog();
+    if (paymentType == null || !mounted) return;
+
+    // 3. 결제 생성
+    try {
+      final paymentService = PaymentService();
+      final request = CreatePaymentRequest(
+        userId: int.tryParse(user.id) ?? 0,
+        amount: 1000, // WPI 검사 금액 (원)
+        productName: 'WPI검사',
+        buyerName: user.displayName,
+        buyerEmail: user.email.isNotEmpty ? user.email : 'user@wpiapp.com',
+        buyerTel: '01000000000', // TODO: 사용자 전화번호 필드 추가 필요
+        callbackUrl: 'wpiapp://payment/result',
+        testId: 1, // WPI 검사
+        paymentType: paymentType,
+      );
+
+      // 로딩 표시
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const Center(child: CircularProgressIndicator()),
+        );
+      }
+
+      final payment = await paymentService.createPayment(request);
+
+      if (mounted) {
+        Navigator.of(context).pop(); // 로딩 닫기
+      }
+
+      // 4. 결제 WebView 열기
+      if (!mounted) return;
+      final result = await PaymentWebViewScreen.open(
+        context,
+        webviewUrl: payment.webviewUrl,
+        paymentId: payment.paymentId,
+      );
+
+      // 5. 결과 처리
+      if (!mounted || result == null) return;
+
+      if (result.success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('결제가 완료되었습니다!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // 결제 완료 후 계정 목록 새로고침
+        await _loadAccounts();
+      } else if (result.message != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.message!),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // 로딩 닫기
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('결제 오류: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// 결제 수단 선택 다이얼로그
+  Future<int?> _showPaymentMethodDialog() async {
+    return await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('결제 수단 선택'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.credit_card, color: Colors.blue),
+              title: const Text('신용카드'),
+              subtitle: const Text('신용/체크카드로 결제'),
+              onTap: () => Navigator.pop(context, 20), // MOBILE_CARD
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.account_balance, color: Colors.green),
+              title: const Text('가상계좌'),
+              subtitle: const Text('무통장 입금'),
+              onTap: () => Navigator.pop(context, 22), // MOBILE_VBANK
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -318,6 +440,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           SizedBox(width: 8),
                           Icon(Icons.arrow_forward_rounded, size: 20),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: () => _handlePayment(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.yellow,
+                        foregroundColor: Colors.black,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        splashFactory: NoSplash.splashFactory,
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.payment_rounded, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            '결제',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
                         ],
                       ),
                     ),
