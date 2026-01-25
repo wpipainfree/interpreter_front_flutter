@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/notification_service.dart';
 import '../../utils/app_colors.dart';
+import '../../utils/app_text_styles.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
@@ -149,9 +150,6 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                   
                   const SizedBox(height: 24),
                   
-                  // 알림 테스트 버튼 (개발용)
-                  _buildTestNotificationButton(),
-                  
                   const SizedBox(height: 40),
                 ],
               ),
@@ -185,9 +183,8 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
               child: Text(
                 title,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+                style: AppTextStyles.caption.copyWith(
+                  fontWeight: FontWeight.w700,
                   color: AppColors.textSecondary,
                   letterSpacing: 0.5,
                 ),
@@ -237,9 +234,9 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: TextStyle(
-                    fontSize: 13,
+                  style: AppTextStyles.caption.copyWith(
                     color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -290,9 +287,9 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: TextStyle(
-                    fontSize: 13,
+                  style: AppTextStyles.caption.copyWith(
                     color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -306,10 +303,9 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
             ),
             child: Text(
               '항상 켜짐',
-              style: TextStyle(
-                fontSize: 12,
+              style: AppTextStyles.captionSmall.copyWith(
                 color: iconColor,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -378,85 +374,15 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
         ),
         child: Text(
           label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          color: isSelected ? Colors.white : AppColors.textSecondary,
+          style: AppTextStyles.captionSmall.copyWith(
+            fontWeight: FontWeight.w700,
+            color: isSelected ? Colors.white : AppColors.textSecondary,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildTestNotificationButton() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.bug_report_outlined, color: AppColors.textSecondary, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                '테스트 (개발용)',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    await _notificationService.showTestCompleteNotification(
-                      existenceType: '조화형',
-                    );
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('검사 완료 알림이 전송되었습니다')),
-                    );
-                  },
-                  icon: const Icon(Icons.check_circle_outline, size: 18),
-                  label: const Text('완료 알림'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF4CAF50),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    // 테스트를 위해 10초 후 알림 예약
-                    await _notificationService.scheduleTestReminder(daysAfter: 0);
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('리마인더가 예약되었습니다 (곧 도착)')),
-                    );
-                  },
-                  icon: const Icon(Icons.schedule, size: 18),
-                  label: const Text('리마인더'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFFF57C00),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+
 }
 

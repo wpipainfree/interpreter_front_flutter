@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_text_styles.dart';
-import 'onboarding/onboarding_screen.dart';
+import '../router/app_routes.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -27,9 +27,7 @@ class WelcomeScreen extends StatelessWidget {
                 height: 56,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-                    );
+                    Navigator.of(context).pushReplacementNamed(AppRoutes.onboarding);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,

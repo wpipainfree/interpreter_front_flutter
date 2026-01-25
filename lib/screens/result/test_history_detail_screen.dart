@@ -55,7 +55,7 @@ class TestHistoryDetailScreen extends StatelessWidget {
                           child: Text(
                             _formatFullDate(history.testDate),
                             style: const TextStyle(
-                              fontSize: 13,
+                              fontSize: 14,
                               color: Colors.white,
                             ),
                           ),
@@ -481,7 +481,7 @@ class TestHistoryDetailScreen extends StatelessWidget {
         Text(
           description,
           style: TextStyle(
-            fontSize: 13,
+            fontSize: 14,
             color: AppColors.textSecondary,
             height: 1.4,
           ),

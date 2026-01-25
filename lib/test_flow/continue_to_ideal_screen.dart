@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../router/app_routes.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_text_styles.dart';
 
@@ -7,9 +8,7 @@ class ContinueToIdealScreen extends StatelessWidget {
   const ContinueToIdealScreen({super.key});
 
   static Future<bool?> show(BuildContext context) {
-    return Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const ContinueToIdealScreen()),
-    );
+    return Navigator.of(context).pushNamed<bool>(AppRoutes.continueToIdeal);
   }
 
   void _close(BuildContext context, bool value) {
@@ -28,7 +27,9 @@ class ContinueToIdealScreen extends StatelessWidget {
       child: Scaffold(
         backgroundColor: AppColors.backgroundWhite,
         appBar: AppBar(
-          title: const Text('Н?\'НЯ? И¤?Н,кЙнo Н?\'Н-\'Н,o Н,б-%б И1OНs"?'),
+          title: const Text(
+            '\uc774\uc0c1(\ubcc0\ud654 \ubc29\ud5a5)\ub3c4 \uc774\uc5b4\uc11c \ud560\uae4c\uc694?',
+          ),
           backgroundColor: AppColors.backgroundWhite,
           foregroundColor: AppColors.textPrimary,
           elevation: 0,
@@ -47,12 +48,12 @@ class ContinueToIdealScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Н?\'НЯ?Н?? "Й,\'И°? Й?~И3  Н<Н?? Йж"НSц"Н?, Н, бЯ?б~ЙS" Й<"И3,Н~^Нs".',
+                  '\uc774\uc0c1(\ubcc0\ud654 \ubc29\ud5a5) \uac80\uc0ac\ub294 "\uc55e\uc73c\ub85c \uc5b4\ub5a4 \ubc29\ud5a5\uc73c\ub85c \ubc14\uafb8\uace0 \uc2f6\uc740\uc9c0"\ub97c \ubcf4\ub294 \uac80\uc0ac\uc608\uc694.',
                   style: AppTextStyles.bodyMedium,
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Н?И,^ Н?\'Н-\'Н,o Н,б-%б~Йc\' И¤°И3мИ°? Й?" Н, Йж.б\'Н`Й<^Й<.',
+                  '\uc9c0\uae08 \uc774\uc5b4\uc11c \uc9c4\ud589\ud558\uac70\ub098, \ub098\uc911\uc5d0 \ud648\uc5d0\uc11c "\uc774\uc0c1(\ubcc0\ud654 \ubc29\ud5a5) \uc774\uc5b4\ud558\uae30"\ub85c \uacc4\uc18d\ud560 \uc218 \uc788\uc5b4\uc694.',
                   style: AppTextStyles.bodyMedium,
                 ),
                 const Spacer(),
@@ -69,7 +70,7 @@ class ContinueToIdealScreen extends StatelessWidget {
                       ),
                     ),
                     child: const Text(
-                      'Н?\'НЯ?НoмЙнo И3,Н+?',
+                      '\uc774\uc0c1(\ubcc0\ud654 \ubc29\ud5a5) \uc774\uc5b4\ud558\uae30',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
                   ),
@@ -79,7 +80,7 @@ class ContinueToIdealScreen extends StatelessWidget {
                   width: double.infinity,
                   child: TextButton(
                     onPressed: () => _close(context, false),
-                    child: const Text('Й,~Н`Н-? б~И,°'),
+                    child: const Text('\ub098\uc911\uc5d0 \ud558\uae30'),
                   ),
                 ),
               ],
@@ -90,4 +91,3 @@ class ContinueToIdealScreen extends StatelessWidget {
     );
   }
 }
-

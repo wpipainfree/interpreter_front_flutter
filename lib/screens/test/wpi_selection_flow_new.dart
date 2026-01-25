@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/psych_tests_service.dart';
+import '../../router/app_routes.dart';
 import '../../test_flow/role_transition_screen.dart';
 import '../../test_flow/test_flow_models.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/auth_ui.dart';
-import '../result/user_result_detail_screen.dart';
+import '../../widgets/app_error_view.dart';
 
 /// New free-order flow: users pick items up to target counts, then submit.
 /// This runs through every checklist (e.g., self/other) sequentially.
@@ -66,16 +67,6 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     _init();
   }
 
-  Future<T?> _withLoginRetry<T>(Future<T> Function() action) async {
-    try {
-      return await action();
-    } on AuthRequiredException {
-      final ok = await AuthUi.promptLogin(context: context);
-      if (!ok) return null;
-      return await action();
-    }
-  }
-
   Future<void> _init() async {
     if (!_authService.isLoggedIn) {
       final ok = await AuthUi.promptLogin(context: context);
@@ -100,7 +91,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     });
     try {
       final lists =
-          await _withLoginRetry(() => _service.fetchChecklists(widget.testId));
+          await AuthUi.withLoginRetry(context: context, action: () => _service.fetchChecklists(widget.testId));
       if (lists == null) {
         if (!mounted) return;
         setState(() {
@@ -265,8 +256,9 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       rank3: rank3,
     );
     try {
-      final result = await _withLoginRetry(
-        () => _resultId == null
+      final result = await AuthUi.withLoginRetry(
+        context: context,
+        action: () => _resultId == null
             ? _service.submitResults(
                 testId: widget.testId,
                 selections: selections,
@@ -297,23 +289,21 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
         _prepareStage(nextIndex);
       } else {
         final rid = _resultId ?? _extractResultId(result);
-        if (rid != null) {
-          if (widget.exitMode == FlowExitMode.popWithResult) {
-            Navigator.of(context).pop(
-              FlowCompletion(kind: widget.kind, resultId: rid.toString()),
-            );
+          if (rid != null) {
+            if (widget.exitMode == FlowExitMode.popWithResult) {
+              Navigator.of(context).pop(
+                FlowCompletion(kind: widget.kind, resultId: rid.toString()),
+              );
+            } else {
+              Navigator.of(context).pushReplacementNamed(
+                AppRoutes.userResultDetail,
+                arguments: UserResultDetailArgs(resultId: rid, testId: widget.testId),
+              );
+            }
           } else {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (_) => UserResultDetailScreen(
-                    resultId: rid, testId: widget.testId),
-              ),
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('결과 ID를 확인할 수 없습니다.')),
             );
-          }
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('결과 ID를 확인할 수 없습니다.')),
-          );
         }
       }
     } catch (e) {
@@ -368,26 +358,19 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       );
     }
     if (_error != null) {
+      final loggedIn = _authService.isLoggedIn;
       return Scaffold(
         appBar: AppBar(
           title: const Text('WPI'),
         ),
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(_error!, style: AppTextStyles.bodyMedium),
-              const SizedBox(height: 12),
-              if (!_authService.isLoggedIn) ...[
-                ElevatedButton(
-                  onPressed: _init,
-                  child: const Text('로그인하기'),
-                ),
-                const SizedBox(height: 12),
-              ],
-              ElevatedButton(onPressed: _load, child: const Text('다시 시도')),
-            ],
-          ),
+        body: AppErrorView(
+          title: loggedIn ? '불러오지 못했어요' : '로그인이 필요합니다',
+          message: _error!,
+          primaryActionLabel: loggedIn ? '다시 시도' : '로그인하기',
+          primaryActionStyle: loggedIn
+              ? AppErrorPrimaryActionStyle.outlined
+              : AppErrorPrimaryActionStyle.filled,
+          onPrimaryAction: loggedIn ? () => _load() : () => _init(),
         ),
       );
     }
@@ -406,7 +389,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
         backgroundColor: AppColors.backgroundLight,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
-        title: Text('[New] ${widget.testTitle} \u00B7 $stageLabel'),
+        title: Text('${widget.testTitle} / $stageLabel'),
         actions: [
           IconButton(
             icon: const Icon(Icons.close),
@@ -565,8 +548,13 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     );
   }
 
-  String _cleanText(String text) =>
-      text.replaceAll(RegExp(r'\\(.*?\\)'), '').trim();
+  String _cleanText(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return trimmed;
+
+    final cleaned = trimmed.replaceAll(RegExp(r'\(.*?\)'), '').trim();
+    return cleaned.isEmpty ? trimmed : cleaned;
+  }
 
   int? _extractResultId(dynamic res) {
     if (res == null) return null;

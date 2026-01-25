@@ -126,7 +126,7 @@ class AppTextStyles {
 
   static TextStyle get labelSmall => TextStyle(
         fontFamily: _sansFamily,
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: FontWeight.w600,
         color: AppColors.textSecondary,
         height: 1.25,
@@ -135,16 +135,16 @@ class AppTextStyles {
   // Caption
   static TextStyle get caption => TextStyle(
         fontFamily: _sansFamily,
-        fontSize: 13,
-        fontWeight: FontWeight.w500,
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
         color: AppColors.textSecondary,
         height: 1.4,
       );
 
   static TextStyle get captionSmall => TextStyle(
         fontFamily: _sansFamily,
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
         color: AppColors.textSecondary,
         height: 1.3,
       );
@@ -161,8 +161,8 @@ class AppTextStyles {
   static TextStyle get bodyOnDark => TextStyle(
         fontFamily: _sansFamily,
         fontSize: 15,
-        fontWeight: FontWeight.w400,
-        color: Colors.white70,
+        fontWeight: FontWeight.w500,
+        color: Color.fromRGBO(255, 255, 255, 0.85),
         height: 1.7,
       );
 

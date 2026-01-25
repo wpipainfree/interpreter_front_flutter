@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'router/app_router.dart';
 import 'screens/splash_screen.dart';
 import 'services/auth_service.dart';
 import 'services/notification_service.dart';
@@ -14,6 +15,10 @@ void main() async {
   await AuthService().restoreSession();
 
   runApp(const WpiApp());
+
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    NotificationService().handlePendingNavigation();
+  });
 }
 
 class WpiApp extends StatefulWidget {
@@ -61,6 +66,7 @@ class _WpiAppState extends State<WpiApp> {
       theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
       navigatorKey: AppNavigator.key,
+      onGenerateRoute: AppRouter.onGenerateRoute,
       home: const SplashScreen(),
     );
   }

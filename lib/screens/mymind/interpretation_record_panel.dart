@@ -3,10 +3,12 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../../services/ai_assistant_service.dart';
 import '../../services/auth_service.dart';
+import '../../router/app_routes.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/auth_ui.dart';
 import '../../utils/strings.dart';
+import '../../widgets/app_error_view.dart';
 
 class InterpretationRecordPanel extends StatefulWidget {
   const InterpretationRecordPanel({super.key});
@@ -145,25 +147,17 @@ class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
     }
 
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(_error!, style: AppTextStyles.bodyMedium),
-            const SizedBox(height: 12),
-            if (!_authService.isLoggedIn) ...[
-              ElevatedButton(
-                onPressed: _promptLoginAndReload,
-                child: const Text(AppStrings.login),
-              ),
-              const SizedBox(height: 12),
-            ],
-            ElevatedButton(
-              onPressed: () => _loadPage(reset: true),
-              child: const Text(AppStrings.retry),
-            ),
-          ],
-        ),
+      final loggedIn = _authService.isLoggedIn;
+      return AppErrorView(
+        title: loggedIn ? '불러오지 못했어요' : '로그인이 필요합니다',
+        message: _error!,
+        primaryActionLabel: loggedIn ? AppStrings.retry : AppStrings.login,
+        primaryActionStyle: loggedIn
+            ? AppErrorPrimaryActionStyle.outlined
+            : AppErrorPrimaryActionStyle.filled,
+        onPrimaryAction: loggedIn
+            ? () => _loadPage(reset: true)
+            : () => _promptLoginAndReload(),
       );
     }
 
@@ -240,18 +234,17 @@ class _ConversationCard extends StatelessWidget {
     final rawTitle = item.title.trim();
     return InkWell(
       onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => InterpretationRecordDetailScreen(
-              conversationId: item.id,
-              title: rawTitle,
-            ),
+        Navigator.of(context).pushNamed(
+          AppRoutes.interpretationRecordDetail,
+          arguments: InterpretationRecordDetailArgs(
+            conversationId: item.id,
+            title: rawTitle,
           ),
         );
       },
       splashColor: Colors.transparent,
       highlightColor: Colors.transparent,
-      overlayColor: MaterialStateProperty.all(Colors.transparent),
+      overlayColor: WidgetStateProperty.all(Colors.transparent),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -377,22 +370,12 @@ class _InterpretationRecordDetailScreenState extends State<InterpretationRecordD
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(_error!, style: AppTextStyles.bodyMedium),
-                      const SizedBox(height: 12),
-                      ElevatedButton(
-                        onPressed: _load,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                        ),
-                        child: const Text('다시 시도'),
-                      ),
-                    ],
-                  ),
+              ? AppErrorView(
+                  title: '불러오지 못했어요',
+                  message: _error!,
+                  primaryActionLabel: AppStrings.retry,
+                  primaryActionStyle: AppErrorPrimaryActionStyle.outlined,
+                  onPrimaryAction: () => _load(),
                 )
               : ListView.separated(
                   padding: const EdgeInsets.all(20),
@@ -463,7 +446,7 @@ class _ConversationEntryCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: AppColors.border),
                     ),
-                    code: baseStyle.copyWith(fontFamily: 'monospace', fontSize: 12),
+                    code: baseStyle.copyWith(fontFamily: 'monospace', fontSize: 13),
                   ),
                 ),
               ),

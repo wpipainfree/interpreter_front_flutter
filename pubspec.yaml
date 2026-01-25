@@ -19,15 +19,14 @@ dependencies:
   
   # 로컬 저장소 (알림 설정 저장)
   shared_preferences: ^2.2.2
+  flutter_secure_storage: ^9.2.2
   dio: ^5.4.3+1
   flutter_markdown: ^0.7.1
   
-  # 이미지 캡처 및 저장
-  path_provider: ^2.1.2
-  share_plus: ^7.2.1
+  # SVG 아이콘 렌더링
   flutter_svg: ^2.0.9
   google_fonts: ^6.2.1
-  
+
   # 결제 WebView
   webview_flutter: ^4.4.2
   url_launcher: ^6.2.2

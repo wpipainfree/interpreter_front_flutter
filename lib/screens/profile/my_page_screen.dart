@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
+import '../../router/app_routes.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/auth_ui.dart';
-import '../entry_screen.dart';
-import '../settings/notification_settings_screen.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -110,9 +109,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
             icon: Icons.notifications_outlined,
             title: '알림 설정',
             onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const NotificationSettingsScreen()),
-              );
+              Navigator.of(context).pushNamed(AppRoutes.notificationSettings);
             },
           ),
           _SettingTile(
@@ -145,8 +142,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
               if (confirm == true) {
                 await _authService.logout();
                 if (!context.mounted) return;
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const EntryScreen()),
+                Navigator.of(context).pushNamedAndRemoveUntil(
+                  AppRoutes.entry,
                   (route) => false,
                 );
               }

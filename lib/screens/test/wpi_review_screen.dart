@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../services/auth_service.dart';
+import '../../router/app_routes.dart';
 import '../../services/psych_tests_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/auth_ui.dart';
-import '../result/raw_result_screen.dart';
 
 class WpiReviewScreen extends StatefulWidget {
   const WpiReviewScreen({
@@ -196,42 +195,17 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
             );
     }
     try {
-      final result = await send();
-      if (!mounted) return;
+      final result = await AuthUi.withLoginRetry<Map<String, dynamic>>(
+        context: context,
+        action: send,
+      );
+      if (!mounted || result == null) return;
       if (widget.deferNavigation) {
         Navigator.of(context).pop(result);
       } else {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => RawResultScreen(
-              title: '검사 결과',
-              payload: result,
-            ),
-          ),
-        );
-      }
-    } on AuthRequiredException {
-      final ok = await AuthUi.promptLogin(context: context);
-      if (!ok || !mounted) return;
-      try {
-        final result = await send();
-        if (!mounted) return;
-        if (widget.deferNavigation) {
-          Navigator.of(context).pop(result);
-        } else {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (_) => RawResultScreen(
-                title: '?? ??',
-                payload: result,
-              ),
-            ),
-          );
-        }
-      } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
+        Navigator.of(context).pushReplacementNamed(
+          AppRoutes.rawResult,
+          arguments: RawResultArgs(title: '검사 결과', payload: result),
         );
       }
     } catch (e) {

@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../screens/auth/login_screen.dart';
+import '../router/app_routes.dart';
 import '../services/auth_service.dart';
 import 'app_navigator.dart';
 
@@ -10,6 +10,19 @@ class AuthUi {
   AuthUi._();
 
   static Completer<bool>? _loginCompleter;
+
+  static Future<T?> withLoginRetry<T>({
+    required Future<T> Function() action,
+    BuildContext? context,
+  }) async {
+    try {
+      return await action();
+    } on AuthRequiredException {
+      final ok = await promptLogin(context: context);
+      if (!ok) return null;
+      return await action();
+    }
+  }
 
   static Future<bool> promptLogin({BuildContext? context}) {
     if (AuthService().isLoggedIn) {
@@ -32,12 +45,7 @@ class AuthUi {
           return;
         }
 
-        final ok = await navigator.push<bool>(
-          MaterialPageRoute(
-            fullscreenDialog: true,
-            builder: (_) => const LoginScreen(),
-          ),
-        );
+        final ok = await navigator.pushNamed<bool>(AppRoutes.login);
         completer.complete(ok == true);
       } catch (_) {
         if (!completer.isCompleted) {
@@ -51,4 +59,3 @@ class AuthUi {
     return completer.future;
   }
 }
-

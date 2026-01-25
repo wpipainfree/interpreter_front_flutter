@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../models/openai_interpret_response.dart';
+import '../../router/app_routes.dart';
 import '../../services/auth_service.dart';
 import '../../services/psych_tests_service.dart';
 import '../../services/user_result_detail_service.dart';
@@ -10,7 +11,7 @@ import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/auth_ui.dart';
 import '../../utils/strings.dart';
-import '../mymind/interpretation_screen.dart';
+import '../../widgets/app_error_view.dart';
 import 'user_result_detail/sections/ideal_profile_section.dart';
 import 'user_result_detail/sections/initial_interpretation_section.dart';
 import 'user_result_detail/sections/reality_profile_section.dart';
@@ -201,17 +202,16 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
 
     final idealResultId = _idealDetail?.result.id;
     final mindFocus = (_mindFocus ?? '').trim();
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => InterpretationScreen(
-          initialRealityResultId: realityResultId,
-          initialIdealResultId: idealResultId,
-          mindFocus: mindFocus.isNotEmpty ? mindFocus : null,
-          initialSessionId: sessionId,
-          initialTurn: _nextTurn(_initialInterpretation),
-          initialPrompt: initialPrompt,
-          startInPhase3: true,
-        ),
+    Navigator.of(context).pushNamed(
+      AppRoutes.interpretation,
+      arguments: InterpretationArgs(
+        initialRealityResultId: realityResultId,
+        initialIdealResultId: idealResultId,
+        mindFocus: mindFocus.isNotEmpty ? mindFocus : null,
+        initialSessionId: sessionId,
+        initialTurn: _nextTurn(_initialInterpretation),
+        initialPrompt: initialPrompt,
+        startInPhase3: true,
       ),
     );
   }
@@ -234,25 +234,16 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
     if (_loading) return const Center(child: CircularProgressIndicator());
 
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(_error!, style: AppTextStyles.bodyMedium),
-            const SizedBox(height: 12),
-            if (!_authService.isLoggedIn) ...[
-              ElevatedButton(
-                onPressed: _promptLoginAndReload,
-                child: const Text(AppStrings.login),
-              ),
-              const SizedBox(height: 12),
-            ],
-            ElevatedButton(
-              onPressed: _load,
-              child: const Text(AppStrings.retry),
-            ),
-          ],
-        ),
+      final loggedIn = _authService.isLoggedIn;
+      return AppErrorView(
+        title: loggedIn ? '불러오지 못했어요' : '로그인이 필요합니다',
+        message: _error!,
+        primaryActionLabel: loggedIn ? AppStrings.retry : AppStrings.login,
+        primaryActionStyle: loggedIn
+            ? AppErrorPrimaryActionStyle.outlined
+            : AppErrorPrimaryActionStyle.filled,
+        onPrimaryAction:
+            loggedIn ? () => _load() : () => _promptLoginAndReload(),
       );
     }
 
@@ -267,14 +258,10 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
 
     final headerDate = _formatDateTime((reality ?? ideal)!.result.createdAt);
 
-    const selfLabels = [
-      'Realist',
-      'Romanticist',
-      'Humanist',
-      'Idealist',
-      'Agent'
-    ];
-    const otherLabels = ['Relation', 'Trust', 'Manual', 'Self', 'Culture'];
+    const selfKeyLabels = ['Realist', 'Romanticist', 'Humanist', 'Idealist', 'Agent'];
+    const otherKeyLabels = ['Relation', 'Trust', 'Manual', 'Self', 'Culture'];
+    const selfDisplayLabels = ['리얼리스트', '로맨티스트', '휴머니스트', '아이디얼리스트', '에이전트'];
+    const otherDisplayLabels = ['관계', '신뢰', '매뉴얼', '자기', '문화'];
 
     final storyForAi = (reality != null) ? (_mindFocus ?? '') : '';
     final canOpenPhase3 =
@@ -289,14 +276,18 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
           const SizedBox(height: 20),
           RealityProfileSection(
             detail: reality,
-            selfLabels: selfLabels,
-            otherLabels: otherLabels,
+            selfLabels: selfKeyLabels,
+            otherLabels: otherKeyLabels,
+            selfDisplayLabels: selfDisplayLabels,
+            otherDisplayLabels: otherDisplayLabels,
           ),
           const SizedBox(height: 24),
           IdealProfileSection(
             detail: ideal,
-            selfLabels: selfLabels,
-            otherLabels: otherLabels,
+            selfLabels: selfKeyLabels,
+            otherLabels: otherKeyLabels,
+            selfDisplayLabels: selfDisplayLabels,
+            otherDisplayLabels: otherDisplayLabels,
           ),
           const SizedBox(height: 24),
           InitialInterpretationSection(
