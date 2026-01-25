@@ -144,9 +144,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final user = _authService.currentUser;
     if (user == null) return;
 
-    // 2. 결제 수단 선택 다이얼로그
-    final paymentType = await _showPaymentMethodDialog();
-    if (paymentType == null || !mounted) return;
+    // 2. 결제 수단 및 검사 유형 선택 다이얼로그
+    final paymentOptions = await _showPaymentMethodDialog();
+    if (paymentOptions == null || !mounted) return;
+
+    final paymentType = paymentOptions['paymentType'] as int;
+    final testId = paymentOptions['testId'] as int;
+    final testName = testId == 1 ? 'WPI 현실검사' : 'WPI 이상검사';
 
     // 3. 결제 생성
     try {
@@ -154,12 +158,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final request = CreatePaymentRequest(
         userId: int.tryParse(user.id) ?? 0,
         amount: 1000, // WPI 검사 금액 (원)
-        productName: 'WPI검사',
+        productName: testName,
         buyerName: user.displayName,
         buyerEmail: user.email.isNotEmpty ? user.email : 'user@wpiapp.com',
         buyerTel: '01000000000', // TODO: 사용자 전화번호 필드 추가 필요
         callbackUrl: 'wpiapp://payment/result',
-        testId: 1, // WPI 검사
+        testId: testId,
         paymentType: paymentType,
       );
 
@@ -219,36 +223,127 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  /// 결제 수단 선택 다이얼로그
-  Future<int?> _showPaymentMethodDialog() async {
-    return await showDialog<int>(
+  /// 결제 수단 및 검사 유형 선택 다이얼로그
+  Future<Map<String, int>?> _showPaymentMethodDialog() async {
+    int? selectedTestId = 1; // 기본값: WPI 현실검사
+    int? selectedPaymentType;
+
+    return await showDialog<Map<String, int>>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('결제 수단 선택'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.credit_card, color: Colors.blue),
-              title: const Text('신용카드'),
-              subtitle: const Text('신용/체크카드로 결제'),
-              onTap: () => Navigator.pop(context, 20), // MOBILE_CARD
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('결제 옵션 선택'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 검사 유형 선택 섹션
+              const Text(
+                '검사 유형',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade400),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: DropdownButton<int>(
+                  isExpanded: true,
+                  hint: const Text('검사를 선택하세요'),
+                  value: selectedTestId,
+                  underline: const SizedBox(),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 1,
+                      child: Text('WPI 현실검사'),
+                    ),
+                    DropdownMenuItem(
+                      value: 3,
+                      child: Text('WPI 이상검사'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      selectedTestId = value;
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // 결제 수단 선택 섹션
+              const Text(
+                '결제 수단',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.credit_card, color: Colors.blue),
+                title: const Text('신용카드'),
+                subtitle: const Text('신용/체크카드로 결제'),
+                selected: selectedPaymentType == 20,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(
+                    color: selectedPaymentType == 20
+                      ? Colors.blue
+                      : Colors.grey.shade300,
+                  ),
+                ),
+                onTap: () {
+                  setState(() {
+                    selectedPaymentType = 20; // MOBILE_CARD
+                  });
+                },
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const Icon(Icons.account_balance, color: Colors.green),
+                title: const Text('가상계좌'),
+                subtitle: const Text('무통장 입금'),
+                selected: selectedPaymentType == 22,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(
+                    color: selectedPaymentType == 22
+                      ? Colors.green
+                      : Colors.grey.shade300,
+                  ),
+                ),
+                onTap: () {
+                  setState(() {
+                    selectedPaymentType = 22; // MOBILE_VBANK
+                  });
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('취소'),
             ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.account_balance, color: Colors.green),
-              title: const Text('가상계좌'),
-              subtitle: const Text('무통장 입금'),
-              onTap: () => Navigator.pop(context, 22), // MOBILE_VBANK
+            ElevatedButton(
+              onPressed: (selectedTestId != null && selectedPaymentType != null)
+                ? () => Navigator.pop(context, {
+                    'testId': selectedTestId!,
+                    'paymentType': selectedPaymentType!,
+                  })
+                : null,
+              child: const Text('확인'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
-          ),
-        ],
       ),
     );
   }
@@ -399,7 +494,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 8),
                     Text(
                       '약 10–15분 · 30문장 중 12개 선택',
-                      style: AppTextStyles.bodySmall.copyWith(color: AppColors.textOnDark),
+                      style: AppTextStyles.bodySmall
+                          .copyWith(color: AppColors.textOnDark),
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -570,9 +666,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           primaryActionStyle: loggedIn
               ? AppErrorPrimaryActionStyle.outlined
               : AppErrorPrimaryActionStyle.filled,
-          onPrimaryAction: loggedIn
-              ? () => _loadAccounts()
-              : () => _promptLoginAndReload(),
+          onPrimaryAction:
+              loggedIn ? () => _loadAccounts() : () => _promptLoginAndReload(),
         ),
       );
     }
@@ -668,7 +763,9 @@ class _AccountCard extends StatelessWidget {
               }
             : null,
         borderRadius: BorderRadius.circular(18),
-        mouseCursor: item.resultId != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
+        mouseCursor: item.resultId != null
+            ? SystemMouseCursors.click
+            : SystemMouseCursors.basic,
         child: Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
