@@ -27,7 +27,9 @@ class ContinueToIdealScreen extends StatelessWidget {
       child: Scaffold(
         backgroundColor: AppColors.backgroundWhite,
         appBar: AppBar(
-          title: const Text('이상(변화 방향)도 이어서 할까요?'),
+          title: const Text(
+            '\uc774\uc0c1(\ubcc0\ud654 \ubc29\ud5a5)\ub3c4 \uc774\uc5b4\uc11c \ud560\uae4c\uc694?',
+          ),
           backgroundColor: AppColors.backgroundWhite,
           foregroundColor: AppColors.textPrimary,
           elevation: 0,
@@ -46,12 +48,12 @@ class ContinueToIdealScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '이상(변화 방향) 검사는 "앞으로 어떤 방향으로 바꾸고 싶은지"를 보는 검사예요.',
+                  '\uc774\uc0c1(\ubcc0\ud654 \ubc29\ud5a5) \uac80\uc0ac\ub294 "\uc55e\uc73c\ub85c \uc5b4\ub5a4 \ubc29\ud5a5\uc73c\ub85c \ubc14\uafb8\uace0 \uc2f6\uc740\uc9c0"\ub97c \ubcf4\ub294 \uac80\uc0ac\uc608\uc694.',
                   style: AppTextStyles.bodyMedium,
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '지금 이어서 진행하거나, 나중에 홈에서 "이상(변화 방향) 이어하기"로 계속할 수 있어요.',
+                  '\uc9c0\uae08 \uc774\uc5b4\uc11c \uc9c4\ud589\ud558\uac70\ub098, \ub098\uc911\uc5d0 \ud648\uc5d0\uc11c "\uc774\uc0c1(\ubcc0\ud654 \ubc29\ud5a5) \uc774\uc5b4\ud558\uae30"\ub85c \uacc4\uc18d\ud560 \uc218 \uc788\uc5b4\uc694.',
                   style: AppTextStyles.bodyMedium,
                 ),
                 const Spacer(),
@@ -68,7 +70,7 @@ class ContinueToIdealScreen extends StatelessWidget {
                       ),
                     ),
                     child: const Text(
-                      '이상(변화 방향) 이어하기',
+                      '\uc774\uc0c1(\ubcc0\ud654 \ubc29\ud5a5) \uc774\uc5b4\ud558\uae30',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
                   ),
@@ -78,7 +80,7 @@ class ContinueToIdealScreen extends StatelessWidget {
                   width: double.infinity,
                   child: TextButton(
                     onPressed: () => _close(context, false),
-                    child: const Text('나중에 하기'),
+                    child: const Text('\ub098\uc911\uc5d0 \ud558\uae30'),
                   ),
                 ),
               ],

@@ -287,12 +287,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: () async {
-                        if (!_authService.isLoggedIn) {
-                          final ok = await AuthUi.promptLogin(context: context);
-                          if (!ok || !mounted) return;
-                        }
-                        MainShellTabController.index.value = 1;
+                      onPressed: () {
+                        Navigator.of(context).pushNamed(
+                          AppRoutes.testNote,
+                          arguments: const TestNoteArgs(
+                            testId: 1,
+                            testTitle: '현실 검사',
+                          ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.backgroundWhite,
@@ -303,10 +305,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        splashFactory: NoSplash.splashFactory,
                       ),
                       child: const Row(
-                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
                             '검사 시작',
@@ -385,9 +386,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     onPressed: () {
                       MainShellTabController.index.value = 2;
                     },
-                    style: TextButton.styleFrom(
-                      splashFactory: NoSplash.splashFactory,
-                    ),
                     child: const Text('더보기'),
                   )
                 : Text(
@@ -508,22 +506,19 @@ class _AccountCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-          onTap: item.resultId != null
-              ? () {
-                  Navigator.of(context).pushNamed(
-                    AppRoutes.userResultDetail,
-                    arguments: UserResultDetailArgs(
-                      resultId: item.resultId!,
-                      testId: item.testId,
-                    ),
-                  );
-                }
-              : null,
+        onTap: item.resultId != null
+            ? () {
+                Navigator.of(context).pushNamed(
+                  AppRoutes.userResultDetail,
+                  arguments: UserResultDetailArgs(
+                    resultId: item.resultId!,
+                    testId: item.testId,
+                  ),
+                );
+              }
+            : null,
         borderRadius: BorderRadius.circular(18),
-        splashColor: Colors.transparent,
-        highlightColor: Colors.transparent,
-        overlayColor: WidgetStateProperty.all(Colors.transparent),
-        splashFactory: NoSplash.splashFactory,
+        mouseCursor: item.resultId != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
         child: Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(

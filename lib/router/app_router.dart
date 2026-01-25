@@ -18,6 +18,7 @@ import '../screens/test/wpi_review_screen.dart';
 import '../screens/test/wpi_selection_flow_new.dart';
 import '../test_flow/continue_to_ideal_screen.dart';
 import '../test_flow/role_transition_screen.dart';
+import '../test_flow/test_flow_models.dart';
 import 'app_routes.dart';
 
 class AppRouter {
@@ -38,9 +39,9 @@ class AppRouter {
         return _page(settings, (_) => MainShell(initialIndex: initialIndex));
       }
       case AppRoutes.login:
-        return _page(settings, (_) => const LoginScreen(), fullscreenDialog: true);
+        return _page<bool>(settings, (_) => const LoginScreen(), fullscreenDialog: true);
       case AppRoutes.signup:
-        return _page(settings, (_) => const SignUpScreen(), fullscreenDialog: true);
+        return _page<bool>(settings, (_) => const SignUpScreen(), fullscreenDialog: true);
       case AppRoutes.notificationSettings:
         return _page(settings, (_) => const NotificationSettingsScreen());
       case AppRoutes.userResultDetail: {
@@ -116,9 +117,9 @@ class AppRouter {
       case AppRoutes.wpiSelectionFlow: {
         final args = settings.arguments;
         if (args is! WpiSelectionFlowArgs) {
-          return _error(settings, 'missing args for ${AppRoutes.wpiSelectionFlow}');
+          return _error<FlowCompletion>(settings, 'missing args for ${AppRoutes.wpiSelectionFlow}');
         }
-        return _page(
+        return _page<FlowCompletion>(
           settings,
           (_) => WpiSelectionFlowNew(
             testId: args.testId,
@@ -148,28 +149,28 @@ class AppRouter {
         );
       }
       case AppRoutes.continueToIdeal:
-        return _page(settings, (_) => const ContinueToIdealScreen());
+        return _page<bool>(settings, (_) => const ContinueToIdealScreen());
       case AppRoutes.roleTransition:
-        return _page(settings, (_) => const RoleTransitionScreen());
+        return _page<void>(settings, (_) => const RoleTransitionScreen());
       default:
         return _page(settings, (_) => const SplashScreen());
     }
   }
 
-  static Route<dynamic> _page(
+  static Route<T> _page<T>(
     RouteSettings settings,
     WidgetBuilder builder, {
     bool fullscreenDialog = false,
   }) {
-    return MaterialPageRoute(
+    return MaterialPageRoute<T>(
       settings: settings,
       fullscreenDialog: fullscreenDialog,
       builder: builder,
     );
   }
 
-  static Route<dynamic> _error(RouteSettings settings, String message) {
-    return MaterialPageRoute(
+  static Route<T> _error<T>(RouteSettings settings, String message) {
+    return MaterialPageRoute<T>(
       settings: settings,
       builder: (_) => Scaffold(
         body: Center(child: Text(message)),

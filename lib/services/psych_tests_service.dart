@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 import 'api_client.dart';
@@ -242,7 +244,9 @@ class PsychTestItem {
     if (json is Map<String, dynamic>) {
       return PsychTestItem(
         id: _asInt(json['id'] ?? json['question_id']),
-        text: (json['text'] ?? json['content'] ?? json['question'] ?? '').toString(),
+        text: _normalizeApiText(
+          (json['text'] ?? json['content'] ?? json['question'] ?? '').toString(),
+        ),
         sequence: _asInt(json['sequence']),
       );
     }
@@ -308,9 +312,9 @@ class PsychTestChecklist {
     final rawQuestions = (json['questions'] as List?) ?? const [];
     final items = rawQuestions.map((e) => PsychTestItem.fromJson(e)).toList()
       ..sort((a, b) => (a.sequence ?? 0).compareTo(b.sequence ?? 0));
-    final name = (json['name'] ?? '').toString();
-    final description = (json['description'] ?? '').toString();
-    final question = (json['question'] ?? '').toString();
+    final name = _normalizeApiText((json['name'] ?? '').toString());
+    final description = _normalizeApiText((json['description'] ?? '').toString());
+    final question = _normalizeApiText((json['question'] ?? '').toString());
     return PsychTestChecklist(
       id: _asInt(json['id']),
       name: name,
@@ -616,4 +620,84 @@ DateTime? _asDateTime(dynamic v) {
     return DateTime.tryParse(v);
   }
   return null;
+}
+
+String _normalizeApiText(String raw) {
+  if (raw.isEmpty) return raw;
+
+  var value = raw
+      .replaceAll('\u00A0', ' ')
+      .replaceAll('\u200B', '')
+      .replaceAll('\uFEFF', '')
+      .replaceAll('\u201c', '"')
+      .replaceAll('\u201d', '"')
+      .replaceAll('\u2018', "'")
+      .replaceAll('\u2019', "'")
+      .trim();
+
+  final fixedMojibake = _fixLatin1Utf8Mojibake(value);
+  if (fixedMojibake != null) {
+    value = fixedMojibake;
+  }
+
+  final hangulCount = _countHangul(value);
+  if (hangulCount >= 6) {
+    final spaceCount = value.codeUnits.where((unit) => unit == 0x20).length;
+    if (spaceCount / hangulCount >= 0.6) {
+      value = _removeSpacesBetweenHangul(value);
+    }
+  }
+
+  return value;
+}
+
+String? _fixLatin1Utf8Mojibake(String value) {
+  if (value.isEmpty) return null;
+
+  final hasLatin1Bytes = value.runes.any((r) => r >= 0x80 && r <= 0xFF);
+  if (!hasLatin1Bytes) return null;
+
+  try {
+    final decoded = utf8.decode(latin1.encode(value), allowMalformed: true);
+    if (decoded == value) return null;
+    return _containsHangul(decoded) ? decoded : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+int _countHangul(String value) {
+  var count = 0;
+  for (final unit in value.codeUnits) {
+    if (_isHangulCodeUnit(unit)) count++;
+  }
+  return count;
+}
+
+bool _containsHangul(String value) {
+  for (final unit in value.codeUnits) {
+    if (_isHangulCodeUnit(unit)) return true;
+  }
+  return false;
+}
+
+bool _isHangulCodeUnit(int unit) => unit >= 0xAC00 && unit <= 0xD7A3;
+
+String _removeSpacesBetweenHangul(String value) {
+  if (value.length < 3) return value;
+
+  final buffer = StringBuffer();
+  final units = value.codeUnits;
+
+  for (var i = 0; i < units.length; i++) {
+    final unit = units[i];
+    if (unit == 0x20 && i > 0 && i < units.length - 1) {
+      if (_isHangulCodeUnit(units[i - 1]) && _isHangulCodeUnit(units[i + 1])) {
+        continue;
+      }
+    }
+    buffer.writeCharCode(unit);
+  }
+
+  return buffer.toString();
 }

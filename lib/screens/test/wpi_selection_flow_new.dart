@@ -389,7 +389,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
         backgroundColor: AppColors.backgroundLight,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
-        title: Text('${widget.testTitle} \u00B7 $stageLabel'),
+        title: Text('${widget.testTitle} / $stageLabel'),
         actions: [
           IconButton(
             icon: const Icon(Icons.close),
@@ -548,8 +548,13 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     );
   }
 
-  String _cleanText(String text) =>
-      text.replaceAll(RegExp(r'\\(.*?\\)'), '').trim();
+  String _cleanText(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return trimmed;
+
+    final cleaned = trimmed.replaceAll(RegExp(r'\(.*?\)'), '').trim();
+    return cleaned.isEmpty ? trimmed : cleaned;
+  }
 
   int? _extractResultId(dynamic res) {
     if (res == null) return null;

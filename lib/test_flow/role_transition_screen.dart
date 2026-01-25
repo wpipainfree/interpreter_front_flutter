@@ -16,7 +16,7 @@ class RoleTransitionScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.backgroundWhite,
       appBar: AppBar(
-        title: const Text('타인 평가로 전환'),
+        title: const Text('\ud0c0\uc778 \ud3c9\uac00\ub85c \uc804\ud658'),
         backgroundColor: AppColors.backgroundWhite,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
@@ -27,9 +27,9 @@ class RoleTransitionScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('이제 타인 평가로 넘어갑니다.', style: AppTextStyles.h3),
+              Text('\uc774\uc81c \ud0c0\uc778 \ud3c9\uac00\ub85c \ub118\uc5b4\uac11\ub2c8\ub2e4.', style: AppTextStyles.h3),
               const SizedBox(height: 8),
-              Text('주변 사람이 보는 나의 기준을 선택해요.', style: AppTextStyles.bodyMedium),
+              Text('\uc8fc\ubcc0 \uc0ac\ub78c\uc774 \ubcf4\ub294 \ub098\uc758 \uae30\uc900\uc744 \uc120\ud0dd\ud574\uc694.', style: AppTextStyles.bodyMedium),
               const Spacer(),
               SizedBox(
                 width: double.infinity,
@@ -44,7 +44,7 @@ class RoleTransitionScreen extends StatelessWidget {
                     ),
                   ),
                   child: const Text(
-                    '계속',
+                    '\uacc4\uc18d',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
