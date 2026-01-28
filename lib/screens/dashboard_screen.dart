@@ -9,7 +9,6 @@ import '../utils/app_text_styles.dart';
 import '../utils/auth_ui.dart';
 import '../utils/main_shell_tab_controller.dart';
 import '../widgets/app_error_view.dart';
-import '../screens/result/user_result_detail_screen.dart';
 import '../screens/payment/payment_webview_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
