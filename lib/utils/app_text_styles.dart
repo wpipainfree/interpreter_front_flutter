@@ -5,8 +5,8 @@ import 'app_colors.dart';
 class AppTextStyles {
   AppTextStyles._();
 
-  static const String _sansFamily = 'NotoSansKR';
-  static const String _serifFamily = 'NotoSerifKR';
+  static const String _sansFamily = 'Pretendard';
+  static const String _serifFamily = 'Pretendard';
 
   // Headings (serif)
   static TextStyle get h1 => TextStyle(
