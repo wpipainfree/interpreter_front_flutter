@@ -296,8 +296,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   borderRadius: BorderRadius.circular(8),
                   side: BorderSide(
                     color: selectedPaymentType == 20
-                      ? Colors.blue
-                      : Colors.grey.shade300,
+                        ? Colors.blue
+                        : Colors.grey.shade300,
                   ),
                 ),
                 onTap: () {
@@ -316,8 +316,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   borderRadius: BorderRadius.circular(8),
                   side: BorderSide(
                     color: selectedPaymentType == 22
-                      ? Colors.green
-                      : Colors.grey.shade300,
+                        ? Colors.green
+                        : Colors.grey.shade300,
                   ),
                 ),
                 onTap: () {
@@ -335,11 +335,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             ElevatedButton(
               onPressed: (selectedTestId != null && selectedPaymentType != null)
-                ? () => Navigator.pop(context, {
-                    'testId': selectedTestId!,
-                    'paymentType': selectedPaymentType!,
-                  })
-                : null,
+                  ? () => Navigator.pop(context, {
+                        'testId': selectedTestId!,
+                        'paymentType': selectedPaymentType!,
+                      })
+                  : null,
               child: const Text('확인'),
             ),
           ],
@@ -356,7 +356,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       backgroundColor: AppColors.backgroundLight,
       body: CustomScrollView(
         slivers: [
-          _buildAppBar(user),
+          _buildHeader(user),
           _buildStartTestSection(),
           _buildHistoryHeader(),
           _buildHistoryList(),
@@ -366,92 +366,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  SliverAppBar _buildAppBar(UserInfo? user) {
-    const double expandedHeight = 200;
-    return SliverAppBar(
-      expandedHeight: expandedHeight,
-      pinned: true,
-      backgroundColor: AppColors.primary,
-      automaticallyImplyLeading: false,
-      flexibleSpace: LayoutBuilder(
-        builder: (context, constraints) {
-          final double delta = expandedHeight - kToolbarHeight;
-          final double t = ((constraints.maxHeight - kToolbarHeight) /
-                  (delta <= 0 ? 1 : delta))
-              .clamp(0.0, 1.0);
-          final bool showTitle = t < 0.4;
-          final bool showContent = t > 0.65;
+  SliverAppBar _buildHeader(UserInfo? user) {
+    final name = (user?.displayName ?? '게스트').trim();
 
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [AppColors.primary, AppColors.primaryLight],
-                  ),
-                ),
-                child: showContent
-                    ? SafeArea(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '오늘의 구조 상태',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.textOnDark,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                user?.displayName ?? '게스트',
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textOnDark,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                '당신의 마음을 ‘설명 가능한 말’로 바꿔봅시다.',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  color: AppColors.textOnDark,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : const SizedBox.shrink(),
+    return SliverAppBar(
+      pinned: true,
+      automaticallyImplyLeading: false,
+      backgroundColor: AppColors.backgroundLight,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      centerTitle: false,
+      toolbarHeight: 44,
+      titleSpacing: 20,
+      title: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: name,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w800,
               ),
-              Positioned(
-                left: 16,
-                bottom: 12,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 180),
-                  opacity: showTitle ? 1 : 0,
-                  child: const Text(
-                    '오늘의 구조 상태',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
+            ),
+            TextSpan(
+              text: ' 님 안녕하세요.',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
               ),
-            ],
-          );
-        },
+            ),
+          ],
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
