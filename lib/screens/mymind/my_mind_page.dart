@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/psych_tests_service.dart';
 import '../../router/app_routes.dart';
+import '../../test_flow/test_flow_models.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/auth_ui.dart';
@@ -12,7 +13,7 @@ import '../../widgets/app_error_view.dart';
 import 'interpretation_panel.dart';
 import 'interpretation_record_panel.dart';
 
-/// MyMind main page: results / saved / records / interpretation.
+/// MyMind main page: results / records / interpretation.
 class MyMindPage extends StatefulWidget {
   const MyMindPage({super.key});
 
@@ -57,9 +58,8 @@ class _MyMindPageState extends State<MyMindPage> {
         child: Row(
           children: [
             _segButton('결과', 0),
-            _segButton('보관함', 1),
-            _segButton('기록', 2),
-            _segButton('해석', 3),
+            _segButton('기록', 1),
+            _segButton('해석', 2),
           ],
         ),
       ),
@@ -95,8 +95,6 @@ class _MyMindPageState extends State<MyMindPage> {
       case 0:
         return const _ResultPanel();
       case 1:
-        return const _SavedPanel();
-      case 2:
         return const _RecordPanel();
       default:
         return const InterpretationPanel();
@@ -331,6 +329,34 @@ class _ResultCard extends StatelessWidget {
     );
   }
 
+  WpiTestKind _kindForTest(int testId) {
+    if (testId == 3) return WpiTestKind.ideal;
+    return WpiTestKind.reality;
+  }
+
+  String _testTitleForFlow(int testId) {
+    if (testId == 3) return '이상(변화 방향) 검사';
+    return '현실 검사';
+  }
+
+  void _resumeOther(BuildContext context) {
+    final testId = item.testId;
+    final resultId = item.resultId;
+    if (testId == null || resultId == null) return;
+
+    Navigator.of(context).pushNamed(
+      AppRoutes.wpiSelectionFlow,
+      arguments: WpiSelectionFlowArgs(
+        testId: testId,
+        testTitle: _testTitleForFlow(testId),
+        kind: _kindForTest(testId),
+        exitMode: FlowExitMode.openResultDetail,
+        existingResultId: resultId,
+        initialRole: EvaluationRole.other,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final date =
@@ -345,7 +371,7 @@ class _ResultCard extends StatelessWidget {
     final statusColor = _statusColor(item.status);
 
     return InkWell(
-      onTap: () => _openDetail(context),
+      onTap: item.status == '3' ? () => _resumeOther(context) : () => _openDetail(context),
       splashColor: Colors.transparent,
       highlightColor: Colors.transparent,
       overlayColor: WidgetStateProperty.all(Colors.transparent),
@@ -449,7 +475,7 @@ class _ResultCard extends StatelessWidget {
 
   String? _statusLabel(String? status) {
     if (status == '4') return '완료';
-    if (status == '3') return '진행중';
+    if (status == '3') return '이어하기';
     return null;
   }
 
@@ -491,6 +517,7 @@ class _ResultCard extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _SavedPanel extends StatelessWidget {
   const _SavedPanel();
 

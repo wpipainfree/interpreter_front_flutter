@@ -20,6 +20,8 @@ class WpiSelectionFlowNew extends StatefulWidget {
     this.mindFocus,
     this.kind = WpiTestKind.reality,
     this.exitMode = FlowExitMode.openResultDetail,
+    this.existingResultId,
+    this.initialRole,
   });
 
   final int testId;
@@ -27,6 +29,8 @@ class WpiSelectionFlowNew extends StatefulWidget {
   final String? mindFocus;
   final WpiTestKind kind;
   final FlowExitMode exitMode;
+  final int? existingResultId;
+  final EvaluationRole? initialRole;
 
   @override
   State<WpiSelectionFlowNew> createState() => _WpiSelectionFlowNewState();
@@ -64,6 +68,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
   @override
   void initState() {
     super.initState();
+    _resultId = widget.existingResultId;
     _init();
   }
 
@@ -107,7 +112,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       _checklists
         ..clear()
         ..addAll(sorted);
-      _prepareStage(0);
+      _prepareStage(_resolveInitialIndex(sorted));
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -115,6 +120,18 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
         _error = e.toString();
       });
     }
+  }
+
+  int _resolveInitialIndex(List<PsychTestChecklist> checklists) {
+    final role = widget.initialRole;
+    if (role == null || role == EvaluationRole.self) return 0;
+
+    final byRole = checklists.indexWhere((c) => c.role == role);
+    if (byRole != -1) return byRole;
+
+    // Fallback: assume the second checklist is "other" when roles are ambiguous.
+    if (checklists.length > 1) return 1;
+    return 0;
   }
 
   void _prepareStage(int index) {
@@ -132,7 +149,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     }
     setState(() {
       _stageIndex = index;
-      if (index == 0) _resultId = null;
+      if (index == 0 && widget.existingResultId == null) _resultId = null;
       if (index == 0) _shownOtherTransition = false;
       _selectedIds.clear();
       _limitSnackArmed = true;

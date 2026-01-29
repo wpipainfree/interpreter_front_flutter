@@ -20,23 +20,16 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  late int _index;
   final AuthService _authService = AuthService();
   late final VoidCallback _authListener;
-  late final VoidCallback _tabListener;
 
   @override
   void initState() {
     super.initState();
-    _index = widget.initialIndex.clamp(0, 3);
-    MainShellTabController.index.value = _index;
-    _tabListener = () {
-      if (!mounted) return;
-      final next = MainShellTabController.index.value.clamp(0, 3);
-      if (next == _index) return;
-      setState(() => _index = next);
-    };
-    MainShellTabController.index.addListener(_tabListener);
+    final initialIndex = widget.initialIndex.clamp(0, 3);
+    if (MainShellTabController.index.value != initialIndex) {
+      MainShellTabController.index.value = initialIndex;
+    }
     _authListener = () {
       if (!mounted) return;
       setState(() {});
@@ -46,7 +39,6 @@ class _MainShellState extends State<MainShell> {
 
   @override
   void dispose() {
-    MainShellTabController.index.removeListener(_tabListener);
     _authService.removeListener(_authListener);
     super.dispose();
   }
@@ -60,27 +52,42 @@ class _MainShellState extends State<MainShell> {
       MyPageScreen(),
     ];
 
-    return Scaffold(
-      body: IndexedStack(
-        index: _index,
-        children: pages,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _index,
-        onTap: _onTabSelected,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.textSecondary,
-        type: BottomNavigationBarType.fixed,
-        items: [
-          const BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: '홈'),
-          const BottomNavigationBarItem(icon: Icon(Icons.assignment_rounded), label: '검사'),
-          BottomNavigationBarItem(
-            icon: _AtomIcon(size: 26),
-            label: '내 마음',
+    return ValueListenableBuilder<int>(
+      valueListenable: MainShellTabController.index,
+      builder: (context, value, _) {
+        final index = value.clamp(0, 3);
+        return Scaffold(
+          body: IndexedStack(
+            index: index,
+            children: pages,
           ),
-          const BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), label: '마이'),
-        ],
-      ),
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: index,
+            onTap: _onTabSelected,
+            selectedItemColor: AppColors.primary,
+            unselectedItemColor: AppColors.textSecondary,
+            type: BottomNavigationBarType.fixed,
+            items: [
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.home_rounded),
+                label: '홈',
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.assignment_rounded),
+                label: '검사',
+              ),
+              BottomNavigationBarItem(
+                icon: _AtomIcon(size: 26),
+                label: '내 마음',
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.person_outline_rounded),
+                label: '마이',
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

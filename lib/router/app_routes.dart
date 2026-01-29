@@ -92,6 +92,8 @@ class WpiSelectionFlowArgs {
   final String? mindFocus;
   final WpiTestKind kind;
   final FlowExitMode exitMode;
+  final int? existingResultId;
+  final EvaluationRole? initialRole;
 
   const WpiSelectionFlowArgs({
     required this.testId,
@@ -99,6 +101,8 @@ class WpiSelectionFlowArgs {
     this.mindFocus,
     this.kind = WpiTestKind.reality,
     this.exitMode = FlowExitMode.openResultDetail,
+    this.existingResultId,
+    this.initialRole,
   });
 }
 
@@ -127,4 +131,3 @@ class RawResultArgs {
   final Map<String, dynamic> payload;
   const RawResultArgs({required this.title, required this.payload});
 }
-

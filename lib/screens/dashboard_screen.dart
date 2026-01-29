@@ -3,6 +3,7 @@ import '../services/auth_service.dart';
 import '../services/payment_service.dart';
 import '../services/psych_tests_service.dart';
 import '../test_flow/test_flow_coordinator.dart';
+import '../test_flow/test_flow_models.dart';
 import '../router/app_routes.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_text_styles.dart';
@@ -628,7 +629,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           final item = _accounts[index];
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-            child: _AccountCard(item: item),
+            child: _AccountCard(
+              item: item,
+              onResumeComplete: _loadAccounts,
+            ),
           );
         },
         childCount: _accounts.length,
@@ -678,9 +682,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
 }
 
 class _AccountCard extends StatelessWidget {
-  const _AccountCard({required this.item});
+  const _AccountCard({
+    required this.item,
+    this.onResumeComplete,
+  });
 
   final UserAccountItem item;
+  final Future<void> Function()? onResumeComplete;
+
+  bool get _canResumeOther {
+    return item.status == '3' && item.resultId != null && item.testId != null;
+  }
+
+  WpiTestKind _kindForTest(int testId) {
+    if (testId == 3) return WpiTestKind.ideal;
+    return WpiTestKind.reality;
+  }
+
+  String _testTitleForFlow(int testId) {
+    if (testId == 3) return '이상(변화 방향) 검사';
+    return '현실 검사';
+  }
+
+  Future<void> _resumeOther(BuildContext context) async {
+    final testId = item.testId;
+    final resultId = item.resultId;
+    if (testId == null || resultId == null) return;
+
+    await Navigator.of(context).pushNamed(
+      AppRoutes.wpiSelectionFlow,
+      arguments: WpiSelectionFlowArgs(
+        testId: testId,
+        testTitle: _testTitleForFlow(testId),
+        kind: _kindForTest(testId),
+        exitMode: FlowExitMode.openResultDetail,
+        existingResultId: resultId,
+        initialRole: EvaluationRole.other,
+      ),
+    );
+    if (context.mounted) {
+      await onResumeComplete?.call();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -698,17 +741,19 @@ class _AccountCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: item.resultId != null
-            ? () {
-                Navigator.of(context).pushNamed(
-                  AppRoutes.userResultDetail,
-                  arguments: UserResultDetailArgs(
-                    resultId: item.resultId!,
-                    testId: item.testId,
-                  ),
-                );
-              }
-            : null,
+        onTap: _canResumeOther
+            ? () => _resumeOther(context)
+            : (item.resultId != null
+                ? () {
+                    Navigator.of(context).pushNamed(
+                      AppRoutes.userResultDetail,
+                      arguments: UserResultDetailArgs(
+                        resultId: item.resultId!,
+                        testId: item.testId,
+                      ),
+                    );
+                  }
+                : null),
         borderRadius: BorderRadius.circular(18),
         mouseCursor: item.resultId != null
             ? SystemMouseCursors.click
@@ -831,7 +876,7 @@ class _AccountCard extends StatelessWidget {
 
   String? _statusLabel(String? status) {
     if (status == '4') return '완료';
-    if (status == '3') return '진행중';
+    if (status == '3') return '이어하기';
     return null;
   }
 

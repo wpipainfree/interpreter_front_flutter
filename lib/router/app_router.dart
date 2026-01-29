@@ -127,6 +127,8 @@ class AppRouter {
             mindFocus: args.mindFocus,
             kind: args.kind,
             exitMode: args.exitMode,
+            existingResultId: args.existingResultId,
+            initialRole: args.initialRole,
           ),
         );
       }

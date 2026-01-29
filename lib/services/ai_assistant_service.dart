@@ -10,6 +10,21 @@ class AiAssistantService {
       : _apiClient = apiClient ?? ApiClient.instance();
 
   final ApiClient _apiClient;
+  late final Dio _interpretDio = _buildInterpretDio();
+
+  Dio _buildInterpretDio() {
+    if (!kIsWeb) return _apiClient.dio;
+
+    final dio = Dio(
+      BaseOptions(
+        connectTimeout: Duration.zero,
+        sendTimeout: Duration.zero,
+        receiveTimeout: Duration.zero,
+      ),
+    );
+    dio.httpClientAdapter = _apiClient.dio.httpClientAdapter;
+    return dio;
+  }
 
   Future<Map<String, dynamic>> interpret(Map<String, dynamic> payload) async {
     final uri = _apiClient.uri('/api/v1/ai-assistant/interpret');
@@ -19,12 +34,13 @@ class AiAssistantService {
     });
     try {
       final response = await _apiClient.requestWithAuthRetry(
-        (auth) => _apiClient.dio.post(
+        (auth) => _interpretDio.post(
           uri.toString(),
           data: payload,
           options: _apiClient.options(
             authHeader: auth,
             contentType: 'application/json',
+            timeout: Duration.zero,
           ),
         ),
       );
@@ -51,6 +67,12 @@ class AiAssistantService {
         'method': e.requestOptions.method,
         'url': e.requestOptions.uri.toString(),
         'query': e.requestOptions.queryParameters,
+        'timeoutsMs': {
+          'connect': e.requestOptions.connectTimeout?.inMilliseconds,
+          'send': e.requestOptions.sendTimeout?.inMilliseconds,
+          'receive': e.requestOptions.receiveTimeout?.inMilliseconds,
+        },
+        'isWeb': kIsWeb,
       });
       throw AiAssistantHttpException(
         'AI 해석 요청에 실패했습니다. (${e.response?.statusCode ?? e.error})',
