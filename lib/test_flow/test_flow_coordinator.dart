@@ -8,7 +8,7 @@ import 'test_flow_models.dart';
 class TestFlowCoordinator {
   TestFlowCoordinator({
     this.idealTestId = 3,
-    this.idealTestTitle = '이상(변화 방향) 검사',
+    this.idealTestTitle = 'WPI이상 검사',
   });
 
   static const String _pendingIdealKey = 'wpi_pending_ideal';

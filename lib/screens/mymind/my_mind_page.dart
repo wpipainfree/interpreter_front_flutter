@@ -335,7 +335,7 @@ class _ResultCard extends StatelessWidget {
   }
 
   String _testTitleForFlow(int testId) {
-    if (testId == 3) return '이상(변화 방향) 검사';
+    if (testId == 3) return 'WPI이상 프로파일 검사';
     return '현실 검사';
   }
 

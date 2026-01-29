@@ -30,8 +30,8 @@ class IdealProfileSection extends StatelessWidget {
     final result = detail;
     if (result == null) {
       return const ResultSectionHeader(
-        title: '이상 프로파일(변화 방향)',
-        subtitle: '이상 결과가 없습니다.',
+        title: 'WPI이상 프로파일',
+        subtitle: 'WPI이상 프로파일 결과가 없습니다.',
       );
     }
 
@@ -53,8 +53,8 @@ class IdealProfileSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const ResultSectionHeader(
-          title: '이상 프로파일(변화 방향)',
-          subtitle: '이상은 “되고 싶은 나”를 통해 변화가 회복 방향인지 도피 방향인지 확인하는 자료입니다.',
+          title: 'WPI이상 프로파일',
+          subtitle: 'WPI이상 프로파일은 “되고 싶은 나”를 통해 변화의 방향을 확인합니다.',
         ),
         const SizedBox(height: 12),
         Text(
