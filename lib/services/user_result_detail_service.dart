@@ -241,15 +241,18 @@ class UserResultDetailService {
     final idealProfile = ideal != null ? _buildProfileJson(ideal) : _emptyProfileJson();
     return <String, dynamic>{
       'session': <String, dynamic>{
+        'session_id': null,
         'turn': 1,
       },
       'phase': 2,
+      'output_format': 'cards_v1',
       'profiles': <String, dynamic>{
         'reality': realityProfile,
         'ideal': idealProfile,
       },
       'model': 'gpt-5.2',
       'story': <String, dynamic>{'content': story},
+      'followup': <String, dynamic>{},
     };
   }
 
@@ -300,7 +303,7 @@ class UserResultDetailService {
   }) {
     final envHash = _fnv1a32Hex(AppConfig.apiBaseUrl);
     final storyHash = _fnv1a32Hex(story);
-    return 'ai.initial_interpretation.cards_v1.$envHash.$resultId.$storyHash.$profilesHash';
+    return 'ai.initial_interpretation.cards_v1.v2.$envHash.$resultId.$storyHash.$profilesHash';
   }
 
   String _fnv1a32Hex(String input) {
