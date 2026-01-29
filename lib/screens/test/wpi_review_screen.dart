@@ -47,44 +47,55 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
     };
   }
 
+  void _exitTestFlow() {
+    Navigator.of(context).popUntil((route) {
+      final name = route.settings.name;
+      if (name == null) return route.isFirst;
+      return !name.startsWith('/test/');
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
-      appBar: AppBar(
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
         backgroundColor: AppColors.backgroundLight,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 0,
-        title: const Text('선택 검토'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          _ReviewHeader(testTitle: widget.testTitle),
-          const Divider(height: 1),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Column(
-                children: [
-                  _buildBucket(1, '1순위'),
-                  _buildBucket(2, '2순위'),
-                  _buildBucket(3, '3순위'),
-                ],
+        appBar: AppBar(
+          backgroundColor: AppColors.backgroundLight,
+          foregroundColor: AppColors.textPrimary,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          title: const Text('선택 검토'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: _exitTestFlow,
+            ),
+          ],
+        ),
+        body: Column(
+          children: [
+            _ReviewHeader(testTitle: widget.testTitle),
+            const Divider(height: 1),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  children: [
+                    _buildBucket(1, '1순위'),
+                    _buildBucket(2, '2순위'),
+                    _buildBucket(3, '3순위'),
+                  ],
+                ),
               ),
             ),
-          ),
-          _BottomBar(
-            submitting: _submitting,
-            onConfirm: _submit,
-            onBack: () => Navigator.of(context).pop(),
-          ),
-        ],
+            _BottomBar(
+              submitting: _submitting,
+              onConfirm: _submit,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -380,12 +391,10 @@ class _BottomBar extends StatelessWidget {
   const _BottomBar({
     required this.submitting,
     required this.onConfirm,
-    required this.onBack,
   });
 
   final bool submitting;
   final VoidCallback onConfirm;
-  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -421,12 +430,6 @@ class _BottomBar extends StatelessWidget {
                       ),
                     )
                   : const Text('제출'),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: submitting ? null : onBack,
-              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-              child: const Text('뒤로가기'),
             ),
           ],
         ),

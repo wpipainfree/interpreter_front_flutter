@@ -3,7 +3,7 @@ import '../services/auth_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/auth_ui.dart';
 import '../utils/main_shell_tab_controller.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import '../widgets/atom_icon.dart';
 import 'dashboard_screen.dart';
 import 'test/test_intro_screen.dart';
 import 'mymind/my_mind_page.dart';
@@ -77,7 +77,7 @@ class _MainShellState extends State<MainShell> {
                 label: '검사',
               ),
               BottomNavigationBarItem(
-                icon: _AtomIcon(size: 26),
+                icon: const AtomIcon(size: 26),
                 label: '내 마음',
               ),
               const BottomNavigationBarItem(
@@ -101,37 +101,5 @@ class _MainShellState extends State<MainShell> {
       return;
     }
     MainShellTabController.index.value = i;
-  }
-}
-
-class _AtomIcon extends StatelessWidget {
-  const _AtomIcon({this.size = 24});
-
-  final double size;
-
-  static const String _svg = '''
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-  <circle cx="12" cy="12" r="2.5" fill="currentColor"/>
-  
-  <ellipse cx="12" cy="12" rx="3.5" ry="10" fill="none" stroke="currentColor" stroke-width="1.5" transform="rotate(30 12 12)"/>
-  <ellipse cx="12" cy="12" rx="3.5" ry="10" fill="none" stroke="currentColor" stroke-width="1.5" transform="rotate(-30 12 12)"/>
-  <ellipse cx="12" cy="12" rx="10" ry="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  
-  <circle cx="12" cy="2" r="1.5" fill="currentColor" transform="rotate(30 12 2)"/>
-  <circle cx="20.66" cy="17" r="1.5" fill="currentColor" transform="rotate(-30 20.66 17)"/>
-  <circle cx="3.34" cy="17" r="1.5" fill="currentColor"/>
-</svg>
-''';
-
-  @override
-  Widget build(BuildContext context) {
-    final iconTheme = IconTheme.of(context);
-    final color = iconTheme.color;
-    return SvgPicture.string(
-      _svg,
-      width: size,
-      height: size,
-      colorFilter: color != null ? ColorFilter.mode(color, BlendMode.srcIn) : null,
-    );
   }
 }

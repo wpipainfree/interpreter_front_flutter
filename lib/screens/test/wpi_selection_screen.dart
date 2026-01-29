@@ -59,7 +59,7 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
     if (!_auth.isLoggedIn) {
       final ok = await AuthUi.promptLogin(context: context);
       if (!ok && mounted) {
-        Navigator.of(context).pop();
+        _exitTestFlow();
         return;
       }
     }
@@ -217,26 +217,57 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
     }
   }
 
+  void _exitTestFlow() {
+    Navigator.of(context).popUntil((route) {
+      final name = route.settings.name;
+      if (name == null) return route.isFirst;
+      return !name.startsWith('/test/');
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return PopScope(
+        canPop: false,
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(widget.testTitle),
+            automaticallyImplyLeading: false,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: _exitTestFlow,
+              ),
+            ],
+          ),
+          body: const Center(child: CircularProgressIndicator()),
+        ),
       );
     }
     if (_error != null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('WPI 오류'),
-          backgroundColor: AppColors.backgroundLight,
-          foregroundColor: AppColors.textPrimary,
-        ),
-        body: AppErrorView(
-          title: '불러오지 못했어요',
-          message: _error!,
-          primaryActionLabel: '다시 시도',
-          primaryActionStyle: AppErrorPrimaryActionStyle.outlined,
-          onPrimaryAction: () => _loadChecklist(),
+      return PopScope(
+        canPop: false,
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('WPI 오류'),
+            backgroundColor: AppColors.backgroundLight,
+            foregroundColor: AppColors.textPrimary,
+            automaticallyImplyLeading: false,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: _exitTestFlow,
+              ),
+            ],
+          ),
+          body: AppErrorView(
+            title: '불러오지 못했어요',
+            message: _error!,
+            primaryActionLabel: '다시 시도',
+            primaryActionStyle: AppErrorPrimaryActionStyle.outlined,
+            onPrimaryAction: () => _loadChecklist(),
+          ),
         ),
       );
     }
@@ -249,22 +280,25 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
     final canProceed = currentSelections.length == target;
     final stageLabel = '${_stageIndex + 1}/${_checklists.length} ${checklist.name}';
 
-    return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
-      appBar: AppBar(
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
         backgroundColor: AppColors.backgroundLight,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 0,
-        title: Text('${widget.testTitle} / $stageLabel'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
+        appBar: AppBar(
+          backgroundColor: AppColors.backgroundLight,
+          foregroundColor: AppColors.textPrimary,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          title: Text('${widget.testTitle} / $stageLabel'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: _exitTestFlow,
+            ),
+          ],
+        ),
+        body: Column(
+          children: [
           _StickyHeader(
             brandRed: _brandRed,
             roundLabel: _roundLabel(currentRank),
@@ -303,7 +337,8 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
             primaryLabel: _roundIndex == 2 ? '확인하기' : '${_roundIndex + 2}순위로',
             onNext: _goNext,
           ),
-        ],
+          ],
+        ),
       ),
     );
   }

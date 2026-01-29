@@ -71,75 +71,85 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundWhite,
-      appBar: AppBar(
-        title: const Text('검사 준비'),
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
         backgroundColor: AppColors.backgroundWhite,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 0,
-      ),
-      body: SafeArea(
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '준비 2/2',
-                      style: AppTextStyles.labelSmall,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      '지금, 어떤 마음을 알고 싶나요?',
-                      style: AppTextStyles.h3,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '지금 내가 어떤 상태인지, 어떤 마음이 궁금한지 1~2줄로 적어주세요.',
-                      style: AppTextStyles.bodyMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _controller,
-                      minLines: 2,
-                      maxLines: 3,
-                      maxLength: 120,
-                      decoration: InputDecoration(
-                        labelText: '지금 알고 싶은 마음(1~2줄)',
-                        hintText: '예: 요즘 쉽게 예민해져요. 내 마음이 왜 이러는지 알고 싶어요.',
-                        errorText: _errorText,
+        appBar: AppBar(
+          title: const Text('검사 준비'),
+          backgroundColor: AppColors.backgroundWhite,
+          foregroundColor: AppColors.textPrimary,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          actions: [
+            IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.close),
+            ),
+          ],
+        ),
+        body: SafeArea(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '준비 2/2',
+                        style: AppTextStyles.labelSmall,
                       ),
-                      onChanged: (_) {
-                        if (_errorText != null) {
-                          setState(() => _errorText = null);
-                        }
-                      },
-                    ),
-                    const Spacer(),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _submit,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.secondary,
-                          foregroundColor: AppColors.textOnPrimary,
-                          minimumSize: const Size(double.infinity, 56),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      const SizedBox(height: 12),
+                      Text(
+                        '지금, 어떤 마음을 알고 싶나요?',
+                        style: AppTextStyles.h3,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '지금 내가 어떤 상태인지, 어떤 마음이 궁금한지 1~2줄로 적어주세요.',
+                        style: AppTextStyles.bodyMedium,
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _controller,
+                        minLines: 2,
+                        maxLines: 3,
+                        maxLength: 120,
+                        decoration: InputDecoration(
+                          labelText: '지금 알고 싶은 마음(1~2줄)',
+                          hintText: '예: 요즘 쉽게 예민해져요. 내 마음이 왜 이러는지 알고 싶어요.',
+                          errorText: _errorText,
+                        ),
+                        onChanged: (_) {
+                          if (_errorText != null) {
+                            setState(() => _errorText = null);
+                          }
+                        },
+                      ),
+                      const Spacer(),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _submit,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.secondary,
+                            foregroundColor: AppColors.textOnPrimary,
+                            minimumSize: const Size(double.infinity, 56),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            '검사 진행하기',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                           ),
                         ),
-                        child: const Text(
-                          '검사 진행하기',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+        ),
       ),
     );
   }

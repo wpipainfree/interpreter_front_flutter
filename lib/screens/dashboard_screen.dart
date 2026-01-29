@@ -538,20 +538,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: AppColors.textOnDark.withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.psychology_outlined,
-                  size: 48,
-                  color: AppColors.textOnDark,
-                ),
-              ),
             ],
           ),
         ),
@@ -767,13 +753,6 @@ class _AccountCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              CircleAvatar(
-                radius: 26,
-                backgroundColor: AppColors.primary.withOpacity(0.1),
-                child: const Icon(Icons.psychology_alt_rounded,
-                    color: AppColors.primary),
-              ),
-              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
