@@ -772,7 +772,7 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
                 Text('추가 질문', style: AppTextStyles.h4),
                 const SizedBox(height: 8),
                 Text(
-                  '자동 해석을 바탕으로 궁금한 점을 자유롭게 물어보세요.',
+                  '해석을 바탕으로 궁금한 점을 자유롭게 물어보세요.',
                   style: AppTextStyles.caption
                       .copyWith(color: AppColors.textSecondary),
                 ),
@@ -784,7 +784,7 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
               ..._messages.map(_buildMessageBubble),
               if (_showTyping) ...[
                 const SizedBox(height: 4),
-                _buildStatusBubble('GPT가 해석을 만들고 있어요'),
+                _buildStatusBubble('당신의 마음 구조를 분석하고 있어요'),
               ],
               if (_uiState == _InterpretationUiState.failed) ...[
                 const SizedBox(height: 12),

@@ -35,8 +35,8 @@ class InitialInterpretationSection extends StatelessWidget {
     final trimmedStory = story.trim();
     if (trimmedStory.isEmpty) {
       return const ResultSectionHeader(
-        title: '자동 해석',
-        subtitle: '“알고 싶은 마음(사연)”이 있을 때만 자동으로 생성됩니다.',
+        title: '내 마음 해석',
+        subtitle: '지금 알고 싶은 내 마음을 입력해보세요.',
       );
     }
 
@@ -49,15 +49,15 @@ class InitialInterpretationSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const ResultSectionHeader(
-          title: '자동 해석',
-          subtitle: '결과 + 사연을 바탕으로 1문장 요약과 카드를 생성합니다.',
+          title: '내 마음의 구조',
+          subtitle: '지금 내 마음은 이렇습니다.',
         ),
         const SizedBox(height: 12),
         if (state == InitialInterpretationState.loading) ...[
           const _LoadingCard(),
         ] else if (state == InitialInterpretationState.error) ...[
           _ErrorCard(
-            message: errorMessage ?? '자동 해석을 불러오지 못했습니다.',
+            message: errorMessage ?? '해석을 불러오지 못했습니다.',
             onRetry: onRetry,
           ),
         ] else if (viewModel != null && viewModel.cards.isNotEmpty) ...[
@@ -68,6 +68,7 @@ class InitialInterpretationSection extends StatelessWidget {
           _CtaAndSuggestions(
             viewModel: viewModel,
             canOpenPhase3: canOpenPhase3,
+            onRetry: onRetry,
             onOpenPhase3: onOpenPhase3,
           ),
         ] else if (fallbackText.isNotEmpty) ...[
@@ -77,13 +78,32 @@ class InitialInterpretationSection extends StatelessWidget {
             ),
           _MarkdownCard(markdown: fallbackText),
           const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: onRetry,
-            child: const Text(AppStrings.retry),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: onRetry,
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(52),
+              ),
+              child: const Text('다시하기'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: canOpenPhase3 ? () => onOpenPhase3() : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(52),
+              ),
+              child: const Text('더 궁금한 점 물어보기'),
+            ),
           ),
         ] else ...[
           _ErrorCard(
-            message: '자동 해석 결과가 비어있습니다.',
+            message: '해석 결과가 비어있습니다.',
             onRetry: onRetry,
           ),
         ],
@@ -142,7 +162,7 @@ class _ErrorCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('자동 해석을 불러오지 못했습니다.', style: AppTextStyles.h5),
+          Text('해석을 불러오지 못했습니다.', style: AppTextStyles.h5),
           const SizedBox(height: 8),
           Text(
             message,
@@ -269,23 +289,33 @@ class _CtaAndSuggestions extends StatelessWidget {
   const _CtaAndSuggestions({
     required this.viewModel,
     required this.canOpenPhase3,
+    required this.onRetry,
     required this.onOpenPhase3,
   });
 
   final InitialInterpretationV1 viewModel;
   final bool canOpenPhase3;
+  final VoidCallback onRetry;
   final void Function({String? initialPrompt}) onOpenPhase3;
 
   @override
   Widget build(BuildContext context) {
-    final label = viewModel.next.ctaLabel.trim().isNotEmpty
-        ? viewModel.next.ctaLabel.trim()
-        : '내 마음 더 알아보기';
     final prompts = viewModel.suggestedPrompts;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: onRetry,
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+            ),
+            child: const Text('다시하기'),
+          ),
+        ),
+        const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
@@ -295,7 +325,7 @@ class _CtaAndSuggestions extends StatelessWidget {
               foregroundColor: Colors.white,
               minimumSize: const Size.fromHeight(52),
             ),
-            child: Text(label),
+            child: const Text('더 궁금한 점 물어보기'),
           ),
         ),
         if (prompts.isNotEmpty) ...[

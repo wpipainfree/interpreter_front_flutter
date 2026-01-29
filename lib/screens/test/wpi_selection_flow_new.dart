@@ -279,6 +279,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
             ? _service.submitResults(
                 testId: widget.testId,
                 selections: selections,
+                worry: widget.mindFocus,
                 processSequence: c.sequence == 0 ? _stageIndex + 1 : c.sequence,
               )
             : _service.updateResults(
