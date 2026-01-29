@@ -157,6 +157,15 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       _error = null;
       _submitting = false;
     });
+    _resetScrollPosition();
+  }
+
+  void _resetScrollPosition() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!_listController.hasClients) return;
+      _listController.jumpTo(_listController.position.minScrollExtent);
+    });
   }
 
   List<PsychTestItem> get _selectedItems {

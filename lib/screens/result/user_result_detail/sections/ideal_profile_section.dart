@@ -82,11 +82,6 @@ class IdealProfileSection extends StatelessWidget {
           otherLabels: otherLabelsForUi,
           otherScores: otherScores,
         ),
-        const SizedBox(height: 10),
-        Text(
-          '도피/회복 판정은 아래 “GPT로 추가 설명”에서 문장으로 정리됩니다.',
-          style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
-        ),
       ],
     );
   }
