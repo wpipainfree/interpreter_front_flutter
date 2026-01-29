@@ -447,7 +447,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '현실과 이상을 함께 보면 ‘현재’와 ‘변화 방향’이 분리됩니다.',
+                      '현실과 이상을 함께 보면 ‘지금의 나’와 ‘바라는 변화 방향’을 한눈에 이해할 수 있어요.',
                       style: AppTextStyles.bodySmall.copyWith(
                         color: AppColors.textOnDark.withOpacity(0.9),
                       ),
@@ -686,8 +686,8 @@ class _AccountCard extends StatelessWidget {
   }
 
   String _testTitleForFlow(int testId) {
-    if (testId == 3) return 'WPI이상 프로파일 검사';
-    return '현실 검사';
+    if (testId == 3) return 'WPI이상 검사';
+    return 'WPI현실 검사';
   }
 
   Future<void> _resumeOther(BuildContext context) async {

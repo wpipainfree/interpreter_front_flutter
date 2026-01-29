@@ -22,5 +22,5 @@ class AppStrings {
   static const String resultDetailTitle = '내 결과(현실 + 이상)';
   static const String resultDetailLoadFail = '결과를 불러올 수 없습니다.';
   static const String resultDetailPurposeText =
-      '현실 결과는 “지금의 나”, 이상 결과는 “바라는 변화 방향”을 보여줘요. 두 결과를 함께 보면 현재 상태와 변화 방향을 분리해서 이해할 수 있어요.';
+      '현실 결과는 “지금의 나”, 이상 결과는 “바라는 변화 방향”을 보여줘요. 두 결과를 함께 보면 현재 상태와 변화 방향을 한눈에 이해할 수 있어요.';
 }
