@@ -532,7 +532,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10)),
                         ),
-                        child: const Text('이상(변화 방향) 이어하기'),
+                        child: const Text('WPI 이상 검사 이어하기'),
                       ),
                     ],
                   ],
