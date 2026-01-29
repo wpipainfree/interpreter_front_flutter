@@ -59,7 +59,6 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
   bool _polling = false;
   bool _loading = true;
   bool _submitting = false;
-  bool _useIdeal = false;
   bool _appliedInitialSelection = false;
   String? _error;
   String? _status;
@@ -172,14 +171,9 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
         current: _selectedIdeal,
       );
 
-      final bool useIdealFromInitial =
-          !_appliedInitialSelection && widget.initialIdealResultId != null;
-      final bool canUseIdeal = _idealItems.isNotEmpty;
-      final bool useIdeal = canUseIdeal && (useIdealFromInitial || _useIdeal);
       setState(() {
         _selectedReality = selectedReality;
         _selectedIdeal = selectedIdeal;
-        _useIdeal = useIdeal;
         _appliedInitialSelection = true;
         _loading = false;
         _uiState = (_conversationId ?? '').trim().isNotEmpty
@@ -218,7 +212,6 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
       _messages.clear();
       _selectedReality = null;
       _selectedIdeal = null;
-      _useIdeal = false;
       _conversationId = null;
       _conversationTitle = null;
       _turn = 1;
@@ -409,6 +402,16 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
       _showMessage('먼저 "지금의 나(현실)" 결과를 선택해 주세요.');
       return;
     }
+    if (!widget.phase3Only) {
+      if (_idealItems.isEmpty) {
+        _showMessage('먼저 "원하는 나(이상)" 검사를 완료해 주세요.');
+        return;
+      }
+      if (_selectedIdeal == null) {
+        _showMessage('먼저 "원하는 나(이상)" 결과를 선택해 주세요.');
+        return;
+      }
+    }
     if (_hasConversation) {
       final proceed = await _confirmNewInterpretation();
       if (!proceed) return;
@@ -444,6 +447,11 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
     final isPhase3 = phase == 3;
     if (!isPhase1 && !isPhase2 && !isPhase3) {
       _showMessage('Invalid phase: $phase');
+      return;
+    }
+
+    if (!widget.phase3Only && _selectedIdeal == null) {
+      _showMessage('먼저 "원하는 나(이상)" 결과를 선택해 주세요.');
       return;
     }
 
@@ -484,7 +492,7 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
         return;
       }
       _WpiScoreProfile idealProfile = const _WpiScoreProfile.empty();
-      if (_useIdeal && _selectedIdeal != null) {
+      if (_selectedIdeal != null) {
         final loaded = await _loadProfile(_selectedIdeal!);
         if (loaded != null) {
           idealProfile = loaded;
@@ -723,20 +731,16 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
                       : () => _openPreview(_selectedReality!),
                 ),
                 const SizedBox(height: 12),
-                _buildIdealToggle(),
-                if (_useIdeal) ...[
-                  const SizedBox(height: 12),
-                  _buildSelector(
-                    title: '원하는 나(이상)',
-                    items: _idealItems,
-                    selected: _selectedIdeal,
-                    onChanged: (item) => setState(() => _selectedIdeal = item),
-                    required: false,
-                    onPreview: _selectedIdeal == null
-                        ? null
-                        : () => _openPreview(_selectedIdeal!),
-                  ),
-                ],
+                _buildSelector(
+                  title: '원하는 나(이상)',
+                  items: _idealItems,
+                  selected: _selectedIdeal,
+                  onChanged: (item) => setState(() => _selectedIdeal = item),
+                  required: true,
+                  onPreview: _selectedIdeal == null
+                      ? null
+                      : () => _openPreview(_selectedIdeal!),
+                ),
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
@@ -864,35 +868,6 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
           const SizedBox(height: 6),
           Text(mindFocus, style: AppTextStyles.bodyMedium),
         ],
-      ),
-    );
-  }
-
-  Widget _buildIdealToggle() {
-    final disabled = _idealItems.isEmpty;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: SwitchListTile(
-        contentPadding: EdgeInsets.zero,
-        value: _useIdeal && !disabled,
-        onChanged: disabled ? null : (value) => setState(() => _useIdeal = value),
-        title: Text('원하는 나(이상) 결과 포함', style: AppTextStyles.bodyMedium),
-        subtitle: disabled
-            ? Text(
-                '아직 "원하는 나" 검사가 없습니다.',
-                style:
-                    AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
-              )
-            : Text(
-                '원하는 나 결과를 함께 보내면 비교 해석이 가능합니다.',
-                style:
-                    AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
-              ),
       ),
     );
   }
