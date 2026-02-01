@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/app_config.dart';
@@ -172,9 +173,386 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// Placeholder for social login flows.
-  Future<AuthResult> loginWithSocial(String provider) async {
-    return AuthResult.failure('소셜 로그인이 아직 준비되지 않았습니다.');
+  /// Get social login URL for OAuth flow.
+  Future<String?> getSocialLoginUrl(String provider) async {
+    final uri = _uri('/api/v1/auth/$provider/login-url');
+    try {
+      final response = await _dio.get(
+        uri.toString(),
+        options: Options(
+          sendTimeout: _timeout,
+          receiveTimeout: _timeout,
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = _asJsonMap(response.data);
+        return data['login_url'] as String?;
+      }
+      return null;
+    } on DioException catch (e) {
+      _logNetworkError('getSocialLoginUrl', e);
+      return null;
+    }
+  }
+
+  /// 카카오 SDK로 로그인 후 백엔드에 토큰 전달하여 세션 생성.
+  Future<AuthResult> _loginWithKakaoSdk() async {
+    debugPrint('[AuthService] _loginWithKakaoSdk() 시작');
+    try {
+      kakao.OAuthToken token;
+      final isKakaoTalkInstalled = await kakao.isKakaoTalkInstalled();
+      debugPrint('[AuthService] 카카오톡 설치 여부: $isKakaoTalkInstalled');
+
+      if (isKakaoTalkInstalled) {
+        try {
+          debugPrint('[AuthService] 카카오톡 앱으로 로그인 시도...');
+          token = await kakao.UserApi.instance.loginWithKakaoTalk();
+          debugPrint('[AuthService] 카카오톡 앱 로그인 성공');
+        } catch (e) {
+          debugPrint('[AuthService] Kakao Talk login failed, trying account: $e');
+          debugPrint('[AuthService] 카카오 계정 로그인으로 전환...');
+          token = await kakao.UserApi.instance.loginWithKakaoAccount();
+          debugPrint('[AuthService] 카카오 계정 로그인 성공');
+        }
+      } else {
+        debugPrint('[AuthService] 카카오 계정 로그인 시도 (카카오톡 미설치)...');
+        token = await kakao.UserApi.instance.loginWithKakaoAccount();
+        debugPrint('[AuthService] 카카오 계정 로그인 성공');
+      }
+
+      debugPrint('[AuthService] Kakao access token obtained: ${token.accessToken.substring(0, 20)}...');
+      debugPrint('[AuthService] 백엔드에 토큰 전달 시작...');
+      final result = await _exchangeSocialTokenForLogin('kakao', accessToken: token.accessToken);
+      debugPrint('[AuthService] 백엔드 응답: isSuccess=${result.isSuccess}, error=${result.errorMessage}');
+      return result;
+    } catch (e, stackTrace) {
+      debugPrint('[AuthService] Kakao login error: $e');
+      debugPrint('[AuthService] Stack trace: $stackTrace');
+      return AuthResult.failure('카카오 로그인에 실패했습니다.', debugMessage: e.toString());
+    }
+  }
+
+  /// 소셜 액세스/ID 토큰을 백엔드에 보내 우리 서비스 JWT로 교환 (로그인용, Authorization 없음).
+  Future<AuthResult> _exchangeSocialTokenForLogin(
+    String provider, {
+    String? accessToken,
+    String? idToken,
+  }) async {
+    final uri = _uri('/api/v1/auth/social/token');
+    try {
+      final response = await _dio.post(
+        uri.toString(),
+        data: {
+          'provider': provider,
+          if (accessToken != null) 'access_token': accessToken,
+          if (idToken != null) 'id_token': idToken,
+          'include_refresh_token': true,
+        },
+        options: Options(
+          contentType: Headers.jsonContentType,
+          sendTimeout: _timeout,
+          receiveTimeout: _timeout,
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = _asJsonMap(response.data);
+        final refreshHeader = response.headers.value('set-cookie');
+        final tokens = AuthTokens(
+          accessToken: data['access_token'] as String? ?? '',
+          tokenType: data['token_type'] as String? ?? 'bearer',
+          refreshTokenCookie: _extractRefreshTokenCookieFromHeader(refreshHeader),
+          accessTokenExpiresAt: _parseAccessTokenExpiry(data['access_token'] as String?),
+        );
+        final user = UserInfo.fromJson(data);
+        _currentUser = user;
+        _tokens = tokens;
+        _lastLogoutReason = null;
+        notifyListeners();
+        await _persistSession(user, tokens);
+        debugPrint('[AuthService] Social login successful: ${user.email}');
+        return AuthResult.success(user);
+      }
+
+      return AuthResult.failure(
+        _extractErrorMessage(response),
+        debugMessage: 'HTTP ${response.statusCode} data=${response.data}',
+      );
+    } on DioException catch (e) {
+      _logNetworkError('_exchangeSocialTokenForLogin', e);
+      if (e.response?.statusCode == 404) {
+        return AuthResult.failure('소셜 로그인 API를 찾을 수 없습니다. 백엔드 /api/v1/auth/social/token 구현을 확인해 주세요.');
+      }
+      return AuthResult.failure(
+        e.response != null ? _extractErrorMessage(e.response!) : '소셜 로그인에 실패했습니다.',
+        debugMessage: '${e.message} data=${e.response?.data}',
+      );
+    }
+  }
+
+  /// Social login with OAuth callback handling.
+  /// 카카오: SDK로 토큰 획득 후 백엔드 /api/v1/auth/social/token 호출 (URL 요청 없음).
+  Future<AuthResult> loginWithSocial(String provider, {String? code, String? state}) async {
+    if (code == null) {
+      // 카카오: SDK 기반 로그인 (백엔드 login-url 불필요)
+      final providerLower = provider.toLowerCase();
+      if (providerLower == 'kakao') {
+        return await _loginWithKakaoSdk();
+      }
+      // Google/Apple: 기존 URL 방식 (백엔드에서 login_url 제공 시)
+      final loginUrl = await getSocialLoginUrl(provider);
+      if (loginUrl == null) {
+        return AuthResult.failure('소셜 로그인 URL을 가져올 수 없습니다.');
+      }
+      return AuthResult.failure('OAuth URL을 열어주세요: $loginUrl', debugMessage: loginUrl);
+    }
+
+    // Step 2: Exchange code for tokens
+    final uri = _uri('/api/v1/auth/$provider/callback');
+    try {
+      final response = await _dio.get(
+        uri.toString(),
+        queryParameters: {
+          'code': code,
+          if (state != null) 'state': state,
+        },
+        options: Options(
+          sendTimeout: _timeout,
+          receiveTimeout: _timeout,
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = _asJsonMap(response.data);
+        final refreshHeader = response.headers.value('set-cookie');
+        final tokens = AuthTokens(
+          accessToken: data['access_token'] as String? ?? '',
+          tokenType: data['token_type'] as String? ?? 'bearer',
+          refreshTokenCookie: _extractRefreshTokenCookieFromHeader(refreshHeader),
+          accessTokenExpiresAt: _parseAccessTokenExpiry(data['access_token'] as String?),
+        );
+        final user = UserInfo.fromJson(data);
+        _currentUser = user;
+        _tokens = tokens;
+        _lastLogoutReason = null;
+        notifyListeners();
+        await _persistSession(user, tokens);
+        return AuthResult.success(user);
+      }
+
+      return AuthResult.failure(
+        _extractErrorMessage(response),
+        debugMessage:
+            'HTTP ${response.statusCode} ${response.statusMessage ?? ''} data=${response.data} uri=$uri',
+      );
+    } on DioException catch (e) {
+      _logNetworkError('loginWithSocial', e);
+      return AuthResult.failure(
+        '소셜 로그인에 실패했습니다. 네트워크를 확인해 주세요.',
+        debugMessage: '${e.message} uri=$uri data=${e.response?.data}',
+      );
+    }
+  }
+
+  /// 카카오 SDK로 액세스 토큰만 획득 (로그인 세션은 변경하지 않음, 계정 연동용).
+  Future<String?> _getKakaoAccessTokenForLink() async {
+    try {
+      kakao.OAuthToken token;
+      if (await kakao.isKakaoTalkInstalled()) {
+        try {
+          token = await kakao.UserApi.instance.loginWithKakaoTalk();
+        } catch (e) {
+          debugPrint('[AuthService] Kakao Talk link failed, trying account: $e');
+          token = await kakao.UserApi.instance.loginWithKakaoAccount();
+        }
+      } else {
+        token = await kakao.UserApi.instance.loginWithKakaoAccount();
+      }
+      return token.accessToken;
+    } catch (e) {
+      debugPrint('[AuthService] Kakao token for link error: $e');
+      return null;
+    }
+  }
+
+  /// 기존 로그인 계정에 소셜(카카오) 계정을 SDK로 연동.
+  /// 로그인된 상태에서만 호출. 백엔드에 현재 JWT + 소셜 access_token 전달.
+  Future<AuthResult> linkSocialAccountWithSdk(String provider) async {
+    final authHeader = await getAuthorizationHeader(refreshIfNeeded: true);
+    if (authHeader == null) {
+      return AuthResult.failure('로그인이 필요합니다. 먼저 로그인해 주세요.');
+    }
+
+    final providerLower = provider.toLowerCase();
+    if (providerLower != 'kakao') {
+      return AuthResult.failure('현재 카카오 연동만 지원합니다.');
+    }
+
+    final accessToken = await _getKakaoAccessTokenForLink();
+    if (accessToken == null || accessToken.isEmpty) {
+      return AuthResult.failure('카카오 로그인에 실패했거나 취소되었습니다.');
+    }
+
+    // 백엔드: POST /api/v1/auth/social/link/token (또는 /api/v1/auth/kakao/link 등)
+    final uri = _uri('/api/v1/auth/social/link/token');
+    try {
+      final response = await _dio.post(
+        uri.toString(),
+        data: {
+          'provider': providerLower,
+          'access_token': accessToken,
+        },
+        options: Options(
+          headers: {'Authorization': authHeader},
+          contentType: Headers.jsonContentType,
+          sendTimeout: _timeout,
+          receiveTimeout: _timeout,
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = _asJsonMap(response.data);
+        final updatedUser = UserInfo.fromJson(data);
+        _currentUser = updatedUser;
+        notifyListeners();
+        await _persistSession(updatedUser, _tokens);
+        debugPrint('[AuthService] Social link success: ${updatedUser.email}');
+        return AuthResult.success(updatedUser);
+      }
+
+      return AuthResult.failure(
+        _extractErrorMessage(response),
+        debugMessage: 'HTTP ${response.statusCode} data=${response.data}',
+      );
+    } on DioException catch (e) {
+      _logNetworkError('linkSocialAccountWithSdk', e);
+      if (e.response?.statusCode == 404) {
+        return AuthResult.failure(
+          '계정 연동 API를 찾을 수 없습니다. 백엔드에 POST /api/v1/auth/social/link/token 구현이 필요합니다.',
+        );
+      }
+      return AuthResult.failure(
+        e.response != null ? _extractErrorMessage(e.response!) : '계정 연동에 실패했습니다.',
+        debugMessage: '${e.message} data=${e.response?.data}',
+      );
+    }
+  }
+
+  /// Link social account to existing account.
+  Future<AuthResult> linkSocialAccount(String provider, {String? code, String? state}) async {
+    final authHeader = await getAuthorizationHeader(refreshIfNeeded: true);
+    if (authHeader == null) {
+      return AuthResult.failure('로그인이 필요합니다.');
+    }
+
+    if (code == null) {
+      // Step 1: Get OAuth URL for linking
+      final uri = _uri('/api/v1/auth/$provider/link-url');
+      try {
+        final response = await _dio.get(
+          uri.toString(),
+          options: Options(
+            headers: {'Authorization': authHeader},
+            sendTimeout: _timeout,
+            receiveTimeout: _timeout,
+          ),
+        );
+
+        if (response.statusCode == 200) {
+          final data = _asJsonMap(response.data);
+          final linkUrl = data['link_url'] as String?;
+          if (linkUrl == null) {
+            return AuthResult.failure('연동 URL을 가져올 수 없습니다.');
+          }
+          return AuthResult.failure('OAuth URL을 열어주세요: $linkUrl', debugMessage: linkUrl);
+        }
+        return AuthResult.failure(_extractErrorMessage(response));
+      } on DioException catch (e) {
+        _logNetworkError('linkSocialAccount-getUrl', e);
+        return AuthResult.failure(
+          '연동 URL을 가져올 수 없습니다.',
+          debugMessage: '${e.message} data=${e.response?.data}',
+        );
+      }
+    }
+
+    // Step 2: Complete linking with callback code
+    final uri = _uri('/api/v1/auth/$provider/link');
+    try {
+      final response = await _dio.post(
+        uri.toString(),
+        queryParameters: {
+          'code': code,
+          if (state != null) 'state': state,
+        },
+        options: Options(
+          headers: {'Authorization': authHeader},
+          sendTimeout: _timeout,
+          receiveTimeout: _timeout,
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = _asJsonMap(response.data);
+        final updatedUser = UserInfo.fromJson(data);
+        _currentUser = updatedUser;
+        notifyListeners();
+        await _persistSession(updatedUser, _tokens);
+        return AuthResult.success(updatedUser);
+      }
+
+      return AuthResult.failure(
+        _extractErrorMessage(response),
+        debugMessage: 'HTTP ${response.statusCode} data=${response.data}',
+      );
+    } on DioException catch (e) {
+      _logNetworkError('linkSocialAccount', e);
+      return AuthResult.failure(
+        '계정 연동에 실패했습니다.',
+        debugMessage: '${e.message} data=${e.response?.data}',
+      );
+    }
+  }
+
+  /// Unlink social account from current account.
+  Future<AuthResult> unlinkSocialAccount(String provider) async {
+    final authHeader = await getAuthorizationHeader(refreshIfNeeded: true);
+    if (authHeader == null) {
+      return AuthResult.failure('로그인이 필요합니다.');
+    }
+
+    final uri = _uri('/api/v1/auth/$provider/unlink');
+    try {
+      final response = await _dio.post(
+        uri.toString(),
+        options: Options(
+          headers: {'Authorization': authHeader},
+          sendTimeout: _timeout,
+          receiveTimeout: _timeout,
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = _asJsonMap(response.data);
+        final updatedUser = UserInfo.fromJson(data);
+        _currentUser = updatedUser;
+        notifyListeners();
+        await _persistSession(updatedUser, _tokens);
+        return AuthResult.success(updatedUser);
+      }
+
+      return AuthResult.failure(
+        _extractErrorMessage(response),
+        debugMessage: 'HTTP ${response.statusCode} data=${response.data}',
+      );
+    } on DioException catch (e) {
+      _logNetworkError('unlinkSocialAccount', e);
+      return AuthResult.failure(
+        '계정 연동 해제에 실패했습니다.',
+        debugMessage: '${e.message} data=${e.response?.data}',
+      );
+    }
   }
 
   /// Placeholder sign-up (not implemented with API).

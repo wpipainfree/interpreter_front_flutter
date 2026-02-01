@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
 import 'router/app_router.dart';
 import 'screens/splash_screen.dart';
 import 'services/auth_service.dart';
@@ -9,6 +11,20 @@ import 'utils/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Kakao SDK 초기화 (소셜 계정 연동용)
+  kakao.KakaoSdk.init(
+    nativeAppKey: 'a531a4604dfddd5837c464cc44053e5d',
+    loggingEnabled: true,  // 디버그 로깅 활성화
+  );
+  if (!kIsWeb) {
+    try {
+      final keyHash = await kakao.KakaoSdk.origin;
+      debugPrint('Kakao Key Hash: $keyHash');
+    } catch (e) {
+      debugPrint('Kakao Key Hash error: $e');
+    }
+  }
 
   // 알림 서비스 초기화
   await NotificationService().initialize();

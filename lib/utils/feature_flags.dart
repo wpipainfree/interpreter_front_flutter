@@ -14,7 +14,7 @@ class FeatureFlags {
   /// When true, show social login buttons (Kakao/Apple/Google).
   static const bool enableSocialLogin = bool.fromEnvironment(
     'WPI_ENABLE_SOCIAL_LOGIN',
-    defaultValue: false,
+    defaultValue: true,
   );
 
   /// When true, enable the email sign-up flow.

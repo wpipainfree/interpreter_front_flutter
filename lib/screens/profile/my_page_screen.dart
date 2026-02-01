@@ -34,6 +34,96 @@ class _MyPageScreenState extends State<MyPageScreen> {
     super.dispose();
   }
 
+  bool _isLinkingSocial = false;
+
+  Future<void> _handleLinkSocial(BuildContext context, String provider) async {
+    if (_isLinkingSocial) return;
+    setState(() => _isLinkingSocial = true);
+
+    final AuthResult result;
+    if (provider == 'kakao') {
+      // 카카오: SDK로 토큰 획득 후 백엔드에 연동 요청
+      result = await _authService.linkSocialAccountWithSdk(provider);
+    } else {
+      // Google/Apple: 기존 link-url + code 방식 (구현 시 동일하게 확장 가능)
+      result = await _authService.linkSocialAccount(provider);
+    }
+
+    if (!mounted) return;
+    setState(() => _isLinkingSocial = false);
+
+    final ctx = context;
+    if (!ctx.mounted) return;
+    if (result.isSuccess) {
+      ScaffoldMessenger.of(ctx).showSnackBar(
+        SnackBar(
+          content: Text('${_providerName(provider)} 계정이 연동되었습니다.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      final isOAuthUrl = result.debugMessage?.startsWith('http') ?? false;
+      if (isOAuthUrl) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          SnackBar(
+            content: Text(result.debugMessage ?? 'OAuth URL을 열어주세요.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          SnackBar(
+            content: Text(result.errorMessage ?? '연동에 실패했습니다.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleUnlinkSocial(BuildContext context, String provider) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${_providerName(provider)} 연동 해제'),
+        content: Text('${_providerName(provider)} 계정 연동을 해제하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('해제', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    final result = await _authService.unlinkSocialAccount(provider);
+
+    if (!context.mounted) return;
+
+    if (result.isSuccess) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${_providerName(provider)} 계정 연동이 해제되었습니다.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      setState(() {});
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.errorMessage ?? '연동 해제에 실패했습니다.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = _user;
@@ -103,6 +193,29 @@ class _MyPageScreenState extends State<MyPageScreen> {
             ),
             const SizedBox(height: 16),
           ],
+          const Divider(height: 32),
+          _SectionTitle('소셜 계정 연동'),
+          _SocialAccountLinkTile(
+            provider: 'kakao',
+            isLinked: user.provider == 'kakao',
+            isLoading: _isLinkingSocial,
+            onLinkTap: () => _handleLinkSocial(context, 'kakao'),
+            onUnlinkTap: () => _handleUnlinkSocial(context, 'kakao'),
+          ),
+          _SocialAccountLinkTile(
+            provider: 'google',
+            isLinked: user.provider == 'google',
+            isLoading: false,
+            onLinkTap: () => _handleLinkSocial(context, 'google'),
+            onUnlinkTap: () => _handleUnlinkSocial(context, 'google'),
+          ),
+          _SocialAccountLinkTile(
+            provider: 'apple',
+            isLinked: user.provider == 'apple',
+            isLoading: false,
+            onLinkTap: () => _handleLinkSocial(context, 'apple'),
+            onUnlinkTap: () => _handleUnlinkSocial(context, 'apple'),
+          ),
           const Divider(height: 32),
           _SectionTitle('설정'),
           _SettingTile(
@@ -343,9 +456,90 @@ String _providerName(String provider) {
       return 'Google';
     case 'facebook':
       return 'Facebook';
+    case 'apple':
+      return 'Apple';
     case 'guest':
       return '게스트';
     default:
       return provider;
+  }
+}
+
+class _SocialAccountLinkTile extends StatelessWidget {
+  final String provider;
+  final bool isLinked;
+  final bool isLoading;
+  final VoidCallback onLinkTap;
+  final VoidCallback onUnlinkTap;
+
+  const _SocialAccountLinkTile({
+    required this.provider,
+    required this.isLinked,
+    this.isLoading = false,
+    required this.onLinkTap,
+    required this.onUnlinkTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: _providerColor(provider).withOpacity(0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          _providerIcon(provider),
+          color: _providerColor(provider),
+          size: 20,
+        ),
+      ),
+      title: Text(
+        _providerName(provider),
+        style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(
+        isLinked ? '연동됨' : '연동 안됨',
+        style: AppTextStyles.caption.copyWith(
+          color: isLinked ? Colors.green : AppColors.textSecondary,
+        ),
+      ),
+      trailing: isLinked
+          ? TextButton(
+              onPressed: isLoading ? null : onUnlinkTap,
+              child: const Text('해제', style: TextStyle(color: Colors.red)),
+            )
+          : isLoading
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : ElevatedButton(
+                  onPressed: onLinkTap,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _providerColor(provider),
+                    foregroundColor: provider == 'kakao' ? Colors.black : Colors.white,
+                    minimumSize: const Size(60, 36),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  child: const Text('연동'),
+                ),
+    );
+  }
+
+  IconData _providerIcon(String provider) {
+    switch (provider) {
+      case 'kakao':
+        return Icons.chat_bubble_outline_rounded;
+      case 'google':
+        return Icons.public;
+      case 'apple':
+        return Icons.apple;
+      default:
+        return Icons.link;
+    }
   }
 }
