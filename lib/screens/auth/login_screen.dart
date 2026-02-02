@@ -45,6 +45,15 @@ class _LoginScreenState extends State<LoginScreen> {
       _completeAuth(success: true);
       return;
     }
+
+    // 미등록 사용자인 경우 회원가입 페이지로 이동
+    if (result.isUserNotRegistered) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true)
+          .pushReplacementNamed(AppRoutes.signup);
+      return;
+    }
+
     setState(() {
       _errorMessage = result.errorMessage;
       _debugMessage = result.debugMessage;

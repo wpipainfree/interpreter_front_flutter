@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Wpi App</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>wpi_app</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<!-- INICIS 결제 앱 호출을 위한 스킴 등록 -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<!-- 카카오페이 -->
+		<string>kakaotalk</string>
+		<!-- ISP/페이북 -->
+		<string>ispmobile</string>
+		<!-- KB국민카드 -->
+		<string>kb-acp</string>
+		<!-- 뱅크페이 -->
+		<string>kftc-bankpay</string>
+		<!-- 우리카드 -->
+		<string>com.wooricard.wcard</string>
+		<!-- 현대카드 -->
+		<string>hdcardappcardansimclick</string>
+		<!-- 신한카드 -->
+		<string>shinhan-sr-ansimclick</string>
+		<!-- 삼성카드 -->
+		<string>mpocket.online.ansimclick</string>
+		<!-- 롯데카드 -->
+		<string>lotteappcard</string>
+		<!-- 하나카드 -->
+		<string>cloudpay</string>
+		<!-- NH농협카드 -->
+		<string>nhappcardansimclick</string>
+		<!-- 씨티카드 -->
+		<string>citimobileapp</string>
+		<!-- 네이버페이 -->
+		<string>naversearchapp</string>
+		<!-- 페이코 -->
+		<string>payco</string>
+		<!-- 토스 -->
+		<string>supertoss</string>
+		<!-- PASS 인증 -->
+		<string>taaboram</string>
+		<!-- 앱 스토어 -->
+		<string>itms-apps</string>
+	</array>
+	<!-- 앱 딥링크 URL 스킴 등록 (wpiapp://) -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.wpiapp.payment</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>wpiapp</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

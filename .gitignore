@@ -17,8 +17,9 @@
 macos/
 windows/
 linux/
-android/
-ios/
+# android/ 및 ios/는 Git에 포함하여 빌드 설정 공유
+# android/
+# ios/
 
 
 
