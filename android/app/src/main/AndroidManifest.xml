@@ -33,6 +33,13 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="wpiapp"/>
             </intent-filter>
+            <!-- OAuth callback for Google Sign-In -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="wpiapp" android:host="oauth" android:path="/callback"/>
+            </intent-filter>
         </activity>
 
         <!-- 카카오 SDK AuthCodeCustomTabsActivity에 intent-filter 추가 -->

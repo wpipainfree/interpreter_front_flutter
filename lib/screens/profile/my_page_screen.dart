@@ -18,14 +18,26 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
   UserInfo? get _user => _authService.currentUser;
 
+  /// 소셜 연동 상태 (백엔드 API에서 가져옴)
+  List<SocialProviderStatus> _socialProviderStatuses = [];
+  bool _isLoadingProviders = false;
+
   @override
   void initState() {
     super.initState();
     _authListener = () {
       if (!mounted) return;
       setState(() {});
+      // 로그인 상태 변경 시 연동 상태 새로고침
+      if (_authService.currentUser != null && _socialProviderStatuses.isEmpty) {
+        _loadSocialProviderStatuses();
+      }
     };
     _authService.addListener(_authListener);
+    // 이미 로그인된 상태면 연동 상태 로드
+    if (_authService.currentUser != null) {
+      _loadSocialProviderStatuses();
+    }
   }
 
   @override
@@ -34,20 +46,40 @@ class _MyPageScreenState extends State<MyPageScreen> {
     super.dispose();
   }
 
+  /// 소셜 연동 상태를 백엔드에서 가져옴
+  Future<void> _loadSocialProviderStatuses() async {
+    if (_authService.currentUser == null) return;
+
+    setState(() => _isLoadingProviders = true);
+    final statuses = await _authService.getSocialProvidersStatus();
+    if (!mounted) return;
+    setState(() {
+      _socialProviderStatuses = statuses;
+      _isLoadingProviders = false;
+    });
+  }
+
+  /// 특정 provider의 연동 상태 확인
+  bool _isProviderLinked(String provider) {
+    final status = _socialProviderStatuses.firstWhere(
+      (s) => s.provider.toLowerCase() == provider.toLowerCase(),
+      orElse: () => SocialProviderStatus(
+        provider: provider,
+        providerName: provider,
+        isLinked: false,
+      ),
+    );
+    return status.isLinked;
+  }
+
   bool _isLinkingSocial = false;
 
   Future<void> _handleLinkSocial(BuildContext context, String provider) async {
     if (_isLinkingSocial) return;
     setState(() => _isLinkingSocial = true);
 
-    final AuthResult result;
-    if (provider == 'kakao') {
-      // 카카오: SDK로 토큰 획득 후 백엔드에 연동 요청
-      result = await _authService.linkSocialAccountWithSdk(provider);
-    } else {
-      // Google/Apple: 기존 link-url + code 방식 (구현 시 동일하게 확장 가능)
-      result = await _authService.linkSocialAccount(provider);
-    }
+    // 카카오/구글/애플: SDK로 토큰 획득 후 백엔드에 연동 요청
+    final result = await _authService.linkSocialAccountWithSdk(provider);
 
     if (!mounted) return;
     setState(() => _isLinkingSocial = false);
@@ -61,6 +93,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
           backgroundColor: Colors.green,
         ),
       );
+      // 연동 상태 새로고침
+      _loadSocialProviderStatuses();
     } else {
       final isOAuthUrl = result.debugMessage?.startsWith('http') ?? false;
       if (isOAuthUrl) {
@@ -113,7 +147,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
           backgroundColor: Colors.green,
         ),
       );
-      setState(() {});
+      // 연동 상태 새로고침
+      _loadSocialProviderStatuses();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -195,27 +230,34 @@ class _MyPageScreenState extends State<MyPageScreen> {
           ],
           const Divider(height: 32),
           _SectionTitle('소셜 계정 연동'),
-          _SocialAccountLinkTile(
-            provider: 'kakao',
-            isLinked: user.isProviderLinked('kakao'),
-            isLoading: _isLinkingSocial,
-            onLinkTap: () => _handleLinkSocial(context, 'kakao'),
-            onUnlinkTap: () => _handleUnlinkSocial(context, 'kakao'),
-          ),
-          _SocialAccountLinkTile(
-            provider: 'google',
-            isLinked: user.isProviderLinked('google'),
-            isLoading: false,
-            onLinkTap: () => _handleLinkSocial(context, 'google'),
-            onUnlinkTap: () => _handleUnlinkSocial(context, 'google'),
-          ),
-          _SocialAccountLinkTile(
-            provider: 'apple',
-            isLinked: user.isProviderLinked('apple'),
-            isLoading: false,
-            onLinkTap: () => _handleLinkSocial(context, 'apple'),
-            onUnlinkTap: () => _handleUnlinkSocial(context, 'apple'),
-          ),
+          if (_isLoadingProviders)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else ...[
+            _SocialAccountLinkTile(
+              provider: 'kakao',
+              isLinked: _isProviderLinked('kakao'),
+              isLoading: _isLinkingSocial,
+              onLinkTap: () => _handleLinkSocial(context, 'kakao'),
+              onUnlinkTap: () => _handleUnlinkSocial(context, 'kakao'),
+            ),
+            _SocialAccountLinkTile(
+              provider: 'google',
+              isLinked: _isProviderLinked('google'),
+              isLoading: _isLinkingSocial,
+              onLinkTap: () => _handleLinkSocial(context, 'google'),
+              onUnlinkTap: () => _handleUnlinkSocial(context, 'google'),
+            ),
+            _SocialAccountLinkTile(
+              provider: 'apple',
+              isLinked: _isProviderLinked('apple'),
+              isLoading: _isLinkingSocial,
+              onLinkTap: () => _handleLinkSocial(context, 'apple'),
+              onUnlinkTap: () => _handleUnlinkSocial(context, 'apple'),
+            ),
+          ],
           const Divider(height: 32),
           _SectionTitle('설정'),
           _SettingTile(

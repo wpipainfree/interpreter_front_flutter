@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "166131805176",
+    "project_id": "presence-app-social-logi-7f6bd",
+    "storage_bucket": "presence-app-social-logi-7f6bd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:166131805176:android:435098743d2330a594c40d",
+        "android_client_info": {
+          "package_name": "com.wpipainfree.wpiapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "166131805176-quuejk09og6l36di03nm741v5uubrv64.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.wpipainfree.wpiapp",
+            "certificate_hash": "ac325a82bd476ce08f811c7456f5fe310331ce06"
+          }
+        },
+        {
+          "client_id": "166131805176-7ad02vga2g5tcgum3nd9vd467m5ghlrf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD8X5VK97s-PNQwLtIArS7OL0qF-l20qS0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "166131805176-7ad02vga2g5tcgum3nd9vd467m5ghlrf.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
