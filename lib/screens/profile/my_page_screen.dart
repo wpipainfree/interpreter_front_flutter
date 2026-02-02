@@ -57,7 +57,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
     if (result.isSuccess) {
       ScaffoldMessenger.of(ctx).showSnackBar(
         SnackBar(
-          content: Text('${_providerName(provider)} 계정이 연동되었습니다.'),
+          content: Text(result.successMessage ?? '${_providerName(provider)} 계정이 연동되었습니다.'),
           backgroundColor: Colors.green,
         ),
       );
@@ -197,21 +197,21 @@ class _MyPageScreenState extends State<MyPageScreen> {
           _SectionTitle('소셜 계정 연동'),
           _SocialAccountLinkTile(
             provider: 'kakao',
-            isLinked: user.provider == 'kakao',
+            isLinked: user.isProviderLinked('kakao'),
             isLoading: _isLinkingSocial,
             onLinkTap: () => _handleLinkSocial(context, 'kakao'),
             onUnlinkTap: () => _handleUnlinkSocial(context, 'kakao'),
           ),
           _SocialAccountLinkTile(
             provider: 'google',
-            isLinked: user.provider == 'google',
+            isLinked: user.isProviderLinked('google'),
             isLoading: false,
             onLinkTap: () => _handleLinkSocial(context, 'google'),
             onUnlinkTap: () => _handleUnlinkSocial(context, 'google'),
           ),
           _SocialAccountLinkTile(
             provider: 'apple',
-            isLinked: user.provider == 'apple',
+            isLinked: user.isProviderLinked('apple'),
             isLoading: false,
             onLinkTap: () => _handleLinkSocial(context, 'apple'),
             onUnlinkTap: () => _handleUnlinkSocial(context, 'apple'),
@@ -501,7 +501,7 @@ class _SocialAccountLinkTile extends StatelessWidget {
         style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600),
       ),
       subtitle: Text(
-        isLinked ? '연동됨' : '연동 안됨',
+        isLinked ? '연동 완료' : '연동 안됨',
         style: AppTextStyles.caption.copyWith(
           color: isLinked ? Colors.green : AppColors.textSecondary,
         ),

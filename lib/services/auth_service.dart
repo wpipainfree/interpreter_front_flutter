@@ -121,6 +121,14 @@ class AuthService extends ChangeNotifier {
       );
     } on DioException catch (e) {
       _logNetworkError('loginWithEmail', e);
+      // 401: 이메일 또는 비밀번호 오류
+      if (e.response?.statusCode == 401) {
+        final data = _asJsonMap(e.response?.data);
+        final detail = data['detail'] as String?;
+        return AuthResult.failure(
+          detail ?? '이메일 또는 비밀번호가 잘못되었습니다.',
+        );
+      }
       return AuthResult.failure(
         '로그인에 실패했습니다. 네트워크를 확인해 주세요.',
         debugMessage: '${e.message} uri=$uri data=${e.response?.data}',
@@ -284,6 +292,19 @@ class AuthService extends ChangeNotifier {
       if (e.response?.statusCode == 404) {
         return AuthResult.failure('소셜 로그인 API를 찾을 수 없습니다. 백엔드 /api/v1/auth/social/token 구현을 확인해 주세요.');
       }
+      // 422: 미등록 사용자 처리
+      if (e.response?.statusCode == 422) {
+        final data = _asJsonMap(e.response?.data);
+        final detail = _asJsonMap(data['detail']);
+        final errorCode = detail['error_code'] as String?;
+        if (errorCode == 'USER_NOT_REGISTERED') {
+          return AuthResult.failure(
+            '등록되지 않은 사용자입니다. 회원가입이 필요합니다.',
+            errorCode: errorCode,
+            debugMessage: 'provider=${detail['provider']}, provider_user_id=${detail['provider_user_id']}',
+          );
+        }
+      }
       return AuthResult.failure(
         e.response != null ? _extractErrorMessage(e.response!) : '소셜 로그인에 실패했습니다.',
         debugMessage: '${e.message} data=${e.response?.data}',
@@ -413,12 +434,24 @@ class AuthService extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final data = _asJsonMap(response.data);
-        final updatedUser = UserInfo.fromJson(data);
-        _currentUser = updatedUser;
-        notifyListeners();
-        await _persistSession(updatedUser, _tokens);
-        debugPrint('[AuthService] Social link success: ${updatedUser.email}');
-        return AuthResult.success(updatedUser);
+        final linked = data['linked'] == true;
+        final linkedProvider = data['provider'] as String?;
+        final message = data['message'] as String?;
+
+        if (linked && linkedProvider != null && _currentUser != null) {
+          // 현재 사용자의 linkedProviders에 새 provider 추가
+          final updatedUser = _currentUser!.withLinkedProvider(linkedProvider);
+          _currentUser = updatedUser;
+          notifyListeners();
+          await _persistSession(updatedUser, _tokens);
+          debugPrint('[AuthService] Social link success: $linkedProvider, message: $message');
+          return AuthResult.success(updatedUser, message: message);
+        }
+
+        return AuthResult.failure(
+          message ?? '연동에 실패했습니다.',
+          debugMessage: 'linked=$linked, provider=$linkedProvider',
+        );
       }
 
       return AuthResult.failure(
@@ -430,6 +463,13 @@ class AuthService extends ChangeNotifier {
       if (e.response?.statusCode == 404) {
         return AuthResult.failure(
           '계정 연동 API를 찾을 수 없습니다. 백엔드에 POST /api/v1/auth/social/link/token 구현이 필요합니다.',
+        );
+      }
+      // 409 Conflict: 이미 다른 계정에 연결된 소셜 계정
+      if (e.response?.statusCode == 409) {
+        return AuthResult.failure(
+          '이미 다른 계정에 연결된 카카오 계정입니다.',
+          debugMessage: 'HTTP 409 data=${e.response?.data}',
         );
       }
       return AuthResult.failure(
@@ -534,12 +574,16 @@ class AuthService extends ChangeNotifier {
       );
 
       if (response.statusCode == 200) {
-        final data = _asJsonMap(response.data);
-        final updatedUser = UserInfo.fromJson(data);
-        _currentUser = updatedUser;
-        notifyListeners();
-        await _persistSession(updatedUser, _tokens);
-        return AuthResult.success(updatedUser);
+        // 현재 사용자의 linkedProviders에서 provider 제거
+        if (_currentUser != null) {
+          final updatedUser = _currentUser!.withoutLinkedProvider(provider);
+          _currentUser = updatedUser;
+          notifyListeners();
+          await _persistSession(updatedUser, _tokens);
+          debugPrint('[AuthService] Social unlink success: $provider');
+          return AuthResult.success(updatedUser);
+        }
+        return AuthResult.failure('사용자 정보가 없습니다.');
       }
 
       return AuthResult.failure(
@@ -828,9 +872,49 @@ class UserInfo {
   final String? role;
   final CounselingClient? counselingClient;
   final String? provider;
+  final List<String> linkedProviders;
 
   String get displayName =>
       name.isNotEmpty ? name : (email.contains('@') ? email.split('@').first : email);
+
+  /// 특정 소셜 계정이 연동되어 있는지 확인
+  bool isProviderLinked(String provider) => linkedProviders.contains(provider);
+
+  /// linkedProviders에 새 provider 추가한 복사본 반환
+  UserInfo withLinkedProvider(String provider) {
+    if (linkedProviders.contains(provider)) return this;
+    return UserInfo(
+      id: id,
+      email: email,
+      name: name,
+      userType: userType,
+      userTypeName: userTypeName,
+      isAdmin: isAdmin,
+      isCoach: isCoach,
+      role: role,
+      counselingClient: counselingClient,
+      provider: this.provider,
+      linkedProviders: [...linkedProviders, provider],
+    );
+  }
+
+  /// linkedProviders에서 provider 제거한 복사본 반환
+  UserInfo withoutLinkedProvider(String provider) {
+    if (!linkedProviders.contains(provider)) return this;
+    return UserInfo(
+      id: id,
+      email: email,
+      name: name,
+      userType: userType,
+      userTypeName: userTypeName,
+      isAdmin: isAdmin,
+      isCoach: isCoach,
+      role: role,
+      counselingClient: counselingClient,
+      provider: this.provider,
+      linkedProviders: linkedProviders.where((p) => p != provider).toList(),
+    );
+  }
 
   const UserInfo({
     required this.id,
@@ -843,9 +927,18 @@ class UserInfo {
     this.role,
     this.counselingClient,
     this.provider,
+    this.linkedProviders = const [],
   });
 
   factory UserInfo.fromJson(Map<String, dynamic> json) {
+    // linked_providers 파싱: 백엔드에서 연동된 소셜 계정 목록 반환
+    List<String> linkedProviders = [];
+    if (json['linked_providers'] is List) {
+      linkedProviders = (json['linked_providers'] as List)
+          .map((e) => e.toString())
+          .toList();
+    }
+
     return UserInfo(
       id: (json['user_id'] ?? json['id'] ?? '').toString(),
       email: json['email'] as String? ?? '',
@@ -859,6 +952,7 @@ class UserInfo {
           ? CounselingClient.fromJson(json['counseling_client'] as Map<String, dynamic>)
           : null,
       provider: json['provider'] as String?,
+      linkedProviders: linkedProviders,
     );
   }
 
@@ -874,6 +968,7 @@ class UserInfo {
       'role': role,
       'counseling_client': counselingClient?.toJson(),
       'provider': provider,
+      'linked_providers': linkedProviders,
     };
   }
 }
@@ -971,25 +1066,33 @@ class AuthResult {
   final UserInfo? user;
   final String? errorMessage;
   final String? debugMessage;
+  final String? errorCode;
+  final String? successMessage;
 
   AuthResult._({
     required this.isSuccess,
     this.user,
     this.errorMessage,
     this.debugMessage,
+    this.errorCode,
+    this.successMessage,
   });
 
-  factory AuthResult.success(UserInfo user) {
-    return AuthResult._(isSuccess: true, user: user);
+  factory AuthResult.success(UserInfo user, {String? message}) {
+    return AuthResult._(isSuccess: true, user: user, successMessage: message);
   }
 
-  factory AuthResult.failure(String message, {String? debugMessage}) {
+  factory AuthResult.failure(String message, {String? debugMessage, String? errorCode}) {
     return AuthResult._(
       isSuccess: false,
       errorMessage: message,
       debugMessage: debugMessage,
+      errorCode: errorCode,
     );
   }
+
+  /// 미등록 사용자 여부 확인
+  bool get isUserNotRegistered => errorCode == 'USER_NOT_REGISTERED';
 }
 
 int _asInt(dynamic value) {
