@@ -67,6 +67,9 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
   String? _mindFocus;
   int _turn = 1;
   int? _lastLogId;
+  int? _activeRealityResultId;
+  int? _activeIdealResultId;
+  List<Map<String, dynamic>>? _activeSources;
   UserAccountItem? _selectedReality;
   UserAccountItem? _selectedIdeal;
   _InterpretationUiState _uiState = _InterpretationUiState.idle;
@@ -110,6 +113,10 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
       final turn = widget.initialTurn ?? 1;
       _turn = turn < 1 ? 1 : turn;
       _uiState = _InterpretationUiState.ready;
+      _setActiveSources(
+        realityResultId: widget.initialRealityResultId,
+        idealResultId: widget.initialIdealResultId,
+      );
     }
 
     final initialPrompt = widget.initialPrompt?.trim();
@@ -171,6 +178,14 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
         current: _selectedIdeal,
       );
 
+      if ((_conversationId ?? '').trim().isNotEmpty &&
+          (_activeSources == null || _activeSources!.isEmpty)) {
+        _setActiveSources(
+          realityResultId: selectedReality?.resultId,
+          idealResultId: selectedIdeal?.resultId,
+        );
+      }
+
       setState(() {
         _selectedReality = selectedReality;
         _selectedIdeal = selectedIdeal;
@@ -206,6 +221,7 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
     }
 
     _stopPolling();
+    _clearActiveSources();
     setState(() {
       _realityItems.clear();
       _idealItems.clear();
@@ -372,6 +388,57 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
     return normalized;
   }
 
+  void _setActiveSources({
+    required int? realityResultId,
+    required int? idealResultId,
+  }) {
+    _activeRealityResultId = realityResultId;
+    _activeIdealResultId = idealResultId;
+    _activeSources = _buildSources(
+      realityResultId: realityResultId,
+      idealResultId: idealResultId,
+    );
+  }
+
+  void _clearActiveSources() {
+    _activeRealityResultId = null;
+    _activeIdealResultId = null;
+    _activeSources = null;
+  }
+
+  List<Map<String, dynamic>> _buildSources({
+    required int? realityResultId,
+    required int? idealResultId,
+  }) {
+    final sources = <Map<String, dynamic>>[];
+    if (realityResultId != null && realityResultId > 0) {
+      sources.add({'result_id': realityResultId, 'role': 'reality'});
+    }
+    if (idealResultId != null && idealResultId > 0) {
+      sources.add({'result_id': idealResultId, 'role': 'ideal'});
+    }
+    return sources;
+  }
+
+  UserAccountItem? _resolveActiveItem({
+    required int? resultId,
+    required int testId,
+    required List<UserAccountItem> items,
+  }) {
+    if (resultId == null) return null;
+    for (final item in items) {
+      if (item.resultId == resultId) return item;
+    }
+    final userId = int.tryParse(_authService.currentUser?.id ?? '') ?? 0;
+    return UserAccountItem(
+      id: 0,
+      userId: userId,
+      testId: testId,
+      resultId: resultId,
+      createDate: DateTime.now().toIso8601String(),
+    );
+  }
+
   Future<bool> _confirmNewInterpretation() async {
     final result = await showDialog<bool>(
       context: context,
@@ -416,6 +483,10 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
       final proceed = await _confirmNewInterpretation();
       if (!proceed) return;
     }
+    _setActiveSources(
+      realityResultId: _selectedReality?.resultId,
+      idealResultId: _selectedIdeal?.resultId,
+    );
     setState(() {
       _messages.clear();
       _conversationId = null;
@@ -485,17 +556,47 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
       _startPolling(sessionId);
     }
     try {
-      final realityProfile = await _loadProfile(_selectedReality!);
+      final activeRealityId = _activeRealityResultId ?? _selectedReality?.resultId;
+      final activeIdealId = _activeIdealResultId ?? _selectedIdeal?.resultId;
+      if (_activeSources == null || _activeSources!.isEmpty) {
+        _setActiveSources(
+          realityResultId: activeRealityId,
+          idealResultId: activeIdealId,
+        );
+      }
+      final sources = _activeSources ??
+          _buildSources(
+            realityResultId: activeRealityId,
+            idealResultId: activeIdealId,
+          );
+      final realityItem = _resolveActiveItem(
+        resultId: activeRealityId,
+        testId: 1,
+        items: _realityItems,
+      );
+      if (realityItem == null) {
+        _showMessage('선택한 결과를 불러오지 못했습니다.');
+        setState(() => _uiState = _InterpretationUiState.failed);
+        return;
+      }
+      final realityProfile = await _loadProfile(realityItem);
       if (realityProfile == null) {
         _showMessage('선택한 결과를 불러오지 못했습니다.');
         setState(() => _uiState = _InterpretationUiState.failed);
         return;
       }
       _WpiScoreProfile idealProfile = const _WpiScoreProfile.empty();
-      if (_selectedIdeal != null) {
-        final loaded = await _loadProfile(_selectedIdeal!);
-        if (loaded != null) {
-          idealProfile = loaded;
+      if (activeIdealId != null) {
+        final idealItem = _resolveActiveItem(
+          resultId: activeIdealId,
+          testId: 3,
+          items: _idealItems,
+        );
+        if (idealItem != null) {
+          final loaded = await _loadProfile(idealItem);
+          if (loaded != null) {
+            idealProfile = loaded;
+          }
         }
       }
       final sessionPayload = <String, dynamic>{
@@ -505,6 +606,7 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
       final payload = <String, dynamic>{
         'session': sessionPayload,
         'phase': phase,
+        'sources': sources,
         'profiles': {
           'reality': realityProfile.toJson(),
           'ideal': idealProfile.toJson(),

@@ -477,6 +477,8 @@ class _ConversationSummary {
       json,
       keys: const [
         'title',
+        'prompt_text',
+        'first_prompt_text',
         'request_message',
         'first_request_message',
         'first_message',
@@ -541,6 +543,9 @@ class _ConversationEntry {
     required this.title,
     required this.response,
     required this.createdAt,
+    required this.promptText,
+    required this.promptKind,
+    required this.testIds,
   });
 
   factory _ConversationEntry.fromJson(Map<String, dynamic> json) {
@@ -554,12 +559,21 @@ class _ConversationEntry {
     );
     final response =
         (interpretation?['response'] ?? json['response_message'] ?? '').toString();
+    final promptText = (json['prompt_text'] ?? '').toString();
+    final requestMessage = (json['request_message'] ?? '').toString();
+    final resolvedRequest =
+        promptText.trim().isNotEmpty ? promptText : requestMessage;
+    final promptKind = json['prompt_kind']?.toString();
+    final testIds = _readIntList(json['test_ids']);
     return _ConversationEntry(
       status: (json['status'] ?? '').toString(),
-      request: (json['request_message'] ?? '').toString(),
+      request: resolvedRequest,
       title: title,
       response: response,
       createdAt: _parseDate(json['created_at']?.toString()),
+      promptText: promptText,
+      promptKind: promptKind,
+      testIds: testIds,
     );
   }
 
@@ -568,6 +582,9 @@ class _ConversationEntry {
   final String title;
   final String response;
   final DateTime? createdAt;
+  final String promptText;
+  final String? promptKind;
+  final List<int> testIds;
 
   String get statusLabel {
     final date = createdAt;
@@ -594,5 +611,15 @@ class _ConversationEntry {
       return str;
     }
     return '';
+  }
+
+  static List<int> _readIntList(dynamic value) {
+    if (value is List) {
+      return value
+          .map((e) => int.tryParse(e.toString()) ?? 0)
+          .where((e) => e > 0)
+          .toList();
+    }
+    return const [];
   }
 }

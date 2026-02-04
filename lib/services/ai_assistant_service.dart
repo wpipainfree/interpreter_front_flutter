@@ -118,6 +118,43 @@ class AiAssistantService {
     }
   }
 
+  Future<Map<String, dynamic>> fetchConversationSources(String conversationId) async {
+    final uri =
+        _apiClient.uri('/api/v1/ai-logs/conversations/$conversationId/sources');
+    try {
+      final response = await _apiClient.requestWithAuthRetry(
+        (auth) => _apiClient.dio.get(
+          uri.toString(),
+          options: _apiClient.options(authHeader: auth),
+        ),
+      );
+
+      if (response.statusCode != 200 || response.data is! Map<String, dynamic>) {
+        _log('conversation sources response error', {
+          'status': response.statusCode,
+          'data': response.data,
+        });
+        throw AiAssistantHttpException(
+          'ëŒ€í™” ê·¼ê±°ë¥¼ ë¶ˆëŸ¬ì˜¤ì§€ ëª»í–ˆìŠµë‹ˆë‹¤. (${response.statusCode})',
+          statusCode: response.statusCode,
+          debug: response.data?.toString(),
+        );
+      }
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      _log('conversation sources dio error', {
+        'status': e.response?.statusCode,
+        'message': e.message,
+        'data': e.response?.data,
+      });
+      throw AiAssistantHttpException(
+        'ëŒ€í™” ê·¼ê±°ë¥¼ ë¶ˆëŸ¬ì˜¤ì§€ ëª»í–ˆìŠµë‹ˆë‹¤. (${e.response?.statusCode ?? e.error})',
+        statusCode: e.response?.statusCode,
+        debug: e.response?.data?.toString(),
+      );
+    }
+  }
+
   Future<Map<String, dynamic>> fetchConversationSummaries({
     int skip = 0,
     int limit = 50,

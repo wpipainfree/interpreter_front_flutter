@@ -246,6 +246,10 @@ class UserResultDetailService {
       },
       'phase': 2,
       'output_format': 'cards_v1',
+      'sources': _buildSources(
+        realityResultId: reality.result.id,
+        idealResultId: ideal?.result.id,
+      ),
       'profiles': <String, dynamic>{
         'reality': realityProfile,
         'ideal': idealProfile,
@@ -254,6 +258,20 @@ class UserResultDetailService {
       'story': <String, dynamic>{'content': story},
       'followup': <String, dynamic>{},
     };
+  }
+
+  List<Map<String, dynamic>> _buildSources({
+    required int? realityResultId,
+    required int? idealResultId,
+  }) {
+    final sources = <Map<String, dynamic>>[];
+    if (realityResultId != null && realityResultId > 0) {
+      sources.add({'result_id': realityResultId, 'role': 'reality'});
+    }
+    if (idealResultId != null && idealResultId > 0) {
+      sources.add({'result_id': idealResultId, 'role': 'ideal'});
+    }
+    return sources;
   }
 
   Map<String, dynamic> _buildProfileJson(UserResultDetail detail) {
