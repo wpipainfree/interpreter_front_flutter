@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
@@ -253,7 +254,11 @@ class AuthService extends ChangeNotifier {
     debugPrint('[AuthService] _loginWithGoogleSdk() 시작');
     try {
       // 기존 로그인 세션이 있으면 로그아웃 (새로운 계정 선택 허용)
-      await _googleSignIn.signOut();
+      try {
+        await _googleSignIn.signOut();
+      } catch (e) {
+        debugPrint('[AuthService] Google sign-out error (ignored): $e');
+      }
 
       final account = await _googleSignIn.signIn();
       if (account == null) {
@@ -281,10 +286,88 @@ class AuthService extends ChangeNotifier {
       );
       debugPrint('[AuthService] 백엔드 응답: isSuccess=${result.isSuccess}, error=${result.errorMessage}');
       return result;
+    } on PlatformException catch (e) {
+      debugPrint('[AuthService] Google login PlatformException: ${e.code} - ${e.message}');
+      debugPrint('[AuthService] Details: ${e.details}');
+
+      // 사용자 취소
+      if (e.code == 'sign_in_canceled' || e.code == 'network_error') {
+        return AuthResult.failure('Google 로그인이 취소되었습니다.');
+      }
+
+      // 설정 오류 (URL scheme 미설정 등)
+      if (e.code == 'sign_in_failed' || e.message?.contains('DEVELOPER_ERROR') == true) {
+        return AuthResult.failure(
+          'Google 로그인 설정이 올바르지 않습니다.\niOS OAuth 클라이언트를 Google Cloud Console에서 설정해주세요.',
+          debugMessage: '${e.code}: ${e.message}\nDetails: ${e.details}',
+        );
+      }
+
+      return AuthResult.failure(
+        'Google 로그인에 실패했습니다.',
+        debugMessage: '${e.code}: ${e.message}',
+      );
     } catch (e, stackTrace) {
       debugPrint('[AuthService] Google login error: $e');
       debugPrint('[AuthService] Stack trace: $stackTrace');
       return AuthResult.failure('Google 로그인에 실패했습니다.', debugMessage: e.toString());
+    }
+  }
+
+  /// Apple SDK로 로그인 후 백엔드에 토큰 전달하여 세션 생성.
+  /// iOS/macOS에서만 지원.
+  Future<AuthResult> _loginWithAppleSdk() async {
+    debugPrint('[AuthService] _loginWithAppleSdk() 시작');
+
+    // Apple Sign In은 iOS/macOS에서만 지원
+    if (!Platform.isIOS && !Platform.isMacOS) {
+      debugPrint('[AuthService] Apple Sign-In is only supported on iOS/macOS');
+      return AuthResult.failure('Apple 로그인은 iOS 기기에서만 사용 가능합니다.');
+    }
+
+    try {
+      final isAvailable = await SignInWithApple.isAvailable();
+      if (!isAvailable) {
+        debugPrint('[AuthService] Apple Sign-In is not available on this device');
+        return AuthResult.failure('이 기기에서는 Apple 로그인을 사용할 수 없습니다.');
+      }
+
+      debugPrint('[AuthService] Apple Sign-In 요청 시작...');
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final idToken = credential.identityToken;
+      final authCode = credential.authorizationCode;
+
+      if (idToken != null) {
+        debugPrint('[AuthService] Apple ID token obtained: ${idToken.substring(0, 20)}...');
+      } else {
+        debugPrint('[AuthService] Apple ID token is null');
+      }
+      debugPrint('[AuthService] Apple auth code obtained: ${authCode.substring(0, 20)}...');
+
+      debugPrint('[AuthService] 백엔드에 토큰 전달 시작...');
+      final result = await _exchangeSocialTokenForLogin(
+        'apple',
+        idToken: idToken,
+        authorizationCode: authCode,
+      );
+      debugPrint('[AuthService] 백엔드 응답: isSuccess=${result.isSuccess}, error=${result.errorMessage}');
+      return result;
+    } catch (e, stackTrace) {
+      debugPrint('[AuthService] Apple login error: $e');
+      debugPrint('[AuthService] Stack trace: $stackTrace');
+
+      // 사용자 취소의 경우 별도 메시지
+      if (e.toString().contains('canceled') || e.toString().contains('cancelled')) {
+        return AuthResult.failure('Apple 로그인이 취소되었습니다.');
+      }
+
+      return AuthResult.failure('Apple 로그인에 실패했습니다.', debugMessage: e.toString());
     }
   }
 
@@ -293,6 +376,7 @@ class AuthService extends ChangeNotifier {
     String provider, {
     String? accessToken,
     String? idToken,
+    String? authorizationCode,
   }) async {
     final uri = _uri('/api/v1/auth/social/token');
     try {
@@ -302,6 +386,7 @@ class AuthService extends ChangeNotifier {
           'provider': provider,
           if (accessToken != null) 'access_token': accessToken,
           if (idToken != null) 'id_token': idToken,
+          if (authorizationCode != null) 'authorization_code': authorizationCode,
           'include_refresh_token': true,
         },
         options: Options(
@@ -366,7 +451,7 @@ class AuthService extends ChangeNotifier {
   }
 
   /// Social login with OAuth callback handling.
-  /// 카카오/구글: SDK로 토큰 획득 후 백엔드 /api/v1/auth/social/token 호출 (URL 요청 없음).
+  /// 카카오/구글/애플: SDK로 토큰 획득 후 백엔드 /api/v1/auth/social/token 호출 (URL 요청 없음).
   Future<AuthResult> loginWithSocial(String provider, {String? code, String? state}) async {
     if (code == null) {
       final providerLower = provider.toLowerCase();
@@ -378,7 +463,11 @@ class AuthService extends ChangeNotifier {
       if (providerLower == 'google') {
         return await _loginWithGoogleSdk();
       }
-      // Apple/기타: 기존 URL 방식 (백엔드에서 login_url 제공 시)
+      // Apple: SDK 기반 로그인 (iOS/macOS만 지원)
+      if (providerLower == 'apple') {
+        return await _loginWithAppleSdk();
+      }
+      // 기타: 기존 URL 방식 (백엔드에서 login_url 제공 시)
       final loginUrl = await getSocialLoginUrl(provider);
       if (loginUrl == null) {
         return AuthResult.failure('소셜 로그인 URL을 가져올 수 없습니다.');

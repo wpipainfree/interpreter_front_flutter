@@ -1,4 +1,4 @@
-package com.wpipainfree.wpiapp
+package com.wpipainfree.connect
 
 import io.flutter.embedding.android.FlutterActivity
 

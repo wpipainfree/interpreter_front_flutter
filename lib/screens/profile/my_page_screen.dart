@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../router/app_routes.dart';
@@ -72,17 +73,21 @@ class _MyPageScreenState extends State<MyPageScreen> {
     return status.isLinked;
   }
 
-  bool _isLinkingSocial = false;
+  final Map<String, bool> _linkingProviders = {};
+
+  bool _isProviderLinking(String provider) {
+    return _linkingProviders[provider] ?? false;
+  }
 
   Future<void> _handleLinkSocial(BuildContext context, String provider) async {
-    if (_isLinkingSocial) return;
-    setState(() => _isLinkingSocial = true);
+    if (_isProviderLinking(provider)) return;
+    setState(() => _linkingProviders[provider] = true);
 
     // 카카오/구글/애플: SDK로 토큰 획득 후 백엔드에 연동 요청
     final result = await _authService.linkSocialAccountWithSdk(provider);
 
     if (!mounted) return;
-    setState(() => _isLinkingSocial = false);
+    setState(() => _linkingProviders[provider] = false);
 
     final ctx = context;
     if (!ctx.mounted) return;
@@ -239,21 +244,22 @@ class _MyPageScreenState extends State<MyPageScreen> {
             _SocialAccountLinkTile(
               provider: 'kakao',
               isLinked: _isProviderLinked('kakao'),
-              isLoading: _isLinkingSocial,
+              isLoading: _isProviderLinking('kakao'),
               onLinkTap: () => _handleLinkSocial(context, 'kakao'),
               onUnlinkTap: () => _handleUnlinkSocial(context, 'kakao'),
             ),
             _SocialAccountLinkTile(
               provider: 'google',
               isLinked: _isProviderLinked('google'),
-              isLoading: _isLinkingSocial,
+              isLoading: _isProviderLinking('google'),
               onLinkTap: () => _handleLinkSocial(context, 'google'),
               onUnlinkTap: () => _handleUnlinkSocial(context, 'google'),
             ),
             _SocialAccountLinkTile(
               provider: 'apple',
               isLinked: _isProviderLinked('apple'),
-              isLoading: _isLinkingSocial,
+              isLoading: _isProviderLinking('apple'),
+              isEnabled: Platform.isIOS, // Android에서는 비활성화
               onLinkTap: () => _handleLinkSocial(context, 'apple'),
               onUnlinkTap: () => _handleUnlinkSocial(context, 'apple'),
             ),
@@ -511,6 +517,7 @@ class _SocialAccountLinkTile extends StatelessWidget {
   final String provider;
   final bool isLinked;
   final bool isLoading;
+  final bool isEnabled;
   final VoidCallback onLinkTap;
   final VoidCallback onUnlinkTap;
 
@@ -518,6 +525,7 @@ class _SocialAccountLinkTile extends StatelessWidget {
     required this.provider,
     required this.isLinked,
     this.isLoading = false,
+    this.isEnabled = true,
     required this.onLinkTap,
     required this.onUnlinkTap,
   });
@@ -543,32 +551,54 @@ class _SocialAccountLinkTile extends StatelessWidget {
         style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600),
       ),
       subtitle: Text(
-        isLinked ? '연동 완료' : '연동 안됨',
+        !isEnabled
+            ? 'iOS 전용'
+            : (isLinked ? '연동 완료' : '연동 안됨'),
         style: AppTextStyles.caption.copyWith(
-          color: isLinked ? Colors.green : AppColors.textSecondary,
+          color: !isEnabled
+              ? AppColors.textSecondary.withOpacity(0.5)
+              : (isLinked ? Colors.green : AppColors.textSecondary),
         ),
       ),
-      trailing: isLinked
-          ? TextButton(
-              onPressed: isLoading ? null : onUnlinkTap,
-              child: const Text('해제', style: TextStyle(color: Colors.red)),
-            )
-          : isLoading
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : ElevatedButton(
-                  onPressed: onLinkTap,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _providerColor(provider),
-                    foregroundColor: provider == 'kakao' ? Colors.black : Colors.white,
-                    minimumSize: const Size(60, 36),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                  ),
-                  child: const Text('연동'),
+      trailing: SizedBox(
+        width: 70,
+        height: 36,
+        child: !isEnabled
+            ? Center(
+                child: Icon(
+                  Icons.lock_outline,
+                  color: AppColors.textSecondary.withOpacity(0.5),
+                  size: 20,
                 ),
+              )
+            : isLinked
+                ? TextButton(
+                    onPressed: isLoading ? null : onUnlinkTap,
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(70, 36),
+                      padding: EdgeInsets.zero,
+                    ),
+                    child: const Text('해제', style: TextStyle(color: Colors.red)),
+                  )
+                : isLoading
+                    ? const Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : ElevatedButton(
+                        onPressed: onLinkTap,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _providerColor(provider),
+                          foregroundColor: provider == 'kakao' ? Colors.black : Colors.white,
+                          minimumSize: const Size(70, 36),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                        child: const Text('연동'),
+                      ),
+      ),
     );
   }
 
