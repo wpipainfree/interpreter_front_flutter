@@ -37,7 +37,7 @@ class RealityProfileSection extends StatelessWidget {
     final result = detail;
     if (result == null) {
       return const ResultSectionHeader(
-        title: '현실 프로파일',
+        title: 'WPI 현실 프로파일',
         subtitle: '현실 결과를 찾을 수 없습니다.',
       );
     }
@@ -67,8 +67,8 @@ class RealityProfileSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const ResultSectionHeader(
-          title: '현실 프로파일',
-          subtitle: '현실은 현재 구조(기준·믿음 기울기)와 붕괴 방향(오버/언더)을 이해하는 영역입니다.',
+          title: '마음의 원자 구조',
+          subtitle: '내 마음을 한눈에 파악할 수 있어요.',
         ),
         const SizedBox(height: 12),
         AtomHeaderCard(
@@ -81,15 +81,10 @@ class RealityProfileSection extends StatelessWidget {
           title: '기준과 믿음의 기울기',
           body: _gapSummaryText(atomState),
         ),
-        const SizedBox(height: 8),
-        const ResultSummaryInfoCard(
-          title: '감정·몸 반응은 구조 신호',
-          body: '불안·답답함·긴장·피로는 구조 충돌이 올라오는 신호일 수 있어요.',
-        ),
         const SizedBox(height: 16),
         const ResultSectionHeader(
-          title: '현실 근거(점수/구조)',
-          subtitle: '그래프/표는 위 요약을 뒷받침하는 근거 자료입니다.',
+          title: 'WPI 현실 프로파일',
+          subtitle: '내 삶의 기준과 스스로 가지는 믿음에 대해서 파악할 수 있어요.',
         ),
         const SizedBox(height: 8),
         const ScoreLegend(),

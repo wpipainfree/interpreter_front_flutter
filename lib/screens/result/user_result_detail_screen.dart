@@ -435,20 +435,6 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
             date,
             style: AppTextStyles.caption.copyWith(color: AppColors.textPrimary),
           ),
-          if (trimmedFocus.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              '내가 알고 싶은 마음: $trimmedFocus',
-              style: AppTextStyles.bodySmall,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-          const SizedBox(height: 10),
-          Text(
-            AppStrings.resultDetailPurposeText,
-            style: AppTextStyles.bodySmall,
-          ),
         ],
       ),
     );

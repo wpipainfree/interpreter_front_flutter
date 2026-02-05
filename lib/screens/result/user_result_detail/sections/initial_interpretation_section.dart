@@ -49,7 +49,7 @@ class InitialInterpretationSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const ResultSectionHeader(
-          title: '내 마음의 구조',
+          title: '내 마음 해석하기',
           subtitle: '지금 내 마음은 이렇습니다.',
         ),
         const SizedBox(height: 12),
