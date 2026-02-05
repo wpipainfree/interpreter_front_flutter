@@ -8,6 +8,7 @@ import 'dashboard_screen.dart';
 import 'test/test_intro_screen.dart';
 import 'mymind/my_mind_page.dart';
 import 'profile/my_page_screen.dart';
+import 'payment/payment_webview_screen.dart';
 
 /// Main shell with 4-tab bottom navigation: Home, Test, MyMind, MyPage.
 class MainShell extends StatefulWidget {
@@ -35,11 +36,36 @@ class _MainShellState extends State<MainShell> {
       setState(() {});
     };
     _authService.addListener(_authListener);
+
+    // 결제 결과 노티파이어 리스닝
+    PaymentResult.notifier.addListener(_onPaymentResultChanged);
+  }
+
+  void _onPaymentResultChanged() {
+    // 먼저 값 확인 - null이면 바로 리턴 (consume()이 트리거한 경우)
+    final result = PaymentResult.notifier.value;
+    if (result == null) return;
+
+    debugPrint('[MainShell] _onPaymentResultChanged: result=$result, mounted=$mounted');
+    if (!mounted) return;
+
+    // 값을 저장하고 notifier 초기화 (이 때 listener가 다시 트리거되지만 null이므로 위에서 리턴)
+    PaymentResult.notifier.value = null;
+
+    // 바로 SnackBar 표시
+    debugPrint('[MainShell] Showing SnackBar for payment result');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result.success ? '결제가 완료되었습니다.' : (result.message ?? '결제에 실패했습니다.')),
+        backgroundColor: result.success ? Colors.green : Colors.red,
+      ),
+    );
   }
 
   @override
   void dispose() {
     _authService.removeListener(_authListener);
+    PaymentResult.notifier.removeListener(_onPaymentResultChanged);
     super.dispose();
   }
 

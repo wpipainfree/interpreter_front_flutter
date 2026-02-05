@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../services/payment_service.dart';
 import '../../utils/app_colors.dart';
+import '../../utils/app_navigator.dart';
 
 /// 결제 결과
 class PaymentResult {
@@ -26,6 +27,21 @@ class PaymentResult {
 
   factory PaymentResult.cancelled() =>
       const PaymentResult(success: false, message: '결제가 취소되었습니다.');
+
+  /// 결제 결과를 MainShell에 전달하기 위한 글로벌 노티파이어
+  static final ValueNotifier<PaymentResult?> notifier = ValueNotifier(null);
+
+  /// 결제 결과 알림
+  static void notify(PaymentResult result) {
+    notifier.value = result;
+  }
+
+  /// 결과 소비 (한번 읽으면 null로 초기화)
+  static PaymentResult? consume() {
+    final result = notifier.value;
+    notifier.value = null;
+    return result;
+  }
 }
 
 /// INICIS 모바일 결제 WebView 화면
@@ -90,6 +106,21 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
     _initWebView();
   }
 
+  /// 결제 결과와 함께 메인 화면으로 이동
+  void _navigateToMainWithResult(PaymentResult result) {
+    Future.delayed(const Duration(milliseconds: 100), () {
+      debugPrint('[PaymentWebView] Delayed callback, notifying and popping to main');
+      // 먼저 결제 결과 알림 (MainShell에서 수신 대기)
+      PaymentResult.notify(result);
+      debugPrint('[PaymentWebView] Result notified, now popping');
+      // 그 다음 메인 화면까지 pop
+      final navigator = AppNavigator.key.currentState;
+      if (navigator != null) {
+        navigator.popUntil((route) => route.settings.name == '/main' || route.isFirst);
+      }
+    });
+  }
+
   void _initWebView() {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -101,6 +132,11 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
             setState(() => _progress = progress / 100);
           },
           onPageStarted: (url) {
+            // 딥링크 URL은 onNavigationRequest에서 처리
+            if (url.startsWith('wpiapp://')) {
+              return;
+            }
+
             if (url.contains('/inicis/mobile/return') ||
                 url.contains('payment/success') ||
                 url.contains('payment/fail')) {
@@ -109,8 +145,23 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
             setState(() => _isLoading = true);
           },
           onPageFinished: (url) {
-            if (url.contains('/inicis/mobile/return') ||
-                url.contains('payment/success') ||
+            // 딥링크 URL은 onNavigationRequest에서 처리하므로 여기서는 무시
+            if (url.startsWith('wpiapp://')) {
+              setState(() => _isLoading = false);
+              return;
+            }
+
+            // return URL 페이지에서 딥링크 URL을 추출하여 직접 처리
+            if (url.contains('/inicis/mobile/return')) {
+              setState(() {
+                _isLoading = false;
+                _isVerifying = true;
+              });
+              _extractAndHandleDeepLink();
+              return;
+            }
+
+            if (url.contains('payment/success') ||
                 url.contains('payment/fail')) {
               setState(() => _isVerifying = true);
               _checkPageContent();
@@ -168,24 +219,30 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
 
   void _handlePaymentSuccess() async {
     // 중복 처리 방지
-    if (_isProcessing) return;
+    if (_isProcessing) {
+      debugPrint('[PaymentWebView] Already processing, skipping');
+      return;
+    }
     _isProcessing = true;
+    debugPrint('[PaymentWebView] Starting payment success handler');
 
     try {
       final paymentService = PaymentService();
       final status = await paymentService.getPaymentStatus(widget.paymentId);
-      if (mounted) {
-        Navigator.pop(
-          context,
-          status.isSuccess
-              ? PaymentResult.success(widget.paymentId)
-              : PaymentResult.failed(status.errorMessage ?? '결제 확인에 실패했습니다.'),
-        );
-      }
+      debugPrint('[PaymentWebView] Status received: isSuccess=${status.isSuccess}, status=${status.status}');
+
+      final result = status.isSuccess
+          ? PaymentResult.success(widget.paymentId)
+          : PaymentResult.failed(status.errorMessage ?? '결제 확인에 실패했습니다.');
+
+      // WebView가 Navigator.pop을 블로킹하는 것으로 보임
+      // popUntil을 사용하여 메인 화면으로 복귀
+      debugPrint('[PaymentWebView] Using popUntil to return to main');
+      _navigateToMainWithResult(result);
     } catch (e) {
-      if (mounted) {
-        Navigator.pop(context, PaymentResult.success(widget.paymentId));
-      }
+      debugPrint('[PaymentWebView] Error in payment success: $e');
+      // 에러 발생해도 결제는 성공으로 처리하고 화면 닫기
+      _navigateToMainWithResult(PaymentResult.success(widget.paymentId));
     }
   }
 
@@ -194,9 +251,8 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
     if (_isProcessing) return;
     _isProcessing = true;
 
-    if (mounted) {
-      Navigator.pop(context, PaymentResult.failed('결제에 실패했습니다.'));
-    }
+    debugPrint('[PaymentWebView] Payment failed, navigating to main');
+    _navigateToMainWithResult(PaymentResult.failed('결제에 실패했습니다.'));
   }
 
   Future<void> _checkPageContent() async {
@@ -220,10 +276,7 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
             if (data.containsKey('detail')) {
               final detail = data['detail'];
               if (detail is String) {
-                if (mounted) {
-                  Navigator.pop(
-                      context, PaymentResult.failed('결제 오류: $detail'));
-                }
+                _navigateToMainWithResult(PaymentResult.failed('결제 오류: $detail'));
                 return;
               }
             }
@@ -240,10 +293,41 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
     }
   }
 
+  Future<void> _extractAndHandleDeepLink() async {
+    try {
+      // JavaScript로 페이지의 링크 URL 추출
+      final linkHref = await _controller.runJavaScriptReturningResult(
+        'document.querySelector("a[href^=\'wpiapp://\']")?.href || ""',
+      );
+
+      debugPrint('[PaymentWebView] Extracted link: $linkHref');
+
+      if (linkHref is String && linkHref.isNotEmpty) {
+        // 따옴표 제거
+        final cleanUrl = linkHref.replaceAll('"', '').replaceAll("'", '');
+        if (cleanUrl.startsWith('wpiapp://')) {
+          _handleDeepLink(cleanUrl);
+        }
+      }
+    } catch (e) {
+      debugPrint('[PaymentWebView] Error extracting deep link: $e');
+      // 추출 실패 시 페이지 내용으로 폴백
+      _checkPageContent();
+    }
+  }
+
   void _handleDeepLink(String url) {
     debugPrint('[PaymentWebView] DeepLink received: $url');
     final uri = Uri.parse(url);
     final status = uri.queryParameters['status'];
+
+    // 로딩 상태 해제 (mounted 체크)
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _isVerifying = true;
+      });
+    }
 
     if (status == 'success') {
       _handlePaymentSuccess();
@@ -251,9 +335,8 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
       // 취소 시 즉시 화면 닫기 (백엔드 조회 없이)
       if (_isProcessing) return;
       _isProcessing = true;
-      if (mounted) {
-        Navigator.pop(context, PaymentResult.cancelled());
-      }
+      debugPrint('[PaymentWebView] Payment cancelled, navigating to main');
+      _navigateToMainWithResult(PaymentResult.cancelled());
     } else {
       _handlePaymentFailed();
     }
@@ -291,7 +374,13 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () {
-            Navigator.pop(context, PaymentResult.cancelled());
+            final result = PaymentResult.cancelled();
+            final navigatorState = AppNavigator.key.currentState;
+            if (navigatorState != null && navigatorState.canPop()) {
+              navigatorState.pop(result);
+            } else {
+              Navigator.of(context).pop(result);
+            }
           },
         ),
       ),

@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../../router/app_routes.dart';
@@ -98,7 +99,16 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _completeAuth({required bool success}) {
-    Navigator.of(context, rootNavigator: true).pop(success);
+    if (success) {
+      // 로그인 성공: 메인 페이지로 이동 (이전 화면 모두 제거)
+      Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
+        AppRoutes.main,
+        (route) => false,
+      );
+    } else {
+      // 로그인 취소: 이전 화면으로 돌아가기
+      Navigator.of(context, rootNavigator: true).pop(success);
+    }
   }
 
   @override
@@ -141,14 +151,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 12),
                   _SocialButton(
-                    label: 'Apple로 계속하기',
-                    backgroundColor: Colors.black,
-                    textColor: Colors.white,
-                    icon: Icons.apple,
-                    onPressed: _isLoading ? null : () => _handleSocialLogin('apple'),
-                  ),
-                  const SizedBox(height: 12),
-                  _SocialButton(
                     label: 'Google로 계속하기',
                     backgroundColor: Colors.white,
                     textColor: AppColors.textPrimary,
@@ -156,6 +158,16 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderColor: AppColors.border,
                     onPressed: _isLoading ? null : () => _handleSocialLogin('google'),
                   ),
+                  if (Platform.isIOS) ...[
+                    const SizedBox(height: 12),
+                    _SocialButton(
+                      label: 'Apple로 계속하기',
+                      backgroundColor: Colors.black,
+                      textColor: Colors.white,
+                      icon: Icons.apple,
+                      onPressed: _isLoading ? null : () => _handleSocialLogin('apple'),
+                    ),
+                  ],
                   const SizedBox(height: 20),
                 ],
                 if (_errorMessage != null)
