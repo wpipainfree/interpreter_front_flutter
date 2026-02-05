@@ -36,7 +36,11 @@ class InitialInterpretationV1 {
         ? InitialInterpretationNext.fromJson(nextRaw.cast<String, dynamic>())
         : const InitialInterpretationNext(ctaLabel: '');
 
-    final promptsRaw = json['suggested_prompts'] ?? json['suggestedPrompts'];
+    var promptsRaw = json['suggested_prompts'] ?? json['suggestedPrompts'];
+    if (promptsRaw == null && nextRaw is Map) {
+      promptsRaw =
+          nextRaw['suggested_prompts'] ?? nextRaw['suggestedPrompts'];
+    }
     final suggestedPrompts = (promptsRaw is List ? promptsRaw : const [])
         .map((e) => e?.toString().trim() ?? '')
         .where((e) => e.isNotEmpty)
