@@ -10,6 +10,7 @@ import '../../utils/app_text_styles.dart';
 import '../../utils/auth_ui.dart';
 import '../../utils/strings.dart';
 import '../../widgets/app_error_view.dart';
+import '../result/user_result_detail/widgets/result_section_header.dart';
 
 class InterpretationRecordPanel extends StatefulWidget {
   const InterpretationRecordPanel({super.key});
@@ -397,6 +398,9 @@ class _InterpretationRecordDetailScreenState
                   padding: const EdgeInsets.all(20),
                   itemBuilder: (context, index) {
                     final entry = _entries[index];
+                    if (index == 0 && _hasCardView(entry.viewModel)) {
+                      return _InitialInterpretationRecordSection(entry: entry);
+                    }
                     return _ConversationEntryCard(entry: entry);
                   },
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
@@ -416,8 +420,7 @@ class _ConversationEntryCard extends StatelessWidget {
     final baseStyle = AppTextStyles.bodySmall
         .copyWith(color: AppColors.textPrimary, height: 1.4);
     final viewModel = entry.viewModel;
-    final hasCardView = viewModel != null &&
-        (viewModel.cards.isNotEmpty || viewModel.headline.trim().isNotEmpty);
+    final hasCardView = _hasCardView(viewModel);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -723,6 +726,32 @@ class _InitialInterpretationCardsView extends StatelessWidget {
   }
 }
 
+class _InitialInterpretationRecordSection extends StatelessWidget {
+  const _InitialInterpretationRecordSection({required this.entry});
+
+  final _ConversationEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = entry.viewModel;
+    if (!_hasCardView(viewModel)) {
+      return _ConversationEntryCard(entry: entry);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const ResultSectionHeader(
+          title: '내 마음 해석하기',
+          subtitle: '지금 내 마음은 이렇습니다.',
+        ),
+        const SizedBox(height: 12),
+        _InitialInterpretationCardsView(viewModel: viewModel),
+      ],
+    );
+  }
+}
+
 class _SubtleWarning extends StatelessWidget {
   const _SubtleWarning({required this.text});
 
@@ -830,4 +859,9 @@ class _InterpretationCard extends StatelessWidget {
       ),
     );
   }
+}
+
+bool _hasCardView(InitialInterpretationV1? viewModel) {
+  if (viewModel == null) return false;
+  return viewModel.cards.isNotEmpty || viewModel.headline.trim().isNotEmpty;
 }

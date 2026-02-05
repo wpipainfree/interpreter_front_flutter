@@ -1,4 +1,5 @@
 import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../router/app_routes.dart';
@@ -94,7 +95,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
     if (result.isSuccess) {
       ScaffoldMessenger.of(ctx).showSnackBar(
         SnackBar(
-          content: Text(result.successMessage ?? '${_providerName(provider)} 계정이 연동되었습니다.'),
+          content: Text(result.successMessage ??
+              '${_providerName(provider)} 계정이 연동되었습니다.'),
           backgroundColor: Colors.green,
         ),
       );
@@ -120,7 +122,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
     }
   }
 
-  Future<void> _handleUnlinkSocial(BuildContext context, String provider) async {
+  Future<void> _handleUnlinkSocial(
+      BuildContext context, String provider) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -171,14 +174,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-      backgroundColor: AppColors.backgroundLight,
-      foregroundColor: AppColors.textPrimary,
-      elevation: 0,
-      centerTitle: false,
-      title: Text('마이페이지', style: AppTextStyles.h4),
-    ),
-    body: user == null ? _buildLoggedOut(context) : _buildLoggedIn(context, user),
-  );
+        backgroundColor: AppColors.backgroundLight,
+        foregroundColor: AppColors.textPrimary,
+        elevation: 0,
+        centerTitle: false,
+        title: Text('마이페이지', style: AppTextStyles.h4),
+      ),
+      body: user == null
+          ? _buildLoggedOut(context)
+          : _buildLoggedIn(context, user),
+    );
   }
 
   Widget _buildLoggedOut(BuildContext context) {
@@ -188,13 +193,15 @@ class _MyPageScreenState extends State<MyPageScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.lock_outline, size: 56, color: AppColors.textSecondary),
+            const Icon(Icons.lock_outline,
+                size: 56, color: AppColors.textSecondary),
             const SizedBox(height: 12),
             Text('로그인이 필요합니다.', style: AppTextStyles.h4),
             const SizedBox(height: 8),
             Text(
               '마이페이지에서 계정/토큰 정보를 확인하려면 로그인해주세요.',
-              style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+              style: AppTextStyles.bodySmall
+                  .copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -209,7 +216,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 backgroundColor: AppColors.primary,
                 foregroundColor: AppColors.textOnPrimary,
                 minimumSize: const Size(160, 48),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text('로그인하기'),
             ),
@@ -259,7 +267,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
               provider: 'apple',
               isLinked: _isProviderLinked('apple'),
               isLoading: _isProviderLinking('apple'),
-              isEnabled: Platform.isIOS, // Android에서는 비활성화
+              isEnabled: !kIsWeb && Platform.isIOS, // Android??? ????
               onLinkTap: () => _handleLinkSocial(context, 'apple'),
               onUnlinkTap: () => _handleUnlinkSocial(context, 'apple'),
             ),
@@ -295,7 +303,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     ),
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(true),
-                      child: const Text('로그아웃', style: TextStyle(color: Colors.red)),
+                      child: const Text('로그아웃',
+                          style: TextStyle(color: Colors.red)),
                     ),
                   ],
                 ),
@@ -337,7 +346,8 @@ class _ProfileHeader extends StatelessWidget {
           CircleAvatar(
             radius: 36,
             backgroundColor: AppColors.primary.withOpacity(0.08),
-            child: const Icon(Icons.person_rounded, size: 32, color: AppColors.primary),
+            child: const Icon(Icons.person_rounded,
+                size: 32, color: AppColors.primary),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -348,7 +358,8 @@ class _ProfileHeader extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   user?.email ?? '로그인 후 이메일이 표시됩니다.',
-                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                  style: AppTextStyles.bodySmall
+                      .copyWith(color: AppColors.textSecondary),
                 ),
               ],
             ),
@@ -394,7 +405,8 @@ class _CounselingInfoCard extends StatelessWidget {
             _InfoRow(label: '학년', value: client.grade!),
           if (client.academicTrack != null && client.academicTrack!.isNotEmpty)
             _InfoRow(label: '계열', value: client.academicTrack!),
-          if (client.institutionName != null && client.institutionName!.isNotEmpty)
+          if (client.institutionName != null &&
+              client.institutionName!.isNotEmpty)
             _InfoRow(label: '소속 기관', value: client.institutionName!),
           _InfoRow(label: '승인 역할', value: client.approvalRole ?? '-'),
           _InfoRow(label: '승인 여부', value: client.isApproved ? '승인됨' : '미승인'),
@@ -419,13 +431,15 @@ class _InfoRow extends StatelessWidget {
             width: 100,
             child: Text(
               label,
-              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+              style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textSecondary),
             ),
           ),
           Expanded(
             child: Text(
               value.isNotEmpty ? value : '-',
-              style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+              style: AppTextStyles.bodyMedium
+                  .copyWith(fontWeight: FontWeight.w600),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -473,7 +487,8 @@ class _SettingTile extends StatelessWidget {
           fontWeight: FontWeight.w600,
         ),
       ),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.textSecondary),
+      trailing: const Icon(Icons.arrow_forward_ios,
+          size: 16, color: AppColors.textSecondary),
       onTap: onTap,
     );
   }
@@ -551,9 +566,7 @@ class _SocialAccountLinkTile extends StatelessWidget {
         style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600),
       ),
       subtitle: Text(
-        !isEnabled
-            ? 'iOS 전용'
-            : (isLinked ? '연동 완료' : '연동 안됨'),
+        !isEnabled ? 'iOS 전용' : (isLinked ? '연동 완료' : '연동 안됨'),
         style: AppTextStyles.caption.copyWith(
           color: !isEnabled
               ? AppColors.textSecondary.withOpacity(0.5)
@@ -578,7 +591,8 @@ class _SocialAccountLinkTile extends StatelessWidget {
                       minimumSize: const Size(70, 36),
                       padding: EdgeInsets.zero,
                     ),
-                    child: const Text('해제', style: TextStyle(color: Colors.red)),
+                    child:
+                        const Text('해제', style: TextStyle(color: Colors.red)),
                   )
                 : isLoading
                     ? const Center(
@@ -592,7 +606,8 @@ class _SocialAccountLinkTile extends StatelessWidget {
                         onPressed: onLinkTap,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _providerColor(provider),
-                          foregroundColor: provider == 'kakao' ? Colors.black : Colors.white,
+                          foregroundColor:
+                              provider == 'kakao' ? Colors.black : Colors.white,
                           minimumSize: const Size(70, 36),
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                         ),
