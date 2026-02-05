@@ -317,7 +317,7 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
     const selfKeyLabels = ['Realist', 'Romanticist', 'Humanist', 'Idealist', 'Agent'];
     const otherKeyLabels = ['Relation', 'Trust', 'Manual', 'Self', 'Culture'];
     const selfDisplayLabels = ['리얼리스트', '로맨티스트', '휴머니스트', '아이디얼리스트', '에이전트'];
-    const otherDisplayLabels = ['관계', '신뢰', '매뉴얼', '자기', '문화'];
+    const otherDisplayLabels = ['릴레이션', '트러스트', '매뉴얼', '셀프', '컬처'];
 
     final storyForAi = (reality != null) ? (_mindFocus ?? '') : '';
     final canOpenPhase3 =

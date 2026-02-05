@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+import '../../models/initial_interpretation_v1.dart';
 import '../../services/ai_assistant_service.dart';
 import '../../services/auth_service.dart';
 import '../../router/app_routes.dart';
@@ -14,7 +15,8 @@ class InterpretationRecordPanel extends StatefulWidget {
   const InterpretationRecordPanel({super.key});
 
   @override
-  State<InterpretationRecordPanel> createState() => _InterpretationRecordPanelState();
+  State<InterpretationRecordPanel> createState() =>
+      _InterpretationRecordPanelState();
 }
 
 class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
@@ -112,8 +114,9 @@ class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
         skip: _skip,
         limit: _pageSize,
       );
-      final raw =
-          (res['conversations'] ?? res['items'] ?? res['data']) as List<dynamic>? ?? const [];
+      final raw = (res['conversations'] ?? res['items'] ?? res['data'])
+              as List<dynamic>? ??
+          const [];
       final fetched = raw
           .whereType<Map<String, dynamic>>()
           .map(_ConversationSummary.fromJson)
@@ -186,7 +189,8 @@ class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: OutlinedButton(
                   onPressed: () => _loadPage(reset: false),
-                  style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44)),
+                  style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(44)),
                   child: const Text(AppStrings.seeMore),
                 ),
               );
@@ -216,7 +220,9 @@ class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
         children: [
           Text(title, style: AppTextStyles.h5),
           const SizedBox(height: 6),
-          Text(subtitle, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+          Text(subtitle,
+              style: AppTextStyles.bodySmall
+                  .copyWith(color: AppColors.textSecondary)),
         ],
       ),
     );
@@ -264,19 +270,22 @@ class _ConversationCard extends StatelessWidget {
           children: [
             Text(
               displayTitle,
-              style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+              style: AppTextStyles.bodyMedium
+                  .copyWith(fontWeight: FontWeight.w700),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 6),
             Text(
               item.dateRangeLabel,
-              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+              style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 6),
             Text(
               '메시지 ${item.totalMessages}개',
-              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+              style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -296,10 +305,12 @@ class InterpretationRecordDetailScreen extends StatefulWidget {
   final String title;
 
   @override
-  State<InterpretationRecordDetailScreen> createState() => _InterpretationRecordDetailScreenState();
+  State<InterpretationRecordDetailScreen> createState() =>
+      _InterpretationRecordDetailScreenState();
 }
 
-class _InterpretationRecordDetailScreenState extends State<InterpretationRecordDetailScreen> {
+class _InterpretationRecordDetailScreenState
+    extends State<InterpretationRecordDetailScreen> {
   final AiAssistantService _aiService = AiAssistantService();
   bool _loading = true;
   String? _error;
@@ -313,15 +324,19 @@ class _InterpretationRecordDetailScreenState extends State<InterpretationRecordD
   }
 
   Future<void> _load() async {
-      setState(() {
-        _loading = true;
-        _error = null;
-      });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final res = await _aiService.fetchConversation(widget.conversationId);
-      final raw = (res['entries'] ?? res['items'] ?? res['logs'] ?? res['data']) as List<dynamic>? ??
+      final raw = (res['entries'] ?? res['items'] ?? res['logs'] ?? res['data'])
+              as List<dynamic>? ??
           const [];
-      final items = raw.whereType<Map<String, dynamic>>().map(_ConversationEntry.fromJson).toList();
+      final items = raw
+          .whereType<Map<String, dynamic>>()
+          .map(_ConversationEntry.fromJson)
+          .toList();
       if (!mounted) return;
       setState(() {
         if (widget.title.trim().isEmpty) {
@@ -334,7 +349,8 @@ class _InterpretationRecordDetailScreenState extends State<InterpretationRecordD
             final fallback = items
                 .map((entry) => entry.request.trim())
                 .firstWhere((text) => text.isNotEmpty, orElse: () => '');
-            _resolvedTitle = fallback.isNotEmpty ? _truncateTitle(fallback) : null;
+            _resolvedTitle =
+                fallback.isNotEmpty ? _truncateTitle(fallback) : null;
           }
         } else {
           _resolvedTitle = null;
@@ -397,7 +413,11 @@ class _ConversationEntryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final baseStyle = AppTextStyles.bodySmall.copyWith(color: AppColors.textPrimary, height: 1.4);
+    final baseStyle = AppTextStyles.bodySmall
+        .copyWith(color: AppColors.textPrimary, height: 1.4);
+    final viewModel = entry.viewModel;
+    final hasCardView = viewModel != null &&
+        (viewModel.cards.isNotEmpty || viewModel.headline.trim().isNotEmpty);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -410,44 +430,69 @@ class _ConversationEntryCard extends StatelessWidget {
         children: [
           Text(
             entry.statusLabel,
-            style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+            style:
+                AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 6),
-          Text('질문', style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w700)),
+          Text('질문',
+              style: AppTextStyles.bodySmall
+                  .copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
           SelectableText(entry.request, style: baseStyle),
-          if (entry.response.isNotEmpty || entry.title.isNotEmpty) ...[
+          if (hasCardView ||
+              entry.response.isNotEmpty ||
+              entry.title.isNotEmpty) ...[
             const SizedBox(height: 12),
-            Text('응답', style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w700)),
+            Text('응답',
+                style: AppTextStyles.bodySmall
+                    .copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
             if (entry.title.isNotEmpty) ...[
-              Text(entry.title, style: baseStyle.copyWith(fontWeight: FontWeight.w700)),
-              if (entry.response.isNotEmpty) const SizedBox(height: 8),
+              Text(entry.title,
+                  style: baseStyle.copyWith(fontWeight: FontWeight.w700)),
+              if (entry.response.isNotEmpty || hasCardView)
+                const SizedBox(height: 8),
             ],
-            if (entry.response.isNotEmpty)
+            if (hasCardView)
+              _InitialInterpretationCardsView(viewModel: viewModel)
+            else if (entry.response.isNotEmpty)
               SelectionArea(
-                child: MarkdownBody(
-                  data: entry.response,
-                  styleSheet: MarkdownStyleSheet(
-                    p: baseStyle,
-                    h1: baseStyle.copyWith(fontSize: 18, fontWeight: FontWeight.w700),
-                    h2: baseStyle.copyWith(fontSize: 16, fontWeight: FontWeight.w700),
-                    h3: baseStyle.copyWith(fontSize: 14, fontWeight: FontWeight.w700),
-                    strong: baseStyle.copyWith(fontWeight: FontWeight.w700),
-                    em: baseStyle.copyWith(fontStyle: FontStyle.italic),
-                    blockquotePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    blockquoteDecoration: BoxDecoration(
-                      color: AppColors.backgroundLight,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.border),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (entry.viewModelMalformed)
+                      const _SubtleWarning(
+                        text: '카드형 해석을 표시하지 못했어요. 텍스트로 보여드릴게요.',
+                      ),
+                    MarkdownBody(
+                      data: entry.response,
+                      styleSheet: MarkdownStyleSheet(
+                        p: baseStyle,
+                        h1: baseStyle.copyWith(
+                            fontSize: 18, fontWeight: FontWeight.w700),
+                        h2: baseStyle.copyWith(
+                            fontSize: 16, fontWeight: FontWeight.w700),
+                        h3: baseStyle.copyWith(
+                            fontSize: 14, fontWeight: FontWeight.w700),
+                        strong: baseStyle.copyWith(fontWeight: FontWeight.w700),
+                        em: baseStyle.copyWith(fontStyle: FontStyle.italic),
+                        blockquotePadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        blockquoteDecoration: BoxDecoration(
+                          color: AppColors.backgroundLight,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        codeblockDecoration: BoxDecoration(
+                          color: AppColors.backgroundLight,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        code: baseStyle.copyWith(
+                            fontFamily: 'monospace', fontSize: 13),
+                      ),
                     ),
-                    codeblockDecoration: BoxDecoration(
-                      color: AppColors.backgroundLight,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    code: baseStyle.copyWith(fontFamily: 'monospace', fontSize: 13),
-                  ),
+                  ],
                 ),
               ),
           ],
@@ -487,7 +532,8 @@ class _ConversationSummary {
       ],
     );
     return _ConversationSummary(
-      id: (json['conversation_id'] ?? json['session_id'] ?? json['id'] ?? '').toString(),
+      id: (json['conversation_id'] ?? json['session_id'] ?? json['id'] ?? '')
+          .toString(),
       title: title,
       firstMessageAt: _parseDate(json['first_message_at']?.toString()),
       lastMessageAt: _parseDate(json['last_message_at']?.toString()),
@@ -542,6 +588,8 @@ class _ConversationEntry {
     required this.request,
     required this.title,
     required this.response,
+    required this.viewModel,
+    required this.viewModelMalformed,
     required this.createdAt,
     required this.promptText,
     required this.promptKind,
@@ -550,15 +598,33 @@ class _ConversationEntry {
 
   factory _ConversationEntry.fromJson(Map<String, dynamic> json) {
     final interpretationRaw = json['interpretation'];
-    final interpretation =
-        interpretationRaw is Map ? interpretationRaw.cast<String, dynamic>() : null;
+    final interpretation = interpretationRaw is Map
+        ? interpretationRaw.cast<String, dynamic>()
+        : null;
     final title = _readString(
       interpretation,
       json,
       keys: const ['title', 'interpretation_title', 'conversation_title'],
     );
     final response =
-        (interpretation?['response'] ?? json['response_message'] ?? '').toString();
+        (interpretation?['response'] ?? json['response_message'] ?? '')
+            .toString();
+    final viewModelRaw =
+        interpretation?['view_model'] ?? interpretation?['viewModel'];
+    InitialInterpretationV1? viewModel;
+    var viewModelMalformed = false;
+    if (viewModelRaw != null) {
+      if (viewModelRaw is Map) {
+        try {
+          viewModel = InitialInterpretationV1.fromJson(
+              viewModelRaw.cast<String, dynamic>());
+        } catch (_) {
+          viewModelMalformed = true;
+        }
+      } else {
+        viewModelMalformed = true;
+      }
+    }
     final promptText = (json['prompt_text'] ?? '').toString();
     final requestMessage = (json['request_message'] ?? '').toString();
     final resolvedRequest =
@@ -570,6 +636,8 @@ class _ConversationEntry {
       request: resolvedRequest,
       title: title,
       response: response,
+      viewModel: viewModel,
+      viewModelMalformed: viewModelMalformed,
       createdAt: _parseDate(json['created_at']?.toString()),
       promptText: promptText,
       promptKind: promptKind,
@@ -581,6 +649,8 @@ class _ConversationEntry {
   final String request;
   final String title;
   final String response;
+  final InitialInterpretationV1? viewModel;
+  final bool viewModelMalformed;
   final DateTime? createdAt;
   final String promptText;
   final String? promptKind;
@@ -621,5 +691,143 @@ class _ConversationEntry {
           .toList();
     }
     return const [];
+  }
+}
+
+class _InitialInterpretationCardsView extends StatelessWidget {
+  const _InitialInterpretationCardsView({required this.viewModel});
+
+  final InitialInterpretationV1? viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    final resolved = viewModel;
+    if (resolved == null) return const SizedBox.shrink();
+
+    final headline = resolved.headline.trim();
+    final cards = resolved.cards;
+    if (headline.isEmpty && cards.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (headline.isNotEmpty) ...[
+          _HeadlineCard(headline: headline),
+          if (cards.isNotEmpty) const SizedBox(height: 12),
+        ],
+        ...cards.map(_InterpretationCard.new),
+      ],
+    );
+  }
+}
+
+class _SubtleWarning extends StatelessWidget {
+  const _SubtleWarning({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        text,
+        style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+      ),
+    );
+  }
+}
+
+class _HeadlineCard extends StatelessWidget {
+  const _HeadlineCard({required this.headline});
+
+  final String headline;
+
+  @override
+  Widget build(BuildContext context) {
+    final trimmed = headline.trim();
+    if (trimmed.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Text(
+        trimmed,
+        style: AppTextStyles.h5.copyWith(color: AppColors.textPrimary),
+      ),
+    );
+  }
+}
+
+class _InterpretationCard extends StatelessWidget {
+  const _InterpretationCard(this.card);
+
+  final InitialInterpretationCard card;
+
+  @override
+  Widget build(BuildContext context) {
+    final bullets = card.bullets;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            card.title,
+            style:
+                AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            card.summary,
+            style: AppTextStyles.bodySmall
+                .copyWith(color: AppColors.textSecondary),
+          ),
+          if (bullets.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            ...bullets.map(
+              (bullet) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('•  '),
+                    Expanded(
+                      child: Text(
+                        bullet,
+                        style: AppTextStyles.bodySmall
+                            .copyWith(color: AppColors.textSecondary),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          if ((card.checkQuestion ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              '체크 질문: ${card.checkQuestion}',
+              style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textSecondary),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
