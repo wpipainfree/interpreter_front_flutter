@@ -2,8 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../../services/ai_assistant_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/psych_tests_service.dart';
@@ -11,6 +9,7 @@ import '../../router/app_routes.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/auth_ui.dart';
+import '../../utils/main_shell_tab_controller.dart';
 import '../../utils/strings.dart';
 import '../../widgets/app_error_view.dart';
 
@@ -47,6 +46,7 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   late final VoidCallback _authListener;
+  late final VoidCallback _refreshListener;
   bool _lastLoggedIn = false;
   String? _lastUserId;
 
@@ -74,7 +74,6 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
   UserAccountItem? _selectedIdeal;
   _InterpretationUiState _uiState = _InterpretationUiState.idle;
 
-  static const _mindFocusStorageKey = 'last_mind_focus_text';
   static const _selfKeys = ['realist', 'romantic', 'humanist', 'idealist', 'agent'];
   static const _standardKeys = ['relation', 'trust', 'manual', 'self', 'culture'];
   static const _suggestedQuestions = [
@@ -128,6 +127,8 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
     _lastUserId = _authService.currentUser?.id;
     _authListener = _handleAuthChanged;
     _authService.addListener(_authListener);
+    _refreshListener = _handleRefresh;
+    MainShellTabController.refreshTick.addListener(_refreshListener);
     _load();
   }
 
@@ -135,9 +136,17 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
   void dispose() {
     _pollTimer?.cancel();
     _authService.removeListener(_authListener);
+    MainShellTabController.refreshTick.removeListener(_refreshListener);
     _inputController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _handleRefresh() {
+    if (!mounted) return;
+    if (MainShellTabController.index.value != 2) return;
+    _stopPolling();
+    _load();
   }
 
   Future<void> _load() async {
@@ -145,7 +154,6 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
       _loading = true;
       _error = null;
     });
-    await _loadMindFocusIfNeeded();
     final userId = (_authService.currentUser?.id ?? '').trim();
     if (userId.isEmpty) {
       setState(() {
@@ -275,15 +283,6 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
     final raw = item.createDate ?? item.paymentDate ?? item.modifyDate;
     final parsed = raw != null ? DateTime.tryParse(raw) : null;
     return parsed ?? DateTime.fromMillisecondsSinceEpoch(0);
-  }
-
-  Future<void> _loadMindFocusIfNeeded() async {
-    if ((_mindFocus ?? '').trim().isNotEmpty) return;
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString(_mindFocusStorageKey)?.trim();
-    if (saved != null && saved.isNotEmpty) {
-      _mindFocus = saved;
-    }
   }
 
   void _ensureInitialItemPresent({required int userId}) {

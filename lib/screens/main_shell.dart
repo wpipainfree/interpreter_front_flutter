@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_navigator.dart';
 import '../utils/auth_ui.dart';
 import '../utils/main_shell_tab_controller.dart';
 import '../widgets/atom_icon.dart';
@@ -20,7 +21,7 @@ class MainShell extends StatefulWidget {
   State<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends State<MainShell> with RouteAware {
   final AuthService _authService = AuthService();
   late final VoidCallback _authListener;
 
@@ -39,6 +40,15 @@ class _MainShellState extends State<MainShell> {
 
     // 결제 결과 노티파이어 리스닝
     PaymentResult.notifier.addListener(_onPaymentResultChanged);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      AppNavigator.routeObserver.subscribe(this, route);
+    }
   }
 
   void _onPaymentResultChanged() {
@@ -64,9 +74,15 @@ class _MainShellState extends State<MainShell> {
 
   @override
   void dispose() {
+    AppNavigator.routeObserver.unsubscribe(this);
     _authService.removeListener(_authListener);
     PaymentResult.notifier.removeListener(_onPaymentResultChanged);
     super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    MainShellTabController.bumpRefresh();
   }
 
   @override

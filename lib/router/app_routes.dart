@@ -22,6 +22,7 @@ class AppRoutes {
 
   static const interpretation = '/mymind/interpretation';
   static const interpretationRecordDetail = '/mymind/records/detail';
+  static const todayMindRead = '/mymind/today-read';
 
   static const testNote = '/test/note';
   static const wpiSelectionFlow = '/test/wpi-flow';

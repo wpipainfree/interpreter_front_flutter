@@ -6,6 +6,7 @@ import '../screens/entry_screen.dart';
 import '../screens/main_shell.dart';
 import '../screens/mymind/interpretation_record_panel.dart';
 import '../screens/mymind/interpretation_screen.dart';
+import '../screens/mymind/today_mind_read_flow_screen.dart';
 import '../screens/onboarding/onboarding_screen.dart';
 import '../screens/result/existence_detail_screen.dart';
 import '../screens/result/raw_result_screen.dart';
@@ -86,6 +87,8 @@ class AppRouter {
           ),
         );
       }
+      case AppRoutes.todayMindRead:
+        return _page(settings, (_) => const TodayMindReadFlowScreen());
       case AppRoutes.resultSummary: {
         final args = settings.arguments;
         if (args is! ResultSummaryArgs) {

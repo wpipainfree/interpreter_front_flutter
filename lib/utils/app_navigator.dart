@@ -4,5 +4,7 @@ class AppNavigator {
   AppNavigator._();
 
   static final GlobalKey<NavigatorState> key = GlobalKey<NavigatorState>();
+  static final RouteObserver<ModalRoute<void>> routeObserver =
+      RouteObserver<ModalRoute<void>>();
 }
 

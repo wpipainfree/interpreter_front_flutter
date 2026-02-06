@@ -8,5 +8,10 @@ class MainShellTabController {
   MainShellTabController._();
 
   static final ValueNotifier<int> index = ValueNotifier<int>(0);
+  static final ValueNotifier<int> refreshTick = ValueNotifier<int>(0);
+
+  static void bumpRefresh() {
+    refreshTick.value = refreshTick.value + 1;
+  }
 }
 

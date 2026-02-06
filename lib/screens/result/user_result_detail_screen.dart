@@ -1,8 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../../models/openai_interpret_response.dart';
 import '../../router/app_routes.dart';
 import '../../services/auth_service.dart';
@@ -109,12 +107,8 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
       );
       if (!mounted) return;
 
-      final storyOwnerId = bundle.reality?.result.id ?? bundle.ideal?.result.id;
       final resultStory = (bundle.mindFocus ?? '').trim();
-      final storedStory = (resultStory.isEmpty && storyOwnerId != null)
-          ? ((await _loadStoryOverride(storyOwnerId)) ?? '')
-          : '';
-      final effectiveStory = resultStory.isNotEmpty ? resultStory : storedStory;
+      final effectiveStory = resultStory;
 
       setState(() {
         _mindFocus = effectiveStory.isEmpty ? null : effectiveStory;
@@ -142,24 +136,6 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
     }
   }
 
-  String _storyOverrideKey(int resultId) => 'result.story.$resultId';
-
-  Future<String?> _loadStoryOverride(int resultId) async {
-    if (resultId <= 0) return null;
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_storyOverrideKey(resultId));
-    final trimmed = (raw ?? '').trim();
-    return trimmed.isEmpty ? null : trimmed;
-  }
-
-  Future<void> _saveStoryOverride(int resultId, String story) async {
-    if (resultId <= 0) return;
-    final trimmed = story.trim();
-    if (trimmed.isEmpty) return;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_storyOverrideKey(resultId), trimmed);
-  }
-
   Future<void> _submitStoryAndGenerate({
     required UserResultDetail reality,
     required UserResultDetail? ideal,
@@ -171,9 +147,6 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
       );
       return;
     }
-
-    await _saveStoryOverride(reality.result.id, story);
-    if (!mounted) return;
 
     setState(() => _mindFocus = story);
 

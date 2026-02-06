@@ -11,6 +11,7 @@ import '../../router/app_routes.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/auth_ui.dart';
+import '../../utils/main_shell_tab_controller.dart';
 import '../../utils/strings.dart';
 import '../../widgets/app_error_view.dart';
 import '../result/user_result_detail/sections/ideal_profile_section.dart';
@@ -41,6 +42,7 @@ class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
   final AuthService _authService = AuthService();
   final ScrollController _scrollController = ScrollController();
   late final VoidCallback _authListener;
+  late final VoidCallback _refreshListener;
   bool _lastLoggedIn = false;
   String? _lastUserId;
 
@@ -61,6 +63,8 @@ class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
     _authListener = _handleAuthChanged;
     _authService.addListener(_authListener);
     _scrollController.addListener(_onScroll);
+    _refreshListener = _handleRefresh;
+    MainShellTabController.refreshTick.addListener(_refreshListener);
     _loadPage(reset: true);
   }
 
@@ -69,7 +73,14 @@ class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
     _authService.removeListener(_authListener);
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    MainShellTabController.refreshTick.removeListener(_refreshListener);
     super.dispose();
+  }
+
+  void _handleRefresh() {
+    if (!mounted) return;
+    if (MainShellTabController.index.value != 2) return;
+    _loadPage(reset: true);
   }
 
   void _handleAuthChanged() {

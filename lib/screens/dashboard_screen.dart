@@ -37,6 +37,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _recordsHasMore = false;
   late final VoidCallback _authListener;
   late final VoidCallback _tabListener;
+  late final VoidCallback _refreshListener;
   bool _lastLoggedIn = false;
   String? _lastUserId;
   int _lastShellIndex = 0;
@@ -51,6 +52,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _lastShellIndex = MainShellTabController.index.value;
     _tabListener = _handleShellTabChanged;
     MainShellTabController.index.addListener(_tabListener);
+    _refreshListener = _handleRefresh;
+    MainShellTabController.refreshTick.addListener(_refreshListener);
     _loadAccounts();
     _loadRecords();
     _loadPendingIdeal();
@@ -60,6 +63,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void dispose() {
     _authService.removeListener(_authListener);
     MainShellTabController.index.removeListener(_tabListener);
+    MainShellTabController.refreshTick.removeListener(_refreshListener);
     super.dispose();
   }
 
@@ -94,6 +98,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (idx == _lastShellIndex) return;
     _lastShellIndex = idx;
     if (idx != 0) return;
+    _loadPendingIdeal();
+    if (_authService.isLoggedIn) {
+      _loadAccounts();
+      _loadRecords();
+    }
+  }
+
+  void _handleRefresh() {
+    if (!mounted) return;
+    if (MainShellTabController.index.value != 0) return;
     _loadPendingIdeal();
     if (_authService.isLoggedIn) {
       _loadAccounts();
@@ -420,6 +434,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: CustomScrollView(
         slivers: [
           _buildHeader(user),
+          _buildTodayMindReadSection(),
           _buildStartTestSection(),
           _buildHistoryHeader(),
           _buildHistoryList(),
@@ -601,6 +616,84 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ],
                   ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  SliverToBoxAdapter _buildTodayMindReadSection() {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '오늘 내 마음 읽기',
+                      style: AppTextStyles.h5.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '사연을 적고, 현실/이상 프로파일을 선택해 해석을 확인하세요.',
+                      style: AppTextStyles.bodySmall
+                          .copyWith(color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 40,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context)
+                              .pushNamed(AppRoutes.todayMindRead);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Text('시작하기'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome,
+                  color: AppColors.primary,
                 ),
               ),
             ],
