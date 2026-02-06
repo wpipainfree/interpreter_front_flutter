@@ -436,10 +436,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _buildHeader(user),
           _buildTodayMindReadSection(),
           _buildStartTestSection(),
-          _buildHistoryHeader(),
-          _buildHistoryList(),
           _buildRecordHeader(),
           _buildRecordList(),
+          _buildHistoryHeader(),
+          _buildHistoryList(),
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],
       ),
@@ -1003,7 +1003,7 @@ class _AccountCard extends StatelessWidget {
             : (item.resultId != null
                 ? () {
                     Navigator.of(context).pushNamed(
-                      AppRoutes.userResultDetail,
+                      AppRoutes.userResultSingle,
                       arguments: UserResultDetailArgs(
                         resultId: item.resultId!,
                         testId: item.testId,

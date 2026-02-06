@@ -16,6 +16,7 @@ class AppRoutes {
   static const notificationSettings = '/settings/notifications';
 
   static const userResultDetail = '/result/detail';
+  static const userResultSingle = '/result/single';
   static const resultSummary = '/result/summary';
   static const existenceDetail = '/result/existence';
   static const rawResult = '/result/raw';

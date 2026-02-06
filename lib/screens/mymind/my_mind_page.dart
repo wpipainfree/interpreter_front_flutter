@@ -662,8 +662,7 @@ class _ResultCard extends StatelessWidget {
     if (item.resultId == null) return;
 
     Navigator.of(context).pushNamed(
-
-      AppRoutes.userResultDetail,
+      AppRoutes.userResultSingle,
 
       arguments: UserResultDetailArgs(resultId: item.resultId!, testId: item.testId),
 

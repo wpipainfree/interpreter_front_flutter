@@ -12,6 +12,7 @@ import '../screens/result/existence_detail_screen.dart';
 import '../screens/result/raw_result_screen.dart';
 import '../screens/result/result_summary_screen.dart';
 import '../screens/result/user_result_detail_screen.dart';
+import '../screens/result/user_result_single_screen.dart';
 import '../screens/settings/notification_settings_screen.dart';
 import '../screens/splash_screen.dart';
 import '../screens/test/test_note_screen.dart';
@@ -53,6 +54,19 @@ class AppRouter {
         return _page(
           settings,
           (_) => UserResultDetailScreen(
+            resultId: args.resultId,
+            testId: args.testId,
+          ),
+        );
+      }
+      case AppRoutes.userResultSingle: {
+        final args = settings.arguments;
+        if (args is! UserResultDetailArgs) {
+          return _error(settings, 'missing args for ${AppRoutes.userResultSingle}');
+        }
+        return _page(
+          settings,
+          (_) => UserResultSingleScreen(
             resultId: args.resultId,
             testId: args.testId,
           ),
