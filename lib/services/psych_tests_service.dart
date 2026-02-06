@@ -555,18 +555,34 @@ class UserResultRow {
   });
 
   factory UserResultRow.fromJson(Map<String, dynamic> json) {
+    dynamic pick(List<String> keys) {
+      for (final key in keys) {
+        if (!json.containsKey(key)) continue;
+        final value = json[key];
+        if (value != null) return value;
+      }
+      return null;
+    }
+
     return UserResultRow(
-      id: _asInt(json['ID']),
-      userId: _asInt(json['USER_ID']),
-      testId: _asInt(json['TEST_ID']),
-      totalPoint: _asDouble(json['TOTAL_POINT']),
-      worry: json['WORRY'] as String?,
-      processSeq: _asInt(json['PROCESS_SEQ']),
-      description: json['DESCRIPTION'] as String?,
-      note: json['NOTE'] as String?,
-      testTargetName: json['TEST_TARGET_NAME'] as String?,
-      createdAt: _asDateTime(json['CREATE_DATE']),
-      updatedAt: _asDateTime(json['MODIFY_DATE']),
+      id: _asInt(pick(['ID', 'id'])),
+      userId: _asInt(pick(['USER_ID', 'user_id', 'userId'])),
+      testId: _asNullableInt(pick(['TEST_ID', 'test_id', 'testId'])),
+      totalPoint: _asDouble(pick(['TOTAL_POINT', 'total_point', 'totalPoint'])),
+      worry: pick(['WORRY', 'worry']) as String?,
+      processSeq:
+          _asNullableInt(pick(['PROCESS_SEQ', 'process_seq', 'processSeq'])),
+      description: pick(['DESCRIPTION', 'description']) as String?,
+      note: pick(['NOTE', 'note']) as String?,
+      testTargetName:
+          pick(['TEST_TARGET_NAME', 'test_target_name', 'testTargetName'])
+              as String?,
+      createdAt: _asDateTime(
+        pick(['CREATE_DATE', 'create_date', 'created_at', 'createdAt']),
+      ),
+      updatedAt: _asDateTime(
+        pick(['MODIFY_DATE', 'modify_date', 'updated_at', 'updatedAt']),
+      ),
     );
   }
 }
@@ -597,17 +613,34 @@ class ResultClassItem {
   });
 
   factory ResultClassItem.fromJson(Map<String, dynamic> json) {
+    dynamic pick(List<String> keys) {
+      for (final key in keys) {
+        if (!json.containsKey(key)) continue;
+        final value = json[key];
+        if (value != null) return value;
+      }
+      return null;
+    }
+
     return ResultClassItem(
-      id: _asInt(json['ID']),
-      userResultId: _asInt(json['USER_RESULT_ID']),
-      classId: _asInt(json['CLASS_ID']),
-      name: json['NAME'] as String?,
-      checklistId: _asInt(json['CHECKLIST_ID']),
-      checklistName: json['CHECKLIST_NAME'] as String?,
-      point: _asDouble(json['POINT']),
-      status: json['STATUS'] as String?,
-      createdAt: _asDateTime(json['CREATE_DATE']),
-      updatedAt: _asDateTime(json['MODIFY_DATE']),
+      id: _asInt(pick(['ID', 'id'])),
+      userResultId:
+          _asInt(pick(['USER_RESULT_ID', 'user_result_id', 'userResultId'])),
+      classId: _asNullableInt(pick(['CLASS_ID', 'class_id', 'classId'])),
+      name: pick(['NAME', 'name']) as String?,
+      checklistId:
+          _asNullableInt(pick(['CHECKLIST_ID', 'checklist_id', 'checklistId'])),
+      checklistName:
+          pick(['CHECKLIST_NAME', 'checklist_name', 'checklistName'])
+              as String?,
+      point: _asDouble(pick(['POINT', 'point'])),
+      status: pick(['STATUS', 'status']) as String?,
+      createdAt: _asDateTime(
+        pick(['CREATE_DATE', 'create_date', 'created_at', 'createdAt']),
+      ),
+      updatedAt: _asDateTime(
+        pick(['MODIFY_DATE', 'modify_date', 'updated_at', 'updatedAt']),
+      ),
     );
   }
 }
