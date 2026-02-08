@@ -135,7 +135,7 @@ class AiAssistantService {
           'data': response.data,
         });
         throw AiAssistantHttpException(
-          'ëŒ€í™” ê·¼ê±°ë¥¼ ë¶ˆëŸ¬ì˜¤ì§€ ëª»í–ˆìŠµë‹ˆë‹¤. (${response.statusCode})',
+          '대화 근거를 불러오지 못했습니다. (${response.statusCode})',
           statusCode: response.statusCode,
           debug: response.data?.toString(),
         );
@@ -148,7 +148,7 @@ class AiAssistantService {
         'data': e.response?.data,
       });
       throw AiAssistantHttpException(
-        'ëŒ€í™” ê·¼ê±°ë¥¼ ë¶ˆëŸ¬ì˜¤ì§€ ëª»í–ˆìŠµë‹ˆë‹¤. (${e.response?.statusCode ?? e.error})',
+        '대화 근거를 불러오지 못했습니다. (${e.response?.statusCode ?? e.error})',
         statusCode: e.response?.statusCode,
         debug: e.response?.data?.toString(),
       );

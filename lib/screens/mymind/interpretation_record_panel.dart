@@ -907,7 +907,7 @@ class _PendingChatExchangeCard extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            '?? ?? ?...',
+            '답변 생성 중...',
             style: AppTextStyles.bodySmall
                 .copyWith(color: AppColors.textSecondary),
           ),
@@ -1317,14 +1317,16 @@ class _ConversationEntry {
     final interpretation = interpretationRaw is Map
         ? interpretationRaw.cast<String, dynamic>()
         : null;
-    final title = _readString(
+    final rawTitle = _readString(
       interpretation,
       json,
       keys: const ['title', 'interpretation_title', 'conversation_title'],
     );
+    final title = rawTitle;
     final response =
         (interpretation?['response'] ?? json['response_message'] ?? '')
             .toString();
+    final normalizedResponse = response;
     final viewModelRaw =
         interpretation?['view_model'] ?? interpretation?['viewModel'];
     InitialInterpretationV1? viewModel;
@@ -1343,15 +1345,16 @@ class _ConversationEntry {
     }
     final promptText = (json['prompt_text'] ?? '').toString();
     final requestMessage = (json['request_message'] ?? '').toString();
-    final resolvedRequest =
-        promptText.trim().isNotEmpty ? promptText : requestMessage;
+    final resolvedRequest = promptText.trim().isNotEmpty
+        ? promptText
+        : requestMessage;
     final promptKind = json['prompt_kind']?.toString();
     final testIds = _readIntList(json['test_ids']);
     return _ConversationEntry(
       status: (json['status'] ?? '').toString(),
       request: resolvedRequest,
       title: title,
-      response: response,
+      response: normalizedResponse,
       viewModel: viewModel,
       viewModelMalformed: viewModelMalformed,
       createdAt: _parseDate(json['created_at']?.toString()),
