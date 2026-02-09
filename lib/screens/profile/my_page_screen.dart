@@ -267,11 +267,20 @@ class _MyPageScreenState extends State<MyPageScreen> {
               provider: 'apple',
               isLinked: _isProviderLinked('apple'),
               isLoading: _isProviderLinking('apple'),
-              isEnabled: !kIsWeb && Platform.isIOS, // Android??? ????
+              isEnabled: !kIsWeb && Platform.isIOS,
               onLinkTap: () => _handleLinkSocial(context, 'apple'),
               onUnlinkTap: () => _handleUnlinkSocial(context, 'apple'),
             ),
           ],
+          const Divider(height: 32),
+          _SectionTitle('결제 정보'),
+          _SettingTile(
+            icon: Icons.receipt_long_outlined,
+            title: '결제 내역',
+            onTap: () {
+              Navigator.of(context).pushNamed(AppRoutes.paymentHistory);
+            },
+          ),
           const Divider(height: 32),
           _SectionTitle('설정'),
           _SettingTile(

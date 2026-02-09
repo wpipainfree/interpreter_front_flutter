@@ -14,6 +14,7 @@ import '../screens/result/result_summary_screen.dart';
 import '../screens/result/user_result_detail_screen.dart';
 import '../screens/result/user_result_single_screen.dart';
 import '../screens/settings/notification_settings_screen.dart';
+import '../screens/profile/payment_history_screen.dart';
 import '../screens/splash_screen.dart';
 import '../screens/test/test_note_screen.dart';
 import '../screens/test/wpi_review_screen.dart';
@@ -46,6 +47,8 @@ class AppRouter {
         return _page<bool>(settings, (_) => const SignUpScreen(), fullscreenDialog: true);
       case AppRoutes.notificationSettings:
         return _page(settings, (_) => const NotificationSettingsScreen());
+      case AppRoutes.paymentHistory:
+        return _page(settings, (_) => const PaymentHistoryScreen());
       case AppRoutes.userResultDetail: {
         final args = settings.arguments;
         if (args is! UserResultDetailArgs) {
