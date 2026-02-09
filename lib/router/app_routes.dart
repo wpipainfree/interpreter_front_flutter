@@ -16,12 +16,14 @@ class AppRoutes {
   static const notificationSettings = '/settings/notifications';
 
   static const userResultDetail = '/result/detail';
+  static const userResultSingle = '/result/single';
   static const resultSummary = '/result/summary';
   static const existenceDetail = '/result/existence';
   static const rawResult = '/result/raw';
 
   static const interpretation = '/mymind/interpretation';
   static const interpretationRecordDetail = '/mymind/records/detail';
+  static const todayMindRead = '/mymind/today-read';
 
   static const testNote = '/test/note';
   static const wpiSelectionFlow = '/test/wpi-flow';
@@ -92,6 +94,8 @@ class WpiSelectionFlowArgs {
   final String? mindFocus;
   final WpiTestKind kind;
   final FlowExitMode exitMode;
+  final int? existingResultId;
+  final EvaluationRole? initialRole;
 
   const WpiSelectionFlowArgs({
     required this.testId,
@@ -99,6 +103,8 @@ class WpiSelectionFlowArgs {
     this.mindFocus,
     this.kind = WpiTestKind.reality,
     this.exitMode = FlowExitMode.openResultDetail,
+    this.existingResultId,
+    this.initialRole,
   });
 }
 
@@ -127,4 +133,3 @@ class RawResultArgs {
   final Map<String, dynamic> payload;
   const RawResultArgs({required this.title, required this.payload});
 }
-

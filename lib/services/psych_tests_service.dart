@@ -465,36 +465,45 @@ class UserAccountItem {
   });
 
   factory UserAccountItem.fromJson(Map<String, dynamic> json) {
+    dynamic pick(List<String> keys) {
+      for (final key in keys) {
+        if (!json.containsKey(key)) continue;
+        final value = json[key];
+        if (value != null) return value;
+      }
+      return null;
+    }
+
     return UserAccountItem(
-      id: _asInt(json['ID']),
-      userId: _asInt(json['USER_ID']),
-      testId: _asInt(json['TEST_ID']),
-      resultId: _asInt(json['RESULT_ID']),
-      type: _asInt(json['TYPE']),
-      deviceType: json['DEVICE_TYPE'] as String?,
-      amount: _asInt(json['AMOUNT']),
-      sum: _asInt(json['SUM']),
-      accountSum: _asInt(json['ACCOUNT_SUM']),
-      depositName: json['DEPOSIT_NAME'] as String?,
-      cashReceipt: json['CASH_RECEIPT'] as String?,
-      cashReceiptFor: json['CASH_RECEIPT_FOR'] as String?,
-      cashReceiptNumber: json['CASH_RECEIPT_NUMBER'] as String?,
-      transactionNumber: json['TRANSACTION_NUMBER'] as String?,
-      status: json['STATUS'] as String?,
-      couponPublish: _asInt(json['COUPON_PUBLISH']),
-      useFlag: json['USE_FLAG'] as String?,
-      createDate: json['CREATE_DATE'] as String?,
-      modifyDate: json['MODIFY_DATE'] as String?,
-      paymentDate: json['PAYMENT_DATE'] as String?,
-      vacctNum: json['VACCT_NUM'] as String?,
-      vacctBankCode: json['VACCT_BANK_CODE'] as String?,
-      vacctPaymentDate: json['VACCT_PAYMENT_DATE'] as String?,
-      orderId: json['ORDER_ID'] as String?,
-      couponPinGroupId: _asInt(json['COUPON_PIN_GROUP_ID']),
-      vacctBankName: json['VACCT_BANK_NAME'] as String?,
-      freeFlag: json['FREE_FLAG'] as String?,
-      testRequestId: _asInt(json['TEST_REQUEST_ID']),
-      result: json['result'] is Map<String, dynamic> ? json['result'] as Map<String, dynamic> : null,
+      id: _asInt(pick(['ID', 'id'])),
+      userId: _asInt(pick(['USER_ID', 'user_id', 'userId'])),
+      testId: _asNullableInt(pick(['TEST_ID', 'test_id', 'testId'])),
+      resultId: _asNullableInt(pick(['RESULT_ID', 'result_id', 'resultId'])),
+      type: _asNullableInt(pick(['TYPE', 'type'])),
+      deviceType: pick(['DEVICE_TYPE', 'device_type', 'deviceType']) as String?,
+      amount: _asNullableInt(pick(['AMOUNT', 'amount'])),
+      sum: _asNullableInt(pick(['SUM', 'sum'])),
+      accountSum: _asNullableInt(pick(['ACCOUNT_SUM', 'account_sum', 'accountSum'])),
+      depositName: pick(['DEPOSIT_NAME', 'deposit_name', 'depositName']) as String?,
+      cashReceipt: pick(['CASH_RECEIPT', 'cash_receipt', 'cashReceipt']) as String?,
+      cashReceiptFor: pick(['CASH_RECEIPT_FOR', 'cash_receipt_for', 'cashReceiptFor']) as String?,
+      cashReceiptNumber: pick(['CASH_RECEIPT_NUMBER', 'cash_receipt_number', 'cashReceiptNumber']) as String?,
+      transactionNumber: pick(['TRANSACTION_NUMBER', 'transaction_number', 'transactionNumber']) as String?,
+      status: pick(['STATUS', 'status'])?.toString(),
+      couponPublish: _asNullableInt(pick(['COUPON_PUBLISH', 'coupon_publish', 'couponPublish'])),
+      useFlag: pick(['USE_FLAG', 'use_flag', 'useFlag']) as String?,
+      createDate: pick(['CREATE_DATE', 'create_date', 'createDate']) as String?,
+      modifyDate: pick(['MODIFY_DATE', 'modify_date', 'modifyDate']) as String?,
+      paymentDate: pick(['PAYMENT_DATE', 'payment_date', 'paymentDate']) as String?,
+      vacctNum: pick(['VACCT_NUM', 'vacct_num', 'vacctNum']) as String?,
+      vacctBankCode: pick(['VACCT_BANK_CODE', 'vacct_bank_code', 'vacctBankCode']) as String?,
+      vacctPaymentDate: pick(['VACCT_PAYMENT_DATE', 'vacct_payment_date', 'vacctPaymentDate']) as String?,
+      orderId: pick(['ORDER_ID', 'order_id', 'orderId']) as String?,
+      couponPinGroupId: _asNullableInt(pick(['COUPON_PIN_GROUP_ID', 'coupon_pin_group_id', 'couponPinGroupId'])),
+      vacctBankName: pick(['VACCT_BANK_NAME', 'vacct_bank_name', 'vacctBankName']) as String?,
+      freeFlag: pick(['FREE_FLAG', 'free_flag', 'freeFlag']) as String?,
+      testRequestId: _asNullableInt(pick(['TEST_REQUEST_ID', 'test_request_id', 'testRequestId'])),
+      result: pick(['result']) is Map<String, dynamic> ? pick(['result']) as Map<String, dynamic> : null,
     );
   }
 }
@@ -546,18 +555,34 @@ class UserResultRow {
   });
 
   factory UserResultRow.fromJson(Map<String, dynamic> json) {
+    dynamic pick(List<String> keys) {
+      for (final key in keys) {
+        if (!json.containsKey(key)) continue;
+        final value = json[key];
+        if (value != null) return value;
+      }
+      return null;
+    }
+
     return UserResultRow(
-      id: _asInt(json['ID']),
-      userId: _asInt(json['USER_ID']),
-      testId: _asInt(json['TEST_ID']),
-      totalPoint: _asDouble(json['TOTAL_POINT']),
-      worry: json['WORRY'] as String?,
-      processSeq: _asInt(json['PROCESS_SEQ']),
-      description: json['DESCRIPTION'] as String?,
-      note: json['NOTE'] as String?,
-      testTargetName: json['TEST_TARGET_NAME'] as String?,
-      createdAt: _asDateTime(json['CREATE_DATE']),
-      updatedAt: _asDateTime(json['MODIFY_DATE']),
+      id: _asInt(pick(['ID', 'id'])),
+      userId: _asInt(pick(['USER_ID', 'user_id', 'userId'])),
+      testId: _asNullableInt(pick(['TEST_ID', 'test_id', 'testId'])),
+      totalPoint: _asDouble(pick(['TOTAL_POINT', 'total_point', 'totalPoint'])),
+      worry: pick(['WORRY', 'worry']) as String?,
+      processSeq:
+          _asNullableInt(pick(['PROCESS_SEQ', 'process_seq', 'processSeq'])),
+      description: pick(['DESCRIPTION', 'description']) as String?,
+      note: pick(['NOTE', 'note']) as String?,
+      testTargetName:
+          pick(['TEST_TARGET_NAME', 'test_target_name', 'testTargetName'])
+              as String?,
+      createdAt: _asDateTime(
+        pick(['CREATE_DATE', 'create_date', 'created_at', 'createdAt']),
+      ),
+      updatedAt: _asDateTime(
+        pick(['MODIFY_DATE', 'modify_date', 'updated_at', 'updatedAt']),
+      ),
     );
   }
 }
@@ -588,17 +613,34 @@ class ResultClassItem {
   });
 
   factory ResultClassItem.fromJson(Map<String, dynamic> json) {
+    dynamic pick(List<String> keys) {
+      for (final key in keys) {
+        if (!json.containsKey(key)) continue;
+        final value = json[key];
+        if (value != null) return value;
+      }
+      return null;
+    }
+
     return ResultClassItem(
-      id: _asInt(json['ID']),
-      userResultId: _asInt(json['USER_RESULT_ID']),
-      classId: _asInt(json['CLASS_ID']),
-      name: json['NAME'] as String?,
-      checklistId: _asInt(json['CHECKLIST_ID']),
-      checklistName: json['CHECKLIST_NAME'] as String?,
-      point: _asDouble(json['POINT']),
-      status: json['STATUS'] as String?,
-      createdAt: _asDateTime(json['CREATE_DATE']),
-      updatedAt: _asDateTime(json['MODIFY_DATE']),
+      id: _asInt(pick(['ID', 'id'])),
+      userResultId:
+          _asInt(pick(['USER_RESULT_ID', 'user_result_id', 'userResultId'])),
+      classId: _asNullableInt(pick(['CLASS_ID', 'class_id', 'classId'])),
+      name: pick(['NAME', 'name']) as String?,
+      checklistId:
+          _asNullableInt(pick(['CHECKLIST_ID', 'checklist_id', 'checklistId'])),
+      checklistName:
+          pick(['CHECKLIST_NAME', 'checklist_name', 'checklistName'])
+              as String?,
+      point: _asDouble(pick(['POINT', 'point'])),
+      status: pick(['STATUS', 'status']) as String?,
+      createdAt: _asDateTime(
+        pick(['CREATE_DATE', 'create_date', 'created_at', 'createdAt']),
+      ),
+      updatedAt: _asDateTime(
+        pick(['MODIFY_DATE', 'modify_date', 'updated_at', 'updatedAt']),
+      ),
     );
   }
 }
@@ -607,6 +649,17 @@ int _asInt(dynamic v) {
   if (v is int) return v;
   if (v is String) return int.tryParse(v) ?? 0;
   return 0;
+}
+
+int? _asNullableInt(dynamic v) {
+  if (v == null) return null;
+  if (v is int) return v == 0 ? null : v;
+  if (v is String) {
+    final parsed = int.tryParse(v);
+    if (parsed == null || parsed == 0) return null;
+    return parsed;
+  }
+  return null;
 }
 
 double? _asDouble(dynamic v) {

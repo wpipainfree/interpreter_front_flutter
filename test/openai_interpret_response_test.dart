@@ -85,6 +85,65 @@ void main() {
     expect(parsed.interpretation?.response, '## 제목\n본문');
   });
 
+  test('parses view_model when interpretation is view model JSON', () {
+    final json = <String, dynamic>{
+      'session': {'session_id': 'sess_vm', 'turn': 1},
+      'interpretation': {
+        'version': 'initial_interpretation_v1',
+        'headline': 'í—¤ë“œë¼ì¸',
+        'cards': [
+          {
+            'id': 'story_link',
+            'title': 'ì‚¬ì—° ì—°ê²°',
+            'summary': 'ìš”ì•½',
+          },
+        ],
+        'next': {
+          'cta_label': 'ë‹¤ìŒ',
+          'suggested_prompts': ['ì§ˆë¬¸ 1'],
+        },
+      },
+    };
+
+    final parsed = OpenAIInterpretResponse.fromJson(json);
+    final vm = parsed.interpretation?.viewModel;
+    expect(vm, isNotNull);
+    expect(vm!.cards, hasLength(1));
+    expect(vm.suggestedPrompts, ['ì§ˆë¬¸ 1']);
+  });
+
+  test('parses response json with trailing commas', () {
+    final json = <String, dynamic>{
+      'session': {'session_id': 'sess_json', 'turn': 1},
+      'interpretation': {
+        'title': '',
+        'response':
+            '{ "version": "initial_interpretation_v1", "headline": "h", "cards": [], "next": { "cta_label": "cta", }, }',
+      },
+    };
+
+    final parsed = OpenAIInterpretResponse.fromJson(json);
+    expect(parsed.interpretation?.viewModel, isNotNull);
+    expect(parsed.interpretation?.viewModel?.headline, 'h');
+  });
+
+  test('parses response json with raw newline in string', () {
+    final json = <String, dynamic>{
+      'session': {'session_id': 'sess_newline', 'turn': 1},
+      'interpretation': {
+        'title': '',
+        'response': '{ "version": "initial_interpretation_v1", '
+            '"headline": "line1\nline2", '
+            '"cards": [], '
+            '"next": { "cta_label": "cta" } }',
+      },
+    };
+
+    final parsed = OpenAIInterpretResponse.fromJson(json);
+    expect(parsed.interpretation?.viewModel, isNotNull);
+    expect(parsed.interpretation?.viewModel?.headline, 'line1\nline2');
+  });
+
   test('marks view_model malformed when non-map', () {
     final json = <String, dynamic>{
       'session': {'session_id': 'sess_bad', 'turn': 1},

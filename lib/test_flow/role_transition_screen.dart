@@ -11,45 +11,63 @@ class RoleTransitionScreen extends StatelessWidget {
     return Navigator.of(context).pushNamed<void>(AppRoutes.roleTransition);
   }
 
+  void _exitTestFlow(BuildContext context) {
+    Navigator.of(context).popUntil((route) {
+      final name = route.settings.name;
+      if (name == null) return route.isFirst;
+      return !name.startsWith('/test/');
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundWhite,
-      appBar: AppBar(
-        title: const Text('\ud0c0\uc778 \ud3c9\uac00\ub85c \uc804\ud658'),
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
         backgroundColor: AppColors.backgroundWhite,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 0,
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('\uc774\uc81c \ud0c0\uc778 \ud3c9\uac00\ub85c \ub118\uc5b4\uac11\ub2c8\ub2e4.', style: AppTextStyles.h3),
-              const SizedBox(height: 8),
-              Text('\uc8fc\ubcc0 \uc0ac\ub78c\uc774 \ubcf4\ub294 \ub098\uc758 \uae30\uc900\uc744 \uc120\ud0dd\ud574\uc694.', style: AppTextStyles.bodyMedium),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.secondary,
-                    foregroundColor: AppColors.textOnPrimary,
-                    minimumSize: const Size(double.infinity, 56),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+        appBar: AppBar(
+          title: const Text('타인 평가로 전환'),
+          backgroundColor: AppColors.backgroundWhite,
+          foregroundColor: AppColors.textPrimary,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          actions: [
+            IconButton(
+              onPressed: () => _exitTestFlow(context),
+              icon: const Icon(Icons.close),
+            ),
+          ],
+        ),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('이제 타인 평가로 넘어갑니다.', style: AppTextStyles.h3),
+                const SizedBox(height: 8),
+                Text('주변 사람이 보는 나의 기준을 선택해요.', style: AppTextStyles.bodyMedium),
+                const Spacer(),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.secondary,
+                      foregroundColor: AppColors.textOnPrimary,
+                      minimumSize: const Size(double.infinity, 56),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      '계속',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
                   ),
-                  child: const Text(
-                    '\uacc4\uc18d',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

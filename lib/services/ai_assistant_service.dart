@@ -10,6 +10,21 @@ class AiAssistantService {
       : _apiClient = apiClient ?? ApiClient.instance();
 
   final ApiClient _apiClient;
+  late final Dio _interpretDio = _buildInterpretDio();
+
+  Dio _buildInterpretDio() {
+    if (!kIsWeb) return _apiClient.dio;
+
+    final dio = Dio(
+      BaseOptions(
+        connectTimeout: Duration.zero,
+        sendTimeout: Duration.zero,
+        receiveTimeout: Duration.zero,
+      ),
+    );
+    dio.httpClientAdapter = _apiClient.dio.httpClientAdapter;
+    return dio;
+  }
 
   Future<Map<String, dynamic>> interpret(Map<String, dynamic> payload) async {
     final uri = _apiClient.uri('/api/v1/ai-assistant/interpret');
@@ -19,12 +34,13 @@ class AiAssistantService {
     });
     try {
       final response = await _apiClient.requestWithAuthRetry(
-        (auth) => _apiClient.dio.post(
+        (auth) => _interpretDio.post(
           uri.toString(),
           data: payload,
           options: _apiClient.options(
             authHeader: auth,
             contentType: 'application/json',
+            timeout: Duration.zero,
           ),
         ),
       );
@@ -51,6 +67,12 @@ class AiAssistantService {
         'method': e.requestOptions.method,
         'url': e.requestOptions.uri.toString(),
         'query': e.requestOptions.queryParameters,
+        'timeoutsMs': {
+          'connect': e.requestOptions.connectTimeout?.inMilliseconds,
+          'send': e.requestOptions.sendTimeout?.inMilliseconds,
+          'receive': e.requestOptions.receiveTimeout?.inMilliseconds,
+        },
+        'isWeb': kIsWeb,
       });
       throw AiAssistantHttpException(
         'AI 해석 요청에 실패했습니다. (${e.response?.statusCode ?? e.error})',
@@ -90,6 +112,43 @@ class AiAssistantService {
       });
       throw AiAssistantHttpException(
         '대화 내용을 불러오지 못했습니다. (${e.response?.statusCode ?? e.error})',
+        statusCode: e.response?.statusCode,
+        debug: e.response?.data?.toString(),
+      );
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchConversationSources(String conversationId) async {
+    final uri =
+        _apiClient.uri('/api/v1/ai-logs/conversations/$conversationId/sources');
+    try {
+      final response = await _apiClient.requestWithAuthRetry(
+        (auth) => _apiClient.dio.get(
+          uri.toString(),
+          options: _apiClient.options(authHeader: auth),
+        ),
+      );
+
+      if (response.statusCode != 200 || response.data is! Map<String, dynamic>) {
+        _log('conversation sources response error', {
+          'status': response.statusCode,
+          'data': response.data,
+        });
+        throw AiAssistantHttpException(
+          'ëŒ€í™” ê·¼ê±°ë¥¼ ë¶ˆëŸ¬ì˜¤ì§€ ëª»í–ˆìŠµë‹ˆë‹¤. (${response.statusCode})',
+          statusCode: response.statusCode,
+          debug: response.data?.toString(),
+        );
+      }
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      _log('conversation sources dio error', {
+        'status': e.response?.statusCode,
+        'message': e.message,
+        'data': e.response?.data,
+      });
+      throw AiAssistantHttpException(
+        'ëŒ€í™” ê·¼ê±°ë¥¼ ë¶ˆëŸ¬ì˜¤ì§€ ëª»í–ˆìŠµë‹ˆë‹¤. (${e.response?.statusCode ?? e.error})',
         statusCode: e.response?.statusCode,
         debug: e.response?.data?.toString(),
       );

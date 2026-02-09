@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_navigator.dart';
 import '../utils/auth_ui.dart';
 import '../utils/main_shell_tab_controller.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import '../widgets/atom_icon.dart';
 import 'dashboard_screen.dart';
 import 'test/test_intro_screen.dart';
 import 'mymind/my_mind_page.dart';
@@ -20,24 +21,17 @@ class MainShell extends StatefulWidget {
   State<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
-  late int _index;
+class _MainShellState extends State<MainShell> with RouteAware {
   final AuthService _authService = AuthService();
   late final VoidCallback _authListener;
-  late final VoidCallback _tabListener;
 
   @override
   void initState() {
     super.initState();
-    _index = widget.initialIndex.clamp(0, 3);
-    MainShellTabController.index.value = _index;
-    _tabListener = () {
-      if (!mounted) return;
-      final next = MainShellTabController.index.value.clamp(0, 3);
-      if (next == _index) return;
-      setState(() => _index = next);
-    };
-    MainShellTabController.index.addListener(_tabListener);
+    final initialIndex = widget.initialIndex.clamp(0, 3);
+    if (MainShellTabController.index.value != initialIndex) {
+      MainShellTabController.index.value = initialIndex;
+    }
     _authListener = () {
       if (!mounted) return;
       setState(() {});
@@ -46,6 +40,15 @@ class _MainShellState extends State<MainShell> {
 
     // 결제 결과 노티파이어 리스닝
     PaymentResult.notifier.addListener(_onPaymentResultChanged);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      AppNavigator.routeObserver.subscribe(this, route);
+    }
   }
 
   void _onPaymentResultChanged() {
@@ -71,10 +74,15 @@ class _MainShellState extends State<MainShell> {
 
   @override
   void dispose() {
-    MainShellTabController.index.removeListener(_tabListener);
+    AppNavigator.routeObserver.unsubscribe(this);
     _authService.removeListener(_authListener);
     PaymentResult.notifier.removeListener(_onPaymentResultChanged);
     super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    MainShellTabController.bumpRefresh();
   }
 
   @override
@@ -86,27 +94,42 @@ class _MainShellState extends State<MainShell> {
       MyPageScreen(),
     ];
 
-    return Scaffold(
-      body: IndexedStack(
-        index: _index,
-        children: pages,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _index,
-        onTap: _onTabSelected,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.textSecondary,
-        type: BottomNavigationBarType.fixed,
-        items: [
-          const BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: '홈'),
-          const BottomNavigationBarItem(icon: Icon(Icons.assignment_rounded), label: '검사'),
-          BottomNavigationBarItem(
-            icon: _AtomIcon(size: 26),
-            label: '내 마음',
+    return ValueListenableBuilder<int>(
+      valueListenable: MainShellTabController.index,
+      builder: (context, value, _) {
+        final index = value.clamp(0, 3);
+        return Scaffold(
+          body: IndexedStack(
+            index: index,
+            children: pages,
           ),
-          const BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), label: '마이'),
-        ],
-      ),
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: index,
+            onTap: _onTabSelected,
+            selectedItemColor: AppColors.primary,
+            unselectedItemColor: AppColors.textSecondary,
+            type: BottomNavigationBarType.fixed,
+            items: [
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.home_rounded),
+                label: '홈',
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.assignment_rounded),
+                label: '검사',
+              ),
+              BottomNavigationBarItem(
+                icon: const AtomIcon(size: 26),
+                label: '내 마음',
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.person_outline_rounded),
+                label: '마이',
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -120,37 +143,5 @@ class _MainShellState extends State<MainShell> {
       return;
     }
     MainShellTabController.index.value = i;
-  }
-}
-
-class _AtomIcon extends StatelessWidget {
-  const _AtomIcon({this.size = 24});
-
-  final double size;
-
-  static const String _svg = '''
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-  <circle cx="12" cy="12" r="2.5" fill="currentColor"/>
-  
-  <ellipse cx="12" cy="12" rx="3.5" ry="10" fill="none" stroke="currentColor" stroke-width="1.5" transform="rotate(30 12 12)"/>
-  <ellipse cx="12" cy="12" rx="3.5" ry="10" fill="none" stroke="currentColor" stroke-width="1.5" transform="rotate(-30 12 12)"/>
-  <ellipse cx="12" cy="12" rx="10" ry="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  
-  <circle cx="12" cy="2" r="1.5" fill="currentColor" transform="rotate(30 12 2)"/>
-  <circle cx="20.66" cy="17" r="1.5" fill="currentColor" transform="rotate(-30 20.66 17)"/>
-  <circle cx="3.34" cy="17" r="1.5" fill="currentColor"/>
-</svg>
-''';
-
-  @override
-  Widget build(BuildContext context) {
-    final iconTheme = IconTheme.of(context);
-    final color = iconTheme.color;
-    return SvgPicture.string(
-      _svg,
-      width: size,
-      height: size,
-      colorFilter: color != null ? ColorFilter.mode(color, BlendMode.srcIn) : null,
-    );
   }
 }

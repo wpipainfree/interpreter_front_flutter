@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/openai_interpret_response.dart';
 import '../models/user_result_detail_bundle.dart';
+import '../utils/app_config.dart';
 import 'ai_assistant_service.dart';
 import 'auth_service.dart';
 import 'psych_tests_service.dart';
@@ -22,7 +23,6 @@ class UserResultDetailService {
     required int resultId,
     int? testId,
   }) async {
-    final mindFocus = await _loadMindFocus();
     final anchor = await _psychTestsService.fetchResultDetail(resultId);
 
     final anchorTestId = anchor.result.testId ?? testId;
@@ -60,10 +60,11 @@ class UserResultDetailService {
       }
     }
 
+    final story = (reality?.result.worry ?? ideal?.result.worry ?? '').trim();
     return UserResultDetailBundle(
       reality: reality,
       ideal: ideal,
-      mindFocus: mindFocus,
+      mindFocus: story.isEmpty ? null : story,
     );
   }
 
@@ -74,9 +75,18 @@ class UserResultDetailService {
     bool force = false,
   }) async {
     final trimmedStory = story.trim();
+    final payload = _buildPhase2CardsPayload(
+      reality: reality,
+      ideal: ideal,
+      story: trimmedStory,
+    );
+    final profiles = payload['profiles'];
+    final profilesHash =
+        profiles is Map ? _fnv1a32Hex(jsonEncode(profiles)) : _fnv1a32Hex('');
     final key = _initialInterpretationKey(
       resultId: reality.result.id,
       story: trimmedStory,
+      profilesHash: profilesHash,
     );
 
     final prefs = await SharedPreferences.getInstance();
@@ -92,11 +102,6 @@ class UserResultDetailService {
       }
     }
 
-    final payload = _buildPhase2CardsPayload(
-      reality: reality,
-      ideal: ideal,
-      story: trimmedStory,
-    );
     final raw = await _aiService.interpret(payload);
 
     final toCache = <String, dynamic>{
@@ -127,13 +132,6 @@ class UserResultDetailService {
       return error.message;
     }
     return error.toString();
-  }
-
-  Future<String?> _loadMindFocus() async {
-    final prefs = await SharedPreferences.getInstance();
-    final text = prefs.getString('last_mind_focus_text')?.trim();
-    if (text == null || text.isEmpty) return null;
-    return text;
   }
 
   Future<int?> _findPairedResultId({
@@ -243,16 +241,37 @@ class UserResultDetailService {
     final idealProfile = ideal != null ? _buildProfileJson(ideal) : _emptyProfileJson();
     return <String, dynamic>{
       'session': <String, dynamic>{
+        'session_id': null,
         'turn': 1,
       },
       'phase': 2,
+      'output_format': 'cards_v1',
+      'sources': _buildSources(
+        realityResultId: reality.result.id,
+        idealResultId: ideal?.result.id,
+      ),
       'profiles': <String, dynamic>{
         'reality': realityProfile,
         'ideal': idealProfile,
       },
       'model': 'gpt-5.2',
       'story': <String, dynamic>{'content': story},
+      'followup': <String, dynamic>{},
     };
+  }
+
+  List<Map<String, dynamic>> _buildSources({
+    required int? realityResultId,
+    required int? idealResultId,
+  }) {
+    final sources = <Map<String, dynamic>>[];
+    if (realityResultId != null && realityResultId > 0) {
+      sources.add({'result_id': realityResultId, 'role': 'reality'});
+    }
+    if (idealResultId != null && idealResultId > 0) {
+      sources.add({'result_id': idealResultId, 'role': 'ideal'});
+    }
+    return sources;
   }
 
   Map<String, dynamic> _buildProfileJson(UserResultDetail detail) {
@@ -298,9 +317,11 @@ class UserResultDetailService {
   String _initialInterpretationKey({
     required int resultId,
     required String story,
+    required String profilesHash,
   }) {
-    final hash = _fnv1a32Hex(story);
-    return 'ai.initial_interpretation.cards_v1.$resultId.$hash';
+    final envHash = _fnv1a32Hex(AppConfig.apiBaseUrl);
+    final storyHash = _fnv1a32Hex(story);
+    return 'ai.initial_interpretation.cards_v1.v2.$envHash.$resultId.$storyHash.$profilesHash';
   }
 
   String _fnv1a32Hex(String input) {

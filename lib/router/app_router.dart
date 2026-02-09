@@ -6,11 +6,13 @@ import '../screens/entry_screen.dart';
 import '../screens/main_shell.dart';
 import '../screens/mymind/interpretation_record_panel.dart';
 import '../screens/mymind/interpretation_screen.dart';
+import '../screens/mymind/today_mind_read_flow_screen.dart';
 import '../screens/onboarding/onboarding_screen.dart';
 import '../screens/result/existence_detail_screen.dart';
 import '../screens/result/raw_result_screen.dart';
 import '../screens/result/result_summary_screen.dart';
 import '../screens/result/user_result_detail_screen.dart';
+import '../screens/result/user_result_single_screen.dart';
 import '../screens/settings/notification_settings_screen.dart';
 import '../screens/splash_screen.dart';
 import '../screens/test/test_note_screen.dart';
@@ -57,6 +59,19 @@ class AppRouter {
           ),
         );
       }
+      case AppRoutes.userResultSingle: {
+        final args = settings.arguments;
+        if (args is! UserResultDetailArgs) {
+          return _error(settings, 'missing args for ${AppRoutes.userResultSingle}');
+        }
+        return _page(
+          settings,
+          (_) => UserResultSingleScreen(
+            resultId: args.resultId,
+            testId: args.testId,
+          ),
+        );
+      }
       case AppRoutes.interpretation: {
         final args = settings.arguments;
         final resolved = args is InterpretationArgs ? args : const InterpretationArgs();
@@ -86,6 +101,8 @@ class AppRouter {
           ),
         );
       }
+      case AppRoutes.todayMindRead:
+        return _page(settings, (_) => const TodayMindReadFlowScreen());
       case AppRoutes.resultSummary: {
         final args = settings.arguments;
         if (args is! ResultSummaryArgs) {
@@ -127,6 +144,8 @@ class AppRouter {
             mindFocus: args.mindFocus,
             kind: args.kind,
             exitMode: args.exitMode,
+            existingResultId: args.existingResultId,
+            initialRole: args.initialRole,
           ),
         );
       }

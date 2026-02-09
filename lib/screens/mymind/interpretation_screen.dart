@@ -29,7 +29,7 @@ class InterpretationScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        title: Text('GPT', style: AppTextStyles.h4),
+        title: Text('내 마음 해석', style: AppTextStyles.h4),
         backgroundColor: AppColors.backgroundLight,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,

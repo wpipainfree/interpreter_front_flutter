@@ -16,14 +16,14 @@ class OnboardingPage2 extends StatelessWidget {
         children: [
           const Spacer(flex: 2),
           Text(
-            '내 구조를\n확인해보세요',
+            '내 마음의 구조를\n확인해보세요',
             textAlign: TextAlign.center,
             style: AppTextStyles.h1,
           ),
           const SizedBox(height: 16),
           Text(
-            '현실은 지금 나를 지탱하는 기준과 믿음을 확인합니다.\n'
-            '이상은 내가 향하는 변화 방향을 확인합니다(회복/도피는 해석에서 정리).\n'
+            'WPI현실 프로파일은 지금 나를 지탱하는 기준과 믿음을 확인합니다.\n'
+            'WPI이상 프로파일은 내가 향하는 변화의 방향을 확인합니다.\n'
             '검사 후 결과는 먼저 요약으로 보고, 더 궁금하면 추가 설명을 요청하면 됩니다.',
             textAlign: TextAlign.center,
             style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),

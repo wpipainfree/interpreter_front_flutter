@@ -20,6 +20,8 @@ class WpiSelectionFlowNew extends StatefulWidget {
     this.mindFocus,
     this.kind = WpiTestKind.reality,
     this.exitMode = FlowExitMode.openResultDetail,
+    this.existingResultId,
+    this.initialRole,
   });
 
   final int testId;
@@ -27,6 +29,8 @@ class WpiSelectionFlowNew extends StatefulWidget {
   final String? mindFocus;
   final WpiTestKind kind;
   final FlowExitMode exitMode;
+  final int? existingResultId;
+  final EvaluationRole? initialRole;
 
   @override
   State<WpiSelectionFlowNew> createState() => _WpiSelectionFlowNewState();
@@ -64,6 +68,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
   @override
   void initState() {
     super.initState();
+    _resultId = widget.existingResultId;
     _init();
   }
 
@@ -71,7 +76,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     if (!_authService.isLoggedIn) {
       final ok = await AuthUi.promptLogin(context: context);
       if (!ok && mounted) {
-        Navigator.of(context).pop();
+        _exitTestFlow();
         return;
       }
     }
@@ -107,7 +112,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       _checklists
         ..clear()
         ..addAll(sorted);
-      _prepareStage(0);
+      _prepareStage(_resolveInitialIndex(sorted));
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -115,6 +120,18 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
         _error = e.toString();
       });
     }
+  }
+
+  int _resolveInitialIndex(List<PsychTestChecklist> checklists) {
+    final role = widget.initialRole;
+    if (role == null || role == EvaluationRole.self) return 0;
+
+    final byRole = checklists.indexWhere((c) => c.role == role);
+    if (byRole != -1) return byRole;
+
+    // Fallback: assume the second checklist is "other" when roles are ambiguous.
+    if (checklists.length > 1) return 1;
+    return 0;
   }
 
   void _prepareStage(int index) {
@@ -132,13 +149,22 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     }
     setState(() {
       _stageIndex = index;
-      if (index == 0) _resultId = null;
+      if (index == 0 && widget.existingResultId == null) _resultId = null;
       if (index == 0) _shownOtherTransition = false;
       _selectedIds.clear();
       _limitSnackArmed = true;
       _loading = false;
       _error = null;
       _submitting = false;
+    });
+    _resetScrollPosition();
+  }
+
+  void _resetScrollPosition() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!_listController.hasClients) return;
+      _listController.jumpTo(_listController.position.minScrollExtent);
     });
   }
 
@@ -262,6 +288,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
             ? _service.submitResults(
                 testId: widget.testId,
                 selections: selections,
+                worry: widget.mindFocus,
                 processSequence: c.sequence == 0 ? _stageIndex + 1 : c.sequence,
               )
             : _service.updateResults(
@@ -350,27 +377,58 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     await RoleTransitionScreen.show(context);
   }
 
+  void _exitTestFlow() {
+    Navigator.of(context).popUntil((route) {
+      final name = route.settings.name;
+      if (name == null) return route.isFirst;
+      return !name.startsWith('/test/');
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return PopScope(
+        canPop: false,
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(widget.testTitle),
+            automaticallyImplyLeading: false,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: _exitTestFlow,
+              ),
+            ],
+          ),
+          body: const Center(child: CircularProgressIndicator()),
+        ),
       );
     }
     if (_error != null) {
       final loggedIn = _authService.isLoggedIn;
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('WPI'),
-        ),
-        body: AppErrorView(
-          title: loggedIn ? '불러오지 못했어요' : '로그인이 필요합니다',
-          message: _error!,
-          primaryActionLabel: loggedIn ? '다시 시도' : '로그인하기',
-          primaryActionStyle: loggedIn
-              ? AppErrorPrimaryActionStyle.outlined
-              : AppErrorPrimaryActionStyle.filled,
-          onPrimaryAction: loggedIn ? () => _load() : () => _init(),
+      return PopScope(
+        canPop: false,
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('WPI'),
+            automaticallyImplyLeading: false,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: _exitTestFlow,
+              ),
+            ],
+          ),
+          body: AppErrorView(
+            title: loggedIn ? '불러오지 못했어요' : '로그인이 필요합니다',
+            message: _error!,
+            primaryActionLabel: loggedIn ? '다시 시도' : '로그인하기',
+            primaryActionStyle: loggedIn
+                ? AppErrorPrimaryActionStyle.outlined
+                : AppErrorPrimaryActionStyle.filled,
+            onPrimaryAction: loggedIn ? () => _load() : () => _init(),
+          ),
         ),
       );
     }
@@ -383,21 +441,24 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     final selectedItems = _selectedItems;
     final availableItems = _availableItems;
 
-    return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
-      appBar: AppBar(
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
         backgroundColor: AppColors.backgroundLight,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 0,
-        title: Text('${widget.testTitle} / $stageLabel'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ],
-      ),
-      body: Column(
+        appBar: AppBar(
+          backgroundColor: AppColors.backgroundLight,
+          foregroundColor: AppColors.textPrimary,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          title: Text('${widget.testTitle} / $stageLabel'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: _exitTestFlow,
+            ),
+          ],
+        ),
+        body: Column(
         children: [
           _SummaryBar(
             selectedCount: _selectedIds.length,
@@ -545,6 +606,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
           ),
         ],
       ),
+    ),
     );
   }
 

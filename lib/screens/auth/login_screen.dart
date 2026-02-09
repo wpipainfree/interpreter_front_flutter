@@ -147,7 +147,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     backgroundColor: AppColors.kakao,
                     textColor: AppColors.kakaoText,
                     icon: Icons.chat_bubble_outline_rounded,
-                    onPressed: _isLoading ? null : () => _handleSocialLogin('kakao'),
+                    onPressed:
+                        _isLoading ? null : () => _handleSocialLogin('kakao'),
                   ),
                   const SizedBox(height: 12),
                   _SocialButton(
@@ -156,16 +157,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     textColor: AppColors.textPrimary,
                     icon: Icons.public,
                     borderColor: AppColors.border,
-                    onPressed: _isLoading ? null : () => _handleSocialLogin('google'),
+                    onPressed:
+                        _isLoading ? null : () => _handleSocialLogin('google'),
                   ),
-                  if (Platform.isIOS) ...[
+                  if (!kIsWeb && Platform.isIOS) ...[
                     const SizedBox(height: 12),
                     _SocialButton(
                       label: 'Apple로 계속하기',
                       backgroundColor: Colors.black,
                       textColor: Colors.white,
                       icon: Icons.apple,
-                      onPressed: _isLoading ? null : () => _handleSocialLogin('apple'),
+                      onPressed:
+                          _isLoading ? null : () => _handleSocialLogin('apple'),
                     ),
                   ],
                   const SizedBox(height: 20),
@@ -247,7 +250,6 @@ class _LoginHeader extends StatelessWidget {
           style: AppTextStyles.h2,
           textAlign: TextAlign.center,
         )
-        
       ],
     );
   }
@@ -273,7 +275,8 @@ class _SocialButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isEnabled = onPressed != null;
-    final effectiveTextColor = isEnabled ? textColor : textColor.withOpacity(0.7);
+    final effectiveTextColor =
+        isEnabled ? textColor : textColor.withOpacity(0.7);
     return SizedBox(
       width: double.infinity,
       height: 52,
@@ -289,7 +292,8 @@ class _SocialButton extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
             side: borderColor != null
-                ? BorderSide(color: borderColor!.withOpacity(isEnabled ? 1 : 0.4))
+                ? BorderSide(
+                    color: borderColor!.withOpacity(isEnabled ? 1 : 0.4))
                 : BorderSide.none,
           ),
         ),
@@ -334,8 +338,9 @@ class _EmailForm extends StatelessWidget {
               prefixIcon: Icon(Icons.email_outlined),
             ),
             keyboardType: TextInputType.emailAddress,
-            validator: (value) =>
-                value != null && value.contains('@') ? null : '올바른 이메일을 입력해주세요.',
+            validator: (value) => value != null && value.contains('@')
+                ? null
+                : '올바른 이메일을 입력해주세요.',
             enabled: !isLoading,
           ),
           const SizedBox(height: 12),
@@ -346,8 +351,9 @@ class _EmailForm extends StatelessWidget {
               prefixIcon: Icon(Icons.lock_outlined),
             ),
             obscureText: true,
-            validator: (value) =>
-                value != null && value.length >= 6 ? null : '비밀번호는 6자 이상 입력해주세요.',
+            validator: (value) => value != null && value.length >= 6
+                ? null
+                : '비밀번호는 6자 이상 입력해주세요.',
             enabled: !isLoading,
           ),
           const SizedBox(height: 16),
@@ -402,13 +408,15 @@ class _ErrorBanner extends StatelessWidget {
               children: [
                 Text(
                   message,
-                  style: AppTextStyles.bodySmall.copyWith(color: Colors.red.shade700),
+                  style: AppTextStyles.bodySmall
+                      .copyWith(color: Colors.red.shade700),
                 ),
                 if (debugMessage != null) ...[
                   const SizedBox(height: 4),
                   Text(
                     debugMessage!,
-                    style: AppTextStyles.caption.copyWith(color: Colors.red.shade700),
+                    style: AppTextStyles.caption
+                        .copyWith(color: Colors.red.shade700),
                   ),
                 ],
               ],

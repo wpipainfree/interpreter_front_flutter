@@ -38,9 +38,7 @@ class AuthService extends ChangeNotifier {
 
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: ['email', 'profile'],
-  );
+  GoogleSignIn? _googleSignIn;
 
   final Dio _dio = Dio(
     BaseOptions(
@@ -56,10 +54,26 @@ class AuthService extends ChangeNotifier {
   UserInfo? get currentUser => _currentUser;
   AuthTokens? get tokens => _tokens;
   LogoutReason? get lastLogoutReason => _lastLogoutReason;
-  bool get isLoggedIn => _currentUser != null && (_tokens?.accessToken.isNotEmpty ?? false);
+  bool get isLoggedIn =>
+      _currentUser != null && (_tokens?.accessToken.isNotEmpty ?? false);
   String? get authorizationHeader => (_tokens?.accessToken.isNotEmpty ?? false)
       ? '${_tokens!.tokenType} ${_tokens!.accessToken}'
       : null;
+
+  GoogleSignIn? _resolveGoogleSignIn() {
+    if (_googleSignIn != null) return _googleSignIn;
+    if (kIsWeb) {
+      final clientId = AppConfig.googleClientId.trim();
+      if (clientId.isEmpty) return null;
+      _googleSignIn = GoogleSignIn(
+        scopes: const ['email', 'profile'],
+        clientId: clientId,
+      );
+      return _googleSignIn;
+    }
+    _googleSignIn = GoogleSignIn(scopes: const ['email', 'profile']);
+    return _googleSignIn;
+  }
 
   /// Restore a previously stored session from local storage.
   Future<UserInfo?> restoreSession() async {
@@ -69,8 +83,10 @@ class AuthService extends ChangeNotifier {
     if (userRaw == null || tokensRaw == null) return null;
 
     try {
-      final user = UserInfo.fromJson(jsonDecode(userRaw) as Map<String, dynamic>);
-      final token = AuthTokens.fromJson(jsonDecode(tokensRaw) as Map<String, dynamic>);
+      final user =
+          UserInfo.fromJson(jsonDecode(userRaw) as Map<String, dynamic>);
+      final token =
+          AuthTokens.fromJson(jsonDecode(tokensRaw) as Map<String, dynamic>);
       _currentUser = user;
       _tokens = token;
       _lastLogoutReason = null;
@@ -110,8 +126,10 @@ class AuthService extends ChangeNotifier {
         final tokens = AuthTokens(
           accessToken: data['access_token'] as String? ?? '',
           tokenType: data['token_type'] as String? ?? 'bearer',
-          refreshTokenCookie: _extractRefreshTokenCookieFromHeader(refreshHeader),
-          accessTokenExpiresAt: _parseAccessTokenExpiry(data['access_token'] as String?),
+          refreshTokenCookie:
+              _extractRefreshTokenCookieFromHeader(refreshHeader),
+          accessTokenExpiresAt:
+              _parseAccessTokenExpiry(data['access_token'] as String?),
         );
         final user = UserInfo.fromJson(data);
         _currentUser = user;
@@ -169,10 +187,11 @@ class AuthService extends ChangeNotifier {
       final updatedTokens = AuthTokens(
         accessToken: data['access_token'] as String? ?? '',
         tokenType: data['token_type'] as String? ?? 'bearer',
-        refreshTokenCookie:
-            _extractRefreshTokenCookieFromHeader(response.headers.value('set-cookie')) ??
-                refreshCookie,
-        accessTokenExpiresAt: _parseAccessTokenExpiry(data['access_token'] as String?),
+        refreshTokenCookie: _extractRefreshTokenCookieFromHeader(
+                response.headers.value('set-cookie')) ??
+            refreshCookie,
+        accessTokenExpiresAt:
+            _parseAccessTokenExpiry(data['access_token'] as String?),
       );
       _tokens = updatedTokens;
       _lastLogoutReason = null;
@@ -226,7 +245,8 @@ class AuthService extends ChangeNotifier {
           token = await kakao.UserApi.instance.loginWithKakaoTalk();
           debugPrint('[AuthService] 카카오톡 앱 로그인 성공');
         } catch (e) {
-          debugPrint('[AuthService] Kakao Talk login failed, trying account: $e');
+          debugPrint(
+              '[AuthService] Kakao Talk login failed, trying account: $e');
           debugPrint('[AuthService] 카카오 계정 로그인으로 전환...');
           token = await kakao.UserApi.instance.loginWithKakaoAccount();
           debugPrint('[AuthService] 카카오 계정 로그인 성공');
@@ -237,10 +257,13 @@ class AuthService extends ChangeNotifier {
         debugPrint('[AuthService] 카카오 계정 로그인 성공');
       }
 
-      debugPrint('[AuthService] Kakao access token obtained: ${token.accessToken.substring(0, 20)}...');
+      debugPrint(
+          '[AuthService] Kakao access token obtained: ${token.accessToken.substring(0, 20)}...');
       debugPrint('[AuthService] 백엔드에 토큰 전달 시작...');
-      final result = await _exchangeSocialTokenForLogin('kakao', accessToken: token.accessToken);
-      debugPrint('[AuthService] 백엔드 응답: isSuccess=${result.isSuccess}, error=${result.errorMessage}');
+      final result = await _exchangeSocialTokenForLogin('kakao',
+          accessToken: token.accessToken);
+      debugPrint(
+          '[AuthService] 백엔드 응답: isSuccess=${result.isSuccess}, error=${result.errorMessage}');
       return result;
     } catch (e, stackTrace) {
       debugPrint('[AuthService] Kakao login error: $e');
@@ -253,14 +276,20 @@ class AuthService extends ChangeNotifier {
   Future<AuthResult> _loginWithGoogleSdk() async {
     debugPrint('[AuthService] _loginWithGoogleSdk() 시작');
     try {
+      final googleSignIn = _resolveGoogleSignIn();
+      if (googleSignIn == null) {
+        return AuthResult.failure(
+          'Google Sign-In is not configured. (GOOGLE_CLIENT_ID)',
+        );
+      }
       // 기존 로그인 세션이 있으면 로그아웃 (새로운 계정 선택 허용)
       try {
-        await _googleSignIn.signOut();
+        await googleSignIn.signOut();
       } catch (e) {
         debugPrint('[AuthService] Google sign-out error (ignored): $e');
       }
 
-      final account = await _googleSignIn.signIn();
+      final account = await googleSignIn.signIn();
       if (account == null) {
         debugPrint('[AuthService] Google sign-in cancelled by user');
         return AuthResult.failure('Google 로그인이 취소되었습니다.');
@@ -272,10 +301,12 @@ class AuthService extends ChangeNotifier {
       final accessToken = auth.accessToken;
 
       if (idToken != null) {
-        debugPrint('[AuthService] Google ID token obtained: ${idToken.substring(0, 20)}...');
+        debugPrint(
+            '[AuthService] Google ID token obtained: ${idToken.substring(0, 20)}...');
       }
       if (accessToken != null) {
-        debugPrint('[AuthService] Google access token obtained: ${accessToken.substring(0, 20)}...');
+        debugPrint(
+            '[AuthService] Google access token obtained: ${accessToken.substring(0, 20)}...');
       }
 
       debugPrint('[AuthService] 백엔드에 토큰 전달 시작...');
@@ -284,10 +315,12 @@ class AuthService extends ChangeNotifier {
         accessToken: accessToken,
         idToken: idToken,
       );
-      debugPrint('[AuthService] 백엔드 응답: isSuccess=${result.isSuccess}, error=${result.errorMessage}');
+      debugPrint(
+          '[AuthService] 백엔드 응답: isSuccess=${result.isSuccess}, error=${result.errorMessage}');
       return result;
     } on PlatformException catch (e) {
-      debugPrint('[AuthService] Google login PlatformException: ${e.code} - ${e.message}');
+      debugPrint(
+          '[AuthService] Google login PlatformException: ${e.code} - ${e.message}');
       debugPrint('[AuthService] Details: ${e.details}');
 
       // 사용자 취소
@@ -296,7 +329,8 @@ class AuthService extends ChangeNotifier {
       }
 
       // 설정 오류 (URL scheme 미설정 등)
-      if (e.code == 'sign_in_failed' || e.message?.contains('DEVELOPER_ERROR') == true) {
+      if (e.code == 'sign_in_failed' ||
+          e.message?.contains('DEVELOPER_ERROR') == true) {
         return AuthResult.failure(
           'Google 로그인 설정이 올바르지 않습니다.\niOS OAuth 클라이언트를 Google Cloud Console에서 설정해주세요.',
           debugMessage: '${e.code}: ${e.message}\nDetails: ${e.details}',
@@ -310,7 +344,8 @@ class AuthService extends ChangeNotifier {
     } catch (e, stackTrace) {
       debugPrint('[AuthService] Google login error: $e');
       debugPrint('[AuthService] Stack trace: $stackTrace');
-      return AuthResult.failure('Google 로그인에 실패했습니다.', debugMessage: e.toString());
+      return AuthResult.failure('Google 로그인에 실패했습니다.',
+          debugMessage: e.toString());
     }
   }
 
@@ -328,7 +363,8 @@ class AuthService extends ChangeNotifier {
     try {
       final isAvailable = await SignInWithApple.isAvailable();
       if (!isAvailable) {
-        debugPrint('[AuthService] Apple Sign-In is not available on this device');
+        debugPrint(
+            '[AuthService] Apple Sign-In is not available on this device');
         return AuthResult.failure('이 기기에서는 Apple 로그인을 사용할 수 없습니다.');
       }
 
@@ -344,11 +380,13 @@ class AuthService extends ChangeNotifier {
       final authCode = credential.authorizationCode;
 
       if (idToken != null) {
-        debugPrint('[AuthService] Apple ID token obtained: ${idToken.substring(0, 20)}...');
+        debugPrint(
+            '[AuthService] Apple ID token obtained: ${idToken.substring(0, 20)}...');
       } else {
         debugPrint('[AuthService] Apple ID token is null');
       }
-      debugPrint('[AuthService] Apple auth code obtained: ${authCode.substring(0, 20)}...');
+      debugPrint(
+          '[AuthService] Apple auth code obtained: ${authCode.substring(0, 20)}...');
 
       debugPrint('[AuthService] 백엔드에 토큰 전달 시작...');
       final result = await _exchangeSocialTokenForLogin(
@@ -356,18 +394,21 @@ class AuthService extends ChangeNotifier {
         idToken: idToken,
         authorizationCode: authCode,
       );
-      debugPrint('[AuthService] 백엔드 응답: isSuccess=${result.isSuccess}, error=${result.errorMessage}');
+      debugPrint(
+          '[AuthService] 백엔드 응답: isSuccess=${result.isSuccess}, error=${result.errorMessage}');
       return result;
     } catch (e, stackTrace) {
       debugPrint('[AuthService] Apple login error: $e');
       debugPrint('[AuthService] Stack trace: $stackTrace');
 
       // 사용자 취소의 경우 별도 메시지
-      if (e.toString().contains('canceled') || e.toString().contains('cancelled')) {
+      if (e.toString().contains('canceled') ||
+          e.toString().contains('cancelled')) {
         return AuthResult.failure('Apple 로그인이 취소되었습니다.');
       }
 
-      return AuthResult.failure('Apple 로그인에 실패했습니다.', debugMessage: e.toString());
+      return AuthResult.failure('Apple 로그인에 실패했습니다.',
+          debugMessage: e.toString());
     }
   }
 
@@ -386,7 +427,8 @@ class AuthService extends ChangeNotifier {
           'provider': provider,
           if (accessToken != null) 'access_token': accessToken,
           if (idToken != null) 'id_token': idToken,
-          if (authorizationCode != null) 'authorization_code': authorizationCode,
+          if (authorizationCode != null)
+            'authorization_code': authorizationCode,
           'include_refresh_token': true,
         },
         options: Options(
@@ -402,8 +444,10 @@ class AuthService extends ChangeNotifier {
         final tokens = AuthTokens(
           accessToken: data['access_token'] as String? ?? '',
           tokenType: data['token_type'] as String? ?? 'bearer',
-          refreshTokenCookie: _extractRefreshTokenCookieFromHeader(refreshHeader),
-          accessTokenExpiresAt: _parseAccessTokenExpiry(data['access_token'] as String?),
+          refreshTokenCookie:
+              _extractRefreshTokenCookieFromHeader(refreshHeader),
+          accessTokenExpiresAt:
+              _parseAccessTokenExpiry(data['access_token'] as String?),
         );
         final user = UserInfo.fromJson(data);
         _currentUser = user;
@@ -422,7 +466,8 @@ class AuthService extends ChangeNotifier {
     } on DioException catch (e) {
       _logNetworkError('_exchangeSocialTokenForLogin', e);
       if (e.response?.statusCode == 404) {
-        return AuthResult.failure('소셜 로그인 API를 찾을 수 없습니다. 백엔드 /api/v1/auth/social/token 구현을 확인해 주세요.');
+        return AuthResult.failure(
+            '소셜 로그인 API를 찾을 수 없습니다. 백엔드 /api/v1/auth/social/token 구현을 확인해 주세요.');
       }
       // 422: 미등록 사용자 처리
       if (e.response?.statusCode == 422) {
@@ -444,7 +489,9 @@ class AuthService extends ChangeNotifier {
         );
       }
       return AuthResult.failure(
-        e.response != null ? _extractErrorMessage(e.response!) : '소셜 로그인에 실패했습니다.',
+        e.response != null
+            ? _extractErrorMessage(e.response!)
+            : '소셜 로그인에 실패했습니다.',
         debugMessage: '${e.message} data=${e.response?.data}',
       );
     }
@@ -452,7 +499,8 @@ class AuthService extends ChangeNotifier {
 
   /// Social login with OAuth callback handling.
   /// 카카오/구글/애플: SDK로 토큰 획득 후 백엔드 /api/v1/auth/social/token 호출 (URL 요청 없음).
-  Future<AuthResult> loginWithSocial(String provider, {String? code, String? state}) async {
+  Future<AuthResult> loginWithSocial(String provider,
+      {String? code, String? state}) async {
     if (code == null) {
       final providerLower = provider.toLowerCase();
       // 카카오: SDK 기반 로그인
@@ -472,7 +520,8 @@ class AuthService extends ChangeNotifier {
       if (loginUrl == null) {
         return AuthResult.failure('소셜 로그인 URL을 가져올 수 없습니다.');
       }
-      return AuthResult.failure('OAuth URL을 열어주세요: $loginUrl', debugMessage: loginUrl);
+      return AuthResult.failure('OAuth URL을 열어주세요: $loginUrl',
+          debugMessage: loginUrl);
     }
 
     // Step 2: Exchange code for tokens
@@ -496,8 +545,10 @@ class AuthService extends ChangeNotifier {
         final tokens = AuthTokens(
           accessToken: data['access_token'] as String? ?? '',
           tokenType: data['token_type'] as String? ?? 'bearer',
-          refreshTokenCookie: _extractRefreshTokenCookieFromHeader(refreshHeader),
-          accessTokenExpiresAt: _parseAccessTokenExpiry(data['access_token'] as String?),
+          refreshTokenCookie:
+              _extractRefreshTokenCookieFromHeader(refreshHeader),
+          accessTokenExpiresAt:
+              _parseAccessTokenExpiry(data['access_token'] as String?),
         );
         final user = UserInfo.fromJson(data);
         _currentUser = user;
@@ -530,7 +581,8 @@ class AuthService extends ChangeNotifier {
         try {
           token = await kakao.UserApi.instance.loginWithKakaoTalk();
         } catch (e) {
-          debugPrint('[AuthService] Kakao Talk link failed, trying account: $e');
+          debugPrint(
+              '[AuthService] Kakao Talk link failed, trying account: $e');
           token = await kakao.UserApi.instance.loginWithKakaoAccount();
         }
       } else {
@@ -547,10 +599,15 @@ class AuthService extends ChangeNotifier {
   Future<GoogleCredentialResult?> _getGoogleCredentialForLink() async {
     debugPrint('[AuthService] _getGoogleCredentialForLink() 시작');
     try {
+      final googleSignIn = _resolveGoogleSignIn();
+      if (googleSignIn == null) {
+        debugPrint('[AuthService] Google client ID missing for web.');
+        return null;
+      }
       // 기존 로그인 세션이 있으면 로그아웃 (새로운 계정 선택 허용)
-      await _googleSignIn.signOut();
+      await googleSignIn.signOut();
 
-      final account = await _googleSignIn.signIn();
+      final account = await googleSignIn.signIn();
       if (account == null) {
         debugPrint('[AuthService] Google sign-in cancelled by user');
         return null;
@@ -562,10 +619,12 @@ class AuthService extends ChangeNotifier {
       final accessToken = auth.accessToken;
 
       if (idToken != null) {
-        debugPrint('[AuthService] Google ID token obtained: ${idToken.substring(0, 20)}...');
+        debugPrint(
+            '[AuthService] Google ID token obtained: ${idToken.substring(0, 20)}...');
       }
       if (accessToken != null) {
-        debugPrint('[AuthService] Google access token obtained: ${accessToken.substring(0, 20)}...');
+        debugPrint(
+            '[AuthService] Google access token obtained: ${accessToken.substring(0, 20)}...');
       }
 
       return GoogleCredentialResult(
@@ -594,7 +653,8 @@ class AuthService extends ChangeNotifier {
     try {
       final isAvailable = await SignInWithApple.isAvailable();
       if (!isAvailable) {
-        debugPrint('[AuthService] Apple Sign-In is not available on this device');
+        debugPrint(
+            '[AuthService] Apple Sign-In is not available on this device');
         return null;
       }
 
@@ -609,12 +669,14 @@ class AuthService extends ChangeNotifier {
       final authCode = credential.authorizationCode;
 
       if (idToken != null) {
-        debugPrint('[AuthService] Apple ID token obtained: ${idToken.substring(0, 20)}...');
+        debugPrint(
+            '[AuthService] Apple ID token obtained: ${idToken.substring(0, 20)}...');
       } else {
         debugPrint('[AuthService] Apple ID token is null');
       }
 
-      debugPrint('[AuthService] Apple auth code obtained: ${authCode.substring(0, 20)}...');
+      debugPrint(
+          '[AuthService] Apple auth code obtained: ${authCode.substring(0, 20)}...');
 
       return AppleCredentialResult(
         idToken: idToken,
@@ -680,7 +742,8 @@ class AuthService extends ChangeNotifier {
           'provider': providerLower,
           if (accessToken != null) 'access_token': accessToken,
           if (idToken != null) 'id_token': idToken,
-          if (authorizationCode != null) 'authorization_code': authorizationCode,
+          if (authorizationCode != null)
+            'authorization_code': authorizationCode,
         },
         options: Options(
           headers: {'Authorization': authHeader},
@@ -702,7 +765,8 @@ class AuthService extends ChangeNotifier {
           _currentUser = updatedUser;
           notifyListeners();
           await _persistSession(updatedUser, _tokens);
-          debugPrint('[AuthService] Social link success: $linkedProvider, message: $message');
+          debugPrint(
+              '[AuthService] Social link success: $linkedProvider, message: $message');
           return AuthResult.success(updatedUser, message: message);
         }
 
@@ -725,23 +789,30 @@ class AuthService extends ChangeNotifier {
       }
       // 409 Conflict: 이미 다른 계정에 연결된 소셜 계정
       if (e.response?.statusCode == 409) {
-        final providerName = providerLower == 'kakao' ? '카카오' :
-                             providerLower == 'google' ? 'Google' :
-                             providerLower == 'apple' ? 'Apple' : providerLower;
+        final providerName = providerLower == 'kakao'
+            ? '카카오'
+            : providerLower == 'google'
+                ? 'Google'
+                : providerLower == 'apple'
+                    ? 'Apple'
+                    : providerLower;
         return AuthResult.failure(
           '이미 다른 계정에 연결된 $providerName 계정입니다.',
           debugMessage: 'HTTP 409 data=${e.response?.data}',
         );
       }
       return AuthResult.failure(
-        e.response != null ? _extractErrorMessage(e.response!) : '계정 연동에 실패했습니다.',
+        e.response != null
+            ? _extractErrorMessage(e.response!)
+            : '계정 연동에 실패했습니다.',
         debugMessage: '${e.message} data=${e.response?.data}',
       );
     }
   }
 
   /// Link social account to existing account.
-  Future<AuthResult> linkSocialAccount(String provider, {String? code, String? state}) async {
+  Future<AuthResult> linkSocialAccount(String provider,
+      {String? code, String? state}) async {
     final authHeader = await getAuthorizationHeader(refreshIfNeeded: true);
     if (authHeader == null) {
       return AuthResult.failure('로그인이 필요합니다.');
@@ -766,7 +837,8 @@ class AuthService extends ChangeNotifier {
           if (linkUrl == null) {
             return AuthResult.failure('연동 URL을 가져올 수 없습니다.');
           }
-          return AuthResult.failure('OAuth URL을 열어주세요: $linkUrl', debugMessage: linkUrl);
+          return AuthResult.failure('OAuth URL을 열어주세요: $linkUrl',
+              debugMessage: linkUrl);
         }
         return AuthResult.failure(_extractErrorMessage(response));
       } on DioException catch (e) {
@@ -842,11 +914,13 @@ class AuthService extends ChangeNotifier {
         final message = data['message'] as String?;
 
         if (unlinked && _currentUser != null) {
-          final updatedUser = _currentUser!.withoutLinkedProvider(providerLower);
+          final updatedUser =
+              _currentUser!.withoutLinkedProvider(providerLower);
           _currentUser = updatedUser;
           notifyListeners();
           await _persistSession(updatedUser, _tokens);
-          debugPrint('[AuthService] Social unlink success: $providerLower, message: $message');
+          debugPrint(
+              '[AuthService] Social unlink success: $providerLower, message: $message');
           return AuthResult.success(updatedUser, message: message);
         }
         return AuthResult.failure(message ?? '연동 해제에 실패했습니다.');
@@ -898,14 +972,17 @@ class AuthService extends ChangeNotifier {
         if (providers == null) return [];
 
         final statuses = providers
-            .map((p) => SocialProviderStatus.fromJson(p as Map<String, dynamic>))
+            .map(
+                (p) => SocialProviderStatus.fromJson(p as Map<String, dynamic>))
             .toList();
 
-        debugPrint('[AuthService] getSocialProvidersStatus: ${statuses.length} providers');
+        debugPrint(
+            '[AuthService] getSocialProvidersStatus: ${statuses.length} providers');
         return statuses;
       }
 
-      debugPrint('[AuthService] getSocialProvidersStatus: HTTP ${response.statusCode}');
+      debugPrint(
+          '[AuthService] getSocialProvidersStatus: HTTP ${response.statusCode}');
       return [];
     } on DioException catch (e) {
       _logNetworkError('getSocialProvidersStatus', e);
@@ -963,7 +1040,8 @@ class AuthService extends ChangeNotifier {
     return '${_tokens!.tokenType} ${_tokens!.accessToken}';
   }
 
-  Future<void> logout({LogoutReason reason = LogoutReason.userInitiated}) async {
+  Future<void> logout(
+      {LogoutReason reason = LogoutReason.userInitiated}) async {
     final refreshCookie = _tokens?.refreshTokenCookie;
     final authHeader = await getAuthorizationHeader(refreshIfNeeded: false);
     try {
@@ -1078,7 +1156,8 @@ class AuthService extends ChangeNotifier {
     return _StoredSession(
       userRaw: prefs.getString(_storageUserKey),
       tokensRaw: prefs.getString(_storageTokensKey),
-      needsMigration: prefs.containsKey(_storageUserKey) || prefs.containsKey(_storageTokensKey),
+      needsMigration: prefs.containsKey(_storageUserKey) ||
+          prefs.containsKey(_storageTokensKey),
     );
   }
 
@@ -1223,8 +1302,9 @@ class UserInfo {
   final String? provider;
   final List<String> linkedProviders;
 
-  String get displayName =>
-      name.isNotEmpty ? name : (email.contains('@') ? email.split('@').first : email);
+  String get displayName => name.isNotEmpty
+      ? name
+      : (email.contains('@') ? email.split('@').first : email);
 
   /// 특정 소셜 계정이 연동되어 있는지 확인
   bool isProviderLinked(String provider) => linkedProviders.contains(provider);
@@ -1283,9 +1363,8 @@ class UserInfo {
     // linked_providers 파싱: 백엔드에서 연동된 소셜 계정 목록 반환
     List<String> linkedProviders = [];
     if (json['linked_providers'] is List) {
-      linkedProviders = (json['linked_providers'] as List)
-          .map((e) => e.toString())
-          .toList();
+      linkedProviders =
+          (json['linked_providers'] as List).map((e) => e.toString()).toList();
     }
 
     return UserInfo(
@@ -1298,7 +1377,8 @@ class UserInfo {
       isCoach: json['is_coach'] == true,
       role: json['role'] as String?,
       counselingClient: json['counseling_client'] is Map<String, dynamic>
-          ? CounselingClient.fromJson(json['counseling_client'] as Map<String, dynamic>)
+          ? CounselingClient.fromJson(
+              json['counseling_client'] as Map<String, dynamic>)
           : null,
       provider: json['provider'] as String?,
       linkedProviders: linkedProviders,
@@ -1431,7 +1511,8 @@ class AuthResult {
     return AuthResult._(isSuccess: true, user: user, successMessage: message);
   }
 
-  factory AuthResult.failure(String message, {String? debugMessage, String? errorCode}) {
+  factory AuthResult.failure(String message,
+      {String? debugMessage, String? errorCode}) {
     return AuthResult._(
       isSuccess: false,
       errorMessage: message,

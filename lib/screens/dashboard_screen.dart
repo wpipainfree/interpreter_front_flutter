@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import '../services/ai_assistant_service.dart';
 import '../services/auth_service.dart';
 import '../services/payment_service.dart';
 import '../services/psych_tests_service.dart';
 import '../test_flow/test_flow_coordinator.dart';
+import '../test_flow/test_flow_models.dart';
 import '../router/app_routes.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_text_styles.dart';
 import '../utils/auth_ui.dart';
 import '../utils/main_shell_tab_controller.dart';
+import '../utils/strings.dart';
 import '../widgets/app_error_view.dart';
-import '../screens/result/user_result_detail_screen.dart';
 import '../screens/payment/payment_webview_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -22,13 +24,20 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final AuthService _authService = AuthService();
   final PsychTestsService _testsService = PsychTestsService();
+  final AiAssistantService _aiService = AiAssistantService();
   final List<UserAccountItem> _accounts = [];
+  final List<_RecordSummary> _records = [];
   bool _loading = true;
+  bool _recordsLoading = true;
   bool _pendingIdeal = false;
   String? _error;
+  String? _recordsError;
   static const int _maxRecent = 3;
+  static const int _maxRecordPreview = 3;
+  bool _recordsHasMore = false;
   late final VoidCallback _authListener;
   late final VoidCallback _tabListener;
+  late final VoidCallback _refreshListener;
   bool _lastLoggedIn = false;
   String? _lastUserId;
   int _lastShellIndex = 0;
@@ -43,7 +52,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _lastShellIndex = MainShellTabController.index.value;
     _tabListener = _handleShellTabChanged;
     MainShellTabController.index.addListener(_tabListener);
+    _refreshListener = _handleRefresh;
+    MainShellTabController.refreshTick.addListener(_refreshListener);
     _loadAccounts();
+    _loadRecords();
     _loadPendingIdeal();
   }
 
@@ -51,6 +63,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void dispose() {
     _authService.removeListener(_authListener);
     MainShellTabController.index.removeListener(_tabListener);
+    MainShellTabController.refreshTick.removeListener(_refreshListener);
     super.dispose();
   }
 
@@ -67,11 +80,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() {
         _accounts.clear();
         _loading = false;
-        _error = '로그인이 필요합니다.';
+        _error = AppStrings.loginRequired;
+        _records.clear();
+        _recordsLoading = false;
+        _recordsHasMore = false;
+        _recordsError = AppStrings.loginRequired;
       });
       return;
     }
     _loadAccounts();
+    _loadRecords();
   }
 
   void _handleShellTabChanged() {
@@ -83,6 +101,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _loadPendingIdeal();
     if (_authService.isLoggedIn) {
       _loadAccounts();
+      _loadRecords();
+    }
+  }
+
+  void _handleRefresh() {
+    if (!mounted) return;
+    if (MainShellTabController.index.value != 0) return;
+    _loadPendingIdeal();
+    if (_authService.isLoggedIn) {
+      _loadAccounts();
+      _loadRecords();
     }
   }
 
@@ -90,6 +119,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final ok = await AuthUi.promptLogin(context: context);
     if (ok && mounted) {
       await _loadAccounts();
+      await _loadRecords();
     }
   }
 
@@ -123,6 +153,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() {
         _loading = false;
         _error = e.toString();
+      });
+    }
+  }
+
+  Future<void> _loadRecords() async {
+    final loggedIn = _authService.isLoggedIn;
+    if (!loggedIn) {
+      setState(() {
+        _records.clear();
+        _recordsLoading = false;
+        _recordsHasMore = false;
+        _recordsError = AppStrings.loginRequired;
+      });
+      return;
+    }
+
+    setState(() {
+      _recordsLoading = true;
+      _recordsError = null;
+    });
+
+    try {
+      final res = await _aiService.fetchConversationSummaries(
+        skip: 0,
+        limit: _maxRecordPreview,
+      );
+      final raw = (res['conversations'] ?? res['items'] ?? res['data'])
+              as List<dynamic>? ??
+          const [];
+      final fetched = raw
+          .whereType<Map<String, dynamic>>()
+          .map(_RecordSummary.fromJson)
+          .toList();
+      if (!mounted) return;
+      setState(() {
+        _records
+          ..clear()
+          ..addAll(fetched);
+        _recordsHasMore = fetched.length == _maxRecordPreview;
+        _recordsLoading = false;
+        _recordsError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _recordsLoading = false;
+        _recordsError = e.toString();
       });
     }
   }
@@ -296,8 +373,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   borderRadius: BorderRadius.circular(8),
                   side: BorderSide(
                     color: selectedPaymentType == 20
-                      ? Colors.blue
-                      : Colors.grey.shade300,
+                        ? Colors.blue
+                        : Colors.grey.shade300,
                   ),
                 ),
                 onTap: () {
@@ -316,8 +393,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   borderRadius: BorderRadius.circular(8),
                   side: BorderSide(
                     color: selectedPaymentType == 22
-                      ? Colors.green
-                      : Colors.grey.shade300,
+                        ? Colors.green
+                        : Colors.grey.shade300,
                   ),
                 ),
                 onTap: () {
@@ -335,11 +412,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             ElevatedButton(
               onPressed: (selectedTestId != null && selectedPaymentType != null)
-                ? () => Navigator.pop(context, {
-                    'testId': selectedTestId!,
-                    'paymentType': selectedPaymentType!,
-                  })
-                : null,
+                  ? () => Navigator.pop(context, {
+                        'testId': selectedTestId!,
+                        'paymentType': selectedPaymentType!,
+                      })
+                  : null,
               child: const Text('확인'),
             ),
           ],
@@ -356,8 +433,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       backgroundColor: AppColors.backgroundLight,
       body: CustomScrollView(
         slivers: [
-          _buildAppBar(user),
+          _buildHeader(user),
+          _buildTodayMindReadSection(),
           _buildStartTestSection(),
+          _buildRecordHeader(),
+          _buildRecordList(),
           _buildHistoryHeader(),
           _buildHistoryList(),
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -366,92 +446,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  SliverAppBar _buildAppBar(UserInfo? user) {
-    const double expandedHeight = 200;
-    return SliverAppBar(
-      expandedHeight: expandedHeight,
-      pinned: true,
-      backgroundColor: AppColors.primary,
-      automaticallyImplyLeading: false,
-      flexibleSpace: LayoutBuilder(
-        builder: (context, constraints) {
-          final double delta = expandedHeight - kToolbarHeight;
-          final double t = ((constraints.maxHeight - kToolbarHeight) /
-                  (delta <= 0 ? 1 : delta))
-              .clamp(0.0, 1.0);
-          final bool showTitle = t < 0.4;
-          final bool showContent = t > 0.65;
+  SliverAppBar _buildHeader(UserInfo? user) {
+    final name = (user?.displayName ?? '게스트').trim();
 
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [AppColors.primary, AppColors.primaryLight],
-                  ),
-                ),
-                child: showContent
-                    ? SafeArea(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '오늘의 구조 상태',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.textOnDark,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                user?.displayName ?? '게스트',
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textOnDark,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                '당신의 마음을 ‘설명 가능한 말’로 바꿔봅시다.',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  color: AppColors.textOnDark,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : const SizedBox.shrink(),
+    return SliverAppBar(
+      pinned: true,
+      automaticallyImplyLeading: false,
+      backgroundColor: AppColors.backgroundLight,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      centerTitle: false,
+      toolbarHeight: 44,
+      titleSpacing: 20,
+      title: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: name,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w800,
               ),
-              Positioned(
-                left: 16,
-                bottom: 12,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 180),
-                  opacity: showTitle ? 1 : 0,
-                  child: const Text(
-                    '오늘의 구조 상태',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
+            ),
+            TextSpan(
+              text: ' 님 안녕하세요.',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
               ),
-            ],
-          );
-        },
+            ),
+          ],
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
@@ -499,7 +527,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '현실과 이상을 함께 보면 ‘현재’와 ‘변화 방향’이 분리됩니다.',
+                      '현실과 이상을 함께 보면 ‘지금의 나’와 ‘바라는 변화 방향’을 한눈에 이해할 수 있어요.',
                       style: AppTextStyles.bodySmall.copyWith(
                         color: AppColors.textOnDark.withOpacity(0.9),
                       ),
@@ -584,24 +612,88 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10)),
                         ),
-                        child: const Text('이상(변화 방향) 이어하기'),
+                        child: const Text('WPI 이상 검사 이어하기'),
                       ),
                     ],
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  SliverToBoxAdapter _buildTodayMindReadSection() {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '오늘 내 마음 읽기',
+                      style: AppTextStyles.h5.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '사연을 적고, 현실/이상 프로파일을 선택해 해석을 확인하세요.',
+                      style: AppTextStyles.bodySmall
+                          .copyWith(color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 40,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context)
+                              .pushNamed(AppRoutes.todayMindRead);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Text('시작하기'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
               Container(
-                width: 80,
-                height: 80,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.textOnDark.withOpacity(0.2),
-                  shape: BoxShape.circle,
+                  color: AppColors.primary.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Icon(
-                  Icons.psychology_outlined,
-                  size: 48,
-                  color: AppColors.textOnDark,
+                  Icons.auto_awesome,
+                  color: AppColors.primary,
                 ),
               ),
             ],
@@ -681,10 +773,103 @@ class _DashboardScreenState extends State<DashboardScreen> {
           final item = _accounts[index];
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-            child: _AccountCard(item: item),
+            child: _AccountCard(
+              item: item,
+              onResumeComplete: _loadAccounts,
+            ),
           );
         },
         childCount: _accounts.length,
+      ),
+    );
+  }
+
+  SliverToBoxAdapter _buildRecordHeader() {
+    final loggedIn = _authService.isLoggedIn;
+    final hasMore = _recordsHasMore;
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              '\ucd5c\uadfc \uc9c8\ubb38 \uae30\ub85d',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            if (!loggedIn)
+              TextButton(
+                onPressed: () => _promptLoginAndReload(),
+                child: const Text(AppStrings.login),
+              )
+            else if (hasMore)
+              TextButton(
+                onPressed: () {
+                  MainShellTabController.index.value = 2;
+                },
+                child: const Text(AppStrings.seeMore),
+              )
+            else
+              Text(
+                '${_records.length}\uac74',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecordList() {
+    if (_recordsLoading) {
+      return const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+    if (_recordsError != null) {
+      final loggedIn = _authService.isLoggedIn;
+      return SliverToBoxAdapter(
+        child: AppErrorView(
+          title: loggedIn ? 'ë¶ˆëŸ¬ì˜¤ì§€ ëª»í–ˆì–´ìš”' : 'ë¡œê·¸ì¸ì´ í•„ìš”í•©ë‹ˆë‹¤',
+          message: _recordsError!,
+          primaryActionLabel: loggedIn ? AppStrings.retry : AppStrings.login,
+          primaryActionStyle: loggedIn
+              ? AppErrorPrimaryActionStyle.outlined
+              : AppErrorPrimaryActionStyle.filled,
+          onPrimaryAction:
+              loggedIn ? () => _loadRecords() : () => _promptLoginAndReload(),
+        ),
+      );
+    }
+    if (_records.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: _buildRecordEmptyState(),
+        ),
+      );
+    }
+
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          final item = _records[index];
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+            child: _RecordCard(item: item),
+          );
+        },
+        childCount: _records.length,
       ),
     );
   }
@@ -728,12 +913,74 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
+
+  Widget _buildRecordEmptyState() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(AppStrings.recordEmptyTitle, style: AppTextStyles.h5),
+          const SizedBox(height: 6),
+          Text(
+            AppStrings.recordEmptySubtitle,
+            style: AppTextStyles.bodySmall
+                .copyWith(color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _AccountCard extends StatelessWidget {
-  const _AccountCard({required this.item});
+  const _AccountCard({
+    required this.item,
+    this.onResumeComplete,
+  });
 
   final UserAccountItem item;
+  final Future<void> Function()? onResumeComplete;
+
+  bool get _canResumeOther {
+    return item.status == '3' && item.resultId != null && item.testId != null;
+  }
+
+  WpiTestKind _kindForTest(int testId) {
+    if (testId == 3) return WpiTestKind.ideal;
+    return WpiTestKind.reality;
+  }
+
+  String _testTitleForFlow(int testId) {
+    if (testId == 3) return 'WPI이상 검사';
+    return 'WPI현실 검사';
+  }
+
+  Future<void> _resumeOther(BuildContext context) async {
+    final testId = item.testId;
+    final resultId = item.resultId;
+    if (testId == null || resultId == null) return;
+
+    await Navigator.of(context).pushNamed(
+      AppRoutes.wpiSelectionFlow,
+      arguments: WpiSelectionFlowArgs(
+        testId: testId,
+        testTitle: _testTitleForFlow(testId),
+        kind: _kindForTest(testId),
+        exitMode: FlowExitMode.openResultDetail,
+        existingResultId: resultId,
+        initialRole: EvaluationRole.other,
+      ),
+    );
+    if (context.mounted) {
+      await onResumeComplete?.call();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -751,17 +998,19 @@ class _AccountCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: item.resultId != null
-            ? () {
-                Navigator.of(context).pushNamed(
-                  AppRoutes.userResultDetail,
-                  arguments: UserResultDetailArgs(
-                    resultId: item.resultId!,
-                    testId: item.testId,
-                  ),
-                );
-              }
-            : null,
+        onTap: _canResumeOther
+            ? () => _resumeOther(context)
+            : (item.resultId != null
+                ? () {
+                    Navigator.of(context).pushNamed(
+                      AppRoutes.userResultSingle,
+                      arguments: UserResultDetailArgs(
+                        resultId: item.resultId!,
+                        testId: item.testId,
+                      ),
+                    );
+                  }
+                : null),
         borderRadius: BorderRadius.circular(18),
         mouseCursor: item.resultId != null
             ? SystemMouseCursors.click
@@ -775,13 +1024,6 @@ class _AccountCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              CircleAvatar(
-                radius: 26,
-                backgroundColor: AppColors.primary.withOpacity(0.1),
-                child: const Icon(Icons.psychology_alt_rounded,
-                    color: AppColors.primary),
-              ),
-              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -884,7 +1126,7 @@ class _AccountCard extends StatelessWidget {
 
   String? _statusLabel(String? status) {
     if (status == '4') return '완료';
-    if (status == '3') return '진행중';
+    if (status == '3') return '이어하기';
     return null;
   }
 
@@ -921,6 +1163,146 @@ class _AccountCard extends StatelessWidget {
         text,
         style: AppTextStyles.caption
             .copyWith(color: color, fontWeight: FontWeight.w700),
+      ),
+    );
+  }
+}
+
+class _RecordSummary {
+  const _RecordSummary({
+    required this.id,
+    required this.title,
+    required this.firstMessageAt,
+    required this.lastMessageAt,
+    required this.totalMessages,
+  });
+
+  factory _RecordSummary.fromJson(Map<String, dynamic> json) {
+    final title = _readString(
+      json,
+      keys: const [
+        'title',
+        'prompt_text',
+        'first_prompt_text',
+        'request_message',
+        'first_request_message',
+        'first_message',
+        'interpretation_title',
+        'conversation_title',
+      ],
+    );
+    return _RecordSummary(
+      id: (json['conversation_id'] ?? json['session_id'] ?? json['id'] ?? '')
+          .toString(),
+      title: title,
+      firstMessageAt: _parseDate(json['first_message_at']?.toString()),
+      lastMessageAt: _parseDate(json['last_message_at']?.toString()),
+      totalMessages: (json['total_messages'] as int?) ?? 0,
+    );
+  }
+
+  final String id;
+  final String title;
+  final DateTime? firstMessageAt;
+  final DateTime? lastMessageAt;
+  final int totalMessages;
+
+  String get displayTitle =>
+      title.trim().isNotEmpty ? title.trim() : '\ub300\ud654 \uae30\ub85d';
+
+  String get dateRangeLabel {
+    final start = _formatDate(firstMessageAt);
+    final end = _formatDate(lastMessageAt);
+    if (start.isEmpty && end.isEmpty) return '-';
+    if (start == end) return start;
+    return '$start ~ $end';
+  }
+
+  static DateTime? _parseDate(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    return DateTime.tryParse(raw);
+  }
+
+  static String _readString(
+    Map<String, dynamic> json, {
+    required List<String> keys,
+  }) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value == null) continue;
+      final str = value.toString().trim();
+      if (str.isEmpty || str == 'null') continue;
+      return str;
+    }
+    return '';
+  }
+
+  static String _formatDate(DateTime? date) {
+    if (date == null) return '';
+    return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
+  }
+}
+
+class _RecordCard extends StatelessWidget {
+  const _RecordCard({required this.item});
+
+  final _RecordSummary item;
+
+  @override
+  Widget build(BuildContext context) {
+    final displayTitle = item.displayTitle;
+    final rawTitle = item.title.trim();
+    return InkWell(
+      onTap: () {
+        Navigator.of(context).pushNamed(
+          AppRoutes.interpretationRecordDetail,
+          arguments: InterpretationRecordDetailArgs(
+            conversationId: item.id,
+            title: rawTitle,
+          ),
+        );
+      },
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      overlayColor: WidgetStateProperty.all(Colors.transparent),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              displayTitle,
+              style: AppTextStyles.bodyMedium
+                  .copyWith(fontWeight: FontWeight.w700),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              item.dateRangeLabel,
+              style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '\uba54\uc2dc\uc9c0 ${item.totalMessages}\uac1c',
+              style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textSecondary),
+            ),
+          ],
+        ),
       ),
     );
   }

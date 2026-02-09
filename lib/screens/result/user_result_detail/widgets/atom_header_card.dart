@@ -66,13 +66,6 @@ class AtomHeaderCard extends StatelessWidget {
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-            child: Text(
-              '현실 구조를 한 장으로 요약한 그림입니다.',
-              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
-            ),
-          ),
         ],
       ),
     );

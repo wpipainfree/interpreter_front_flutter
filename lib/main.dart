@@ -82,6 +82,7 @@ class _WpiAppState extends State<WpiApp> {
       theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
       navigatorKey: AppNavigator.key,
+      navigatorObservers: [AppNavigator.routeObserver],
       onGenerateRoute: AppRouter.onGenerateRoute,
       home: const SplashScreen(),
     );
