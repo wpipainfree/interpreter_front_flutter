@@ -786,6 +786,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   SliverToBoxAdapter _buildRecordHeader() {
     final loggedIn = _authService.isLoggedIn;
+    // 로그인이 안 된 상태에서는 이 섹션을 숨김 (최근 검사 기록에서 로그인 메시지 표시)
+    if (!loggedIn) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
     final hasMore = _recordsHasMore;
     return SliverToBoxAdapter(
       child: Padding(
@@ -794,19 +798,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              '\ucd5c\uadfc \uc9c8\ubb38 \uae30\ub85d',
+              '최근 질문 기록',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
               ),
             ),
-            if (!loggedIn)
-              TextButton(
-                onPressed: () => _promptLoginAndReload(),
-                child: const Text(AppStrings.login),
-              )
-            else if (hasMore)
+            if (hasMore)
               TextButton(
                 onPressed: () {
                   MainShellTabController.index.value = 2;
@@ -815,7 +814,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               )
             else
               Text(
-                '${_records.length}\uac74',
+                '${_records.length}건',
                 style: const TextStyle(
                   fontSize: 14,
                   color: AppColors.textSecondary,
@@ -828,6 +827,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildRecordList() {
+    // 로그인이 안 된 상태에서는 이 섹션을 숨김
+    if (!_authService.isLoggedIn) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
     if (_recordsLoading) {
       return const SliverToBoxAdapter(
         child: Padding(
@@ -837,17 +840,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
     if (_recordsError != null) {
-      final loggedIn = _authService.isLoggedIn;
       return SliverToBoxAdapter(
         child: AppErrorView(
-          title: loggedIn ? 'ë¶ˆëŸ¬ì˜¤ì§€ ëª»í–ˆì–´ìš”' : 'ë¡œê·¸ì¸ì´ í•„ìš”í•©ë‹ˆë‹¤',
+          title: '불러오지 못했어요',
           message: _recordsError!,
-          primaryActionLabel: loggedIn ? AppStrings.retry : AppStrings.login,
-          primaryActionStyle: loggedIn
-              ? AppErrorPrimaryActionStyle.outlined
-              : AppErrorPrimaryActionStyle.filled,
-          onPrimaryAction:
-              loggedIn ? () => _loadRecords() : () => _promptLoginAndReload(),
+          primaryActionLabel: AppStrings.retry,
+          primaryActionStyle: AppErrorPrimaryActionStyle.outlined,
+          onPrimaryAction: () => _loadRecords(),
         ),
       );
     }
@@ -947,8 +946,23 @@ class _AccountCard extends StatelessWidget {
   final UserAccountItem item;
   final Future<void> Function()? onResumeComplete;
 
+  /// resultId를 가져옵니다. item.resultId가 null이면 result 객체에서 ID를 추출합니다.
+  int? get _effectiveResultId {
+    if (item.resultId != null) return item.resultId;
+    // result 객체에서 ID 추출 시도
+    final resultData = item.result;
+    if (resultData == null) return null;
+    final id = resultData['ID'] ?? resultData['id'] ?? resultData['result_id'];
+    if (id is int && id > 0) return id;
+    if (id is String) {
+      final parsed = int.tryParse(id);
+      if (parsed != null && parsed > 0) return parsed;
+    }
+    return null;
+  }
+
   bool get _canResumeOther {
-    return item.status == '3' && item.resultId != null && item.testId != null;
+    return item.status == '3' && _effectiveResultId != null && item.testId != null;
   }
 
   WpiTestKind _kindForTest(int testId) {
@@ -963,7 +977,7 @@ class _AccountCard extends StatelessWidget {
 
   Future<void> _resumeOther(BuildContext context) async {
     final testId = item.testId;
-    final resultId = item.resultId;
+    final resultId = _effectiveResultId;
     if (testId == null || resultId == null) return;
 
     await Navigator.of(context).pushNamed(
@@ -1000,21 +1014,27 @@ class _AccountCard extends StatelessWidget {
       child: InkWell(
         onTap: _canResumeOther
             ? () => _resumeOther(context)
-            : (item.resultId != null
-                ? () {
-                    Navigator.of(context).pushNamed(
-                      AppRoutes.userResultSingle,
-                      arguments: UserResultDetailArgs(
-                        resultId: item.resultId!,
-                        testId: item.testId,
-                      ),
-                    );
-                  }
-                : null),
+            : () {
+                final resultId = _effectiveResultId;
+                if (resultId != null) {
+                  Navigator.of(context).pushNamed(
+                    AppRoutes.userResultSingle,
+                    arguments: UserResultDetailArgs(
+                      resultId: resultId,
+                      testId: item.testId,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('검사 결과가 아직 준비되지 않았습니다.'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
         borderRadius: BorderRadius.circular(18),
-        mouseCursor: item.resultId != null
-            ? SystemMouseCursors.click
-            : SystemMouseCursors.basic,
+        mouseCursor: SystemMouseCursors.click,
         child: Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(

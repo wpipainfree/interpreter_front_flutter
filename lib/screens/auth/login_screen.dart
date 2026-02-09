@@ -99,16 +99,11 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _completeAuth({required bool success}) {
-    if (success) {
-      // 로그인 성공: 메인 페이지로 이동 (이전 화면 모두 제거)
-      Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
-        AppRoutes.main,
-        (route) => false,
-      );
-    } else {
-      // 로그인 취소: 이전 화면으로 돌아가기
-      Navigator.of(context, rootNavigator: true).pop(success);
-    }
+    // 로그인 성공/취소 모두 메인 페이지로 이동
+    Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
+      AppRoutes.main,
+      (route) => false,
+    );
   }
 
   @override
