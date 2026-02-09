@@ -108,16 +108,20 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
 
   /// 결제 결과와 함께 메인 화면으로 이동
   void _navigateToMainWithResult(PaymentResult result) {
-    Future.delayed(const Duration(milliseconds: 100), () {
-      debugPrint('[PaymentWebView] Delayed callback, notifying and popping to main');
+    // 현재 프레임이 완료된 후 안전하게 네비게이션 수행
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      debugPrint('[PaymentWebView] PostFrame callback, notifying and popping to main');
       // 먼저 결제 결과 알림 (MainShell에서 수신 대기)
       PaymentResult.notify(result);
       debugPrint('[PaymentWebView] Result notified, now popping');
-      // 그 다음 메인 화면까지 pop
-      final navigator = AppNavigator.key.currentState;
-      if (navigator != null) {
-        navigator.popUntil((route) => route.settings.name == '/main' || route.isFirst);
-      }
+      // 그 다음 메인 화면까지 pop (다음 프레임에서 실행하여 lock 방지)
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final navigator = AppNavigator.key.currentState;
+        if (navigator != null) {
+          navigator.popUntil((route) => route.settings.name == '/main' || route.isFirst);
+        }
+      });
     });
   }
 

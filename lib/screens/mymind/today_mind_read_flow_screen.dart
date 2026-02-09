@@ -255,7 +255,11 @@ class _TodayMindReadFlowScreenState extends State<TodayMindReadFlowScreen> {
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
-      onPopInvoked: (_) => _prevStep(),
+      onPopInvokedWithResult: (didPop, _) {
+        // didPop이 true면 이미 pop이 진행 중이므로 중복 호출 방지
+        if (didPop) return;
+        _prevStep();
+      },
       child: Scaffold(
         backgroundColor: AppColors.backgroundLight,
         appBar: AppBar(

@@ -30,6 +30,26 @@ Future<PaymentInfo> createPayment(CreatePaymentRequest request)
 
 // 상태 조회
 Future<PaymentInfo> getPaymentStatus(int paymentId)
+
+// 결제 내역 조회
+Future<PaymentHistoryResponse> getPaymentHistory({int page, int pageSize})
+```
+
+### PaymentHistoryItem
+
+```dart
+PaymentHistoryItem(
+  paymentId: int,
+  orderId: String?,
+  testId: int?,
+  testName: String?,      // 'WPI현실 검사', 'WPI이상 검사'
+  amount: int,
+  status: String,         // '2': 완료, '5': 취소
+  statusText: String,     // '결제 완료', '결제 취소'
+  paymentTypeName: String,
+  paymentDate: DateTime?,
+  createdAt: DateTime,
+)
 ```
 
 ### CreatePaymentRequest
@@ -64,12 +84,26 @@ PaymentResult.failed(message)
 PaymentResult.cancelled()
 ```
 
+### PaymentHistoryScreen (`lib/screens/profile/payment_history_screen.dart`)
+
+```dart
+// 마이페이지 → 결제 정보 → 결제 내역
+Navigator.of(context).pushNamed(AppRoutes.paymentHistory);
+```
+
+- 결제 완료/취소 내역만 표시
+- 무한 스크롤 페이지네이션
+- Pull-to-refresh 지원
+- 상태별 뱃지 (완료: 녹색, 취소: 빨간색)
+
 ## 백엔드 API
 
 - `POST /api/v1/mobile-payments` - 결제 생성
 - `GET /api/v1/mobile-payments/{id}` - 상태 조회
+- `GET /api/v1/mobile-payments/history` - 결제 내역 조회
 - `GET /api/v1/mobile-payments/{id}/inicis/mobile/form` - 결제 폼 HTML
 - `POST /api/v1/mobile-payments/{id}/inicis/mobile/return` - INICIS 콜백
+- `POST /api/v1/mobile-payments/{id}/cancel` - 결제 취소
 
 ## 딥링크 설정
 
