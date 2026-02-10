@@ -11,6 +11,7 @@ class AppRoutes {
   static const main = '/main';
 
   static const login = '/login';
+  static const loginEmail = '/login/email';
   static const signup = '/signup';
 
   static const notificationSettings = '/settings/notifications';

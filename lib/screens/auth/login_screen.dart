@@ -1,6 +1,8 @@
 import 'dart:io' show Platform;
-import 'package:flutter/material.dart';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+
 import '../../router/app_routes.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_colors.dart';
@@ -16,20 +18,10 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _authService = AuthService();
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
 
   bool _isLoading = false;
   String? _errorMessage;
   String? _debugMessage;
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
 
   Future<void> _handleSocialLogin(String provider) async {
     setState(() {
@@ -40,6 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final result = await _authService.loginWithSocial(provider);
 
+    if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (result.isSuccess) {
@@ -47,39 +40,12 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // 미등록 사용자인 경우 회원가입 페이지로 이동
     if (result.isUserNotRegistered) {
-      if (!mounted) return;
       Navigator.of(context, rootNavigator: true)
           .pushReplacementNamed(AppRoutes.signup);
       return;
     }
 
-    setState(() {
-      _errorMessage = result.errorMessage;
-      _debugMessage = result.debugMessage;
-    });
-  }
-
-  Future<void> _handleEmailLogin() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-      _debugMessage = null;
-    });
-
-    final result = await _authService.loginWithEmail(
-      _emailController.text.trim(),
-      _passwordController.text,
-    );
-
-    setState(() => _isLoading = false);
-
-    if (result.isSuccess) {
-      _completeAuth(success: true);
-      return;
-    }
     setState(() {
       _errorMessage = result.errorMessage;
       _debugMessage = result.debugMessage;
@@ -92,29 +58,35 @@ class _LoginScreenState extends State<LoginScreen> {
       _errorMessage = null;
       _debugMessage = null;
     });
+
     await _authService.loginAsGuest();
     if (!mounted) return;
+
     setState(() => _isLoading = false);
     _completeAuth(success: true);
   }
 
+  Future<void> _openEmailLogin() async {
+    await Navigator.of(context, rootNavigator: true)
+        .pushNamed<bool>(AppRoutes.loginEmail);
+  }
+
   void _completeAuth({required bool success}) {
     if (success) {
-      // 로그인 성공: 메인 페이지로 이동 (이전 화면 모두 제거)
       Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
         AppRoutes.main,
         (route) => false,
       );
-    } else {
-      // 로그인 취소: 이전 화면으로 돌아가기
-      Navigator.of(context, rootNavigator: true).pop(success);
+      return;
     }
+
+    Navigator.of(context, rootNavigator: true).pop(success);
   }
 
   @override
   Widget build(BuildContext context) {
-    final socialEnabled = FeatureFlags.enableSocialLogin;
-    final signUpEnabled = FeatureFlags.enableEmailSignUp;
+    const socialEnabled = FeatureFlags.enableSocialLogin;
+    const signUpEnabled = FeatureFlags.enableEmailSignUp;
 
     return PopScope(
       canPop: false,
@@ -171,29 +143,39 @@ class _LoginScreenState extends State<LoginScreen> {
                           _isLoading ? null : () => _handleSocialLogin('apple'),
                     ),
                   ],
-                  const SizedBox(height: 20),
-                ],
-                if (_errorMessage != null)
+                ] else
+                  const _SocialDisabledNotice(),
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 16),
                   _ErrorBanner(
                     message: _errorMessage!,
                     debugMessage: kDebugMode ? _debugMessage : null,
                   ),
-                const SizedBox(height: 12),
-                Center(
-                  child: Text(
-                    socialEnabled ? '또는 이메일로 로그인' : '이메일로 로그인',
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
+                ],
+                const SizedBox(height: 28),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: OutlinedButton.icon(
+                    onPressed: _isLoading ? null : _openEmailLogin,
+                    icon: const Icon(Icons.email_outlined),
+                    label: Text(
+                      '이메일로 로그인',
+                      style: AppTextStyles.buttonMedium
+                          .copyWith(color: AppColors.textPrimary),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textPrimary,
+                      side: BorderSide(
+                        color: AppColors.border.withValues(
+                          alpha: _isLoading ? 0.5 : 1,
+                        ),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                _EmailForm(
-                  formKey: _formKey,
-                  emailController: _emailController,
-                  passwordController: _passwordController,
-                  isLoading: _isLoading,
-                  onSubmit: _handleEmailLogin,
                 ),
                 const SizedBox(height: 20),
                 if (signUpEnabled) ...[
@@ -249,8 +231,38 @@ class _LoginHeader extends StatelessWidget {
           '로그인',
           style: AppTextStyles.h2,
           textAlign: TextAlign.center,
-        )
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '소셜 로그인으로 빠르게 시작해보세요.',
+          style: AppTextStyles.bodySmall.copyWith(
+            color: AppColors.textSecondary,
+          ),
+          textAlign: TextAlign.center,
+        ),
       ],
+    );
+  }
+}
+
+class _SocialDisabledNotice extends StatelessWidget {
+  const _SocialDisabledNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundWhite,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Text(
+        '현재 소셜 로그인이 비활성화되어 있어 이메일 로그인을 사용해주세요.',
+        style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+        textAlign: TextAlign.center,
+      ),
     );
   }
 }
@@ -276,7 +288,8 @@ class _SocialButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isEnabled = onPressed != null;
     final effectiveTextColor =
-        isEnabled ? textColor : textColor.withOpacity(0.7);
+        isEnabled ? textColor : textColor.withValues(alpha: 0.7);
+
     return SizedBox(
       width: double.infinity,
       height: 52,
@@ -285,15 +298,16 @@ class _SocialButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: backgroundColor,
           foregroundColor: textColor,
-          disabledBackgroundColor: backgroundColor.withOpacity(0.45),
-          disabledForegroundColor: textColor.withOpacity(0.7),
+          disabledBackgroundColor: backgroundColor.withValues(alpha: 0.45),
+          disabledForegroundColor: textColor.withValues(alpha: 0.7),
           elevation: 0,
           minimumSize: const Size.fromHeight(52),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
             side: borderColor != null
                 ? BorderSide(
-                    color: borderColor!.withOpacity(isEnabled ? 1 : 0.4))
+                    color: borderColor!.withValues(alpha: isEnabled ? 1 : 0.4),
+                  )
                 : BorderSide.none,
           ),
         ),
@@ -310,82 +324,10 @@ class _SocialButton extends StatelessWidget {
   }
 }
 
-class _EmailForm extends StatelessWidget {
-  final GlobalKey<FormState> formKey;
-  final TextEditingController emailController;
-  final TextEditingController passwordController;
-  final bool isLoading;
-  final VoidCallback onSubmit;
-
-  const _EmailForm({
-    required this.formKey,
-    required this.emailController,
-    required this.passwordController,
-    required this.isLoading,
-    required this.onSubmit,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Form(
-      key: formKey,
-      child: Column(
-        children: [
-          TextFormField(
-            controller: emailController,
-            decoration: const InputDecoration(
-              labelText: '이메일',
-              prefixIcon: Icon(Icons.email_outlined),
-            ),
-            keyboardType: TextInputType.emailAddress,
-            validator: (value) => value != null && value.contains('@')
-                ? null
-                : '올바른 이메일을 입력해주세요.',
-            enabled: !isLoading,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: passwordController,
-            decoration: const InputDecoration(
-              labelText: '비밀번호',
-              prefixIcon: Icon(Icons.lock_outlined),
-            ),
-            obscureText: true,
-            validator: (value) => value != null && value.length >= 6
-                ? null
-                : '비밀번호는 6자 이상 입력해주세요.',
-            enabled: !isLoading,
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: isLoading ? null : onSubmit,
-              child: isLoading
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : Text(
-                      '로그인',
-                      style: AppTextStyles.buttonMedium,
-                    ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ErrorBanner extends StatelessWidget {
   final String message;
   final String? debugMessage;
+
   const _ErrorBanner({required this.message, this.debugMessage});
 
   @override
