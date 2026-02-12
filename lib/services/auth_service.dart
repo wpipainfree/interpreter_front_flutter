@@ -35,6 +35,9 @@ class AuthService extends ChangeNotifier {
   static const _storageTokensKey = 'auth.tokens';
   static const _timeout = Duration(seconds: 15);
   static const _refreshBuffer = Duration(seconds: 60);
+  static const _defaultSignupServiceCode = 'PAINFREE_WEB';
+  static const _defaultSignupChannelCode = 'WEB';
+  static const _defaultTermTypes = ['TERMS', 'PRIVACY', 'MARKETING'];
 
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
@@ -990,14 +993,245 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// Placeholder sign-up (not implemented with API).
+  /// Fetches active terms for the signup scope.
+  /// GET /api/v1/terms/current
+  Future<TermsFetchResult> getCurrentTerms({
+    String serviceCode = _defaultSignupServiceCode,
+    String channelCode = _defaultSignupChannelCode,
+    List<String> termTypes = _defaultTermTypes,
+    String contentFormat = 'auto',
+  }) async {
+    final uri = _uri('/api/v1/terms/current');
+    try {
+      final response = await _dio.get(
+        uri.toString(),
+        queryParameters: {
+          'service_code': serviceCode,
+          'channel_code': channelCode,
+          'term_types': termTypes.join(','),
+          'content_format': contentFormat,
+        },
+        options: Options(
+          sendTimeout: _timeout,
+          receiveTimeout: _timeout,
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = _asJsonMap(response.data);
+        final bundle = CurrentTermsBundle.fromJson(data);
+        return TermsFetchResult.success(bundle);
+      }
+
+      return TermsFetchResult.failure(
+        '약관 정보를 불러오지 못했습니다.',
+        debugMessage:
+            'HTTP ${response.statusCode} ${response.statusMessage ?? ''} data=${response.data}',
+      );
+    } on DioException catch (e) {
+      _logNetworkError('getCurrentTerms', e);
+      final statusCode = e.response?.statusCode;
+      if (statusCode == 404) {
+        return TermsFetchResult.failure(
+          '현재 적용 가능한 약관이 없습니다. 잠시 후 다시 시도해주세요.',
+          debugMessage: 'HTTP 404 data=${e.response?.data}',
+        );
+      }
+
+      final message = _extractApiMessage(e.response?.data);
+      return TermsFetchResult.failure(
+        message ?? '약관 정보를 불러오지 못했습니다. 네트워크를 확인해주세요.',
+        debugMessage:
+            'HTTP $statusCode data=${e.response?.data} message=${e.message}',
+      );
+    }
+  }
+
+  /// Registers an email account and immediately logs in on success.
   Future<AuthResult> signUp({
     required String email,
     required String password,
-    required String nickname,
-    DateTime? birthDate,
+    required String name,
+    required String gender,
+    required String birthdayYmd,
+    required bool termsAgreed,
+    required bool privacyAgreed,
+    bool marketingAgreed = true,
+    String serviceCode = _defaultSignupServiceCode,
+    String channelCode = _defaultSignupChannelCode,
+    String? mobileNumber,
+    String? job,
+    String? address,
+    String? education,
+    String? role,
   }) async {
-    return AuthResult.failure('회원가입은 아직 준비되지 않았습니다.');
+    final uri = _uri('/api/v1/users/register');
+    final normalizedMobile = _normalizeMobileNumber(mobileNumber);
+    try {
+      final response = await _dio.post(
+        uri.toString(),
+        data: {
+          'EMAIL': email.trim(),
+          'PASSWORD': password,
+          'GENDER': gender,
+          'NAME': name.trim(),
+          'BIRTHDAY': birthdayYmd,
+          'TERMS_AGREED': termsAgreed ? 'Y' : 'N',
+          'PRIVACY_AGREED': privacyAgreed ? 'Y' : 'N',
+          'MAIL_YN': marketingAgreed ? 'Y' : 'N',
+          'SERVICE_CODE': serviceCode,
+          'CHANNEL_CODE': channelCode,
+          if (normalizedMobile != null) 'MOBILE_NUMBER': normalizedMobile,
+          if (job != null && job.trim().isNotEmpty) 'JOB': job.trim(),
+          if (address != null && address.trim().isNotEmpty)
+            'ADDRESS': address.trim(),
+          if (education != null && education.trim().isNotEmpty)
+            'EDUCATION': education.trim(),
+          if (role != null && role.trim().isNotEmpty) 'ROLE': role.trim(),
+        },
+        options: Options(
+          contentType: Headers.jsonContentType,
+          sendTimeout: _timeout,
+          receiveTimeout: _timeout,
+        ),
+      );
+
+      if (response.statusCode != 201) {
+        final apiMessage = _extractApiMessage(response.data);
+        return AuthResult.failure(
+          apiMessage ?? '회원가입에 실패했습니다. 입력값을 확인해주세요.',
+          debugMessage:
+              'HTTP ${response.statusCode} ${response.statusMessage ?? ''} data=${response.data}',
+        );
+      }
+
+      final loginResult = await loginWithEmail(email, password);
+      if (loginResult.isSuccess) {
+        return loginResult;
+      }
+
+      return AuthResult.failure(
+        '회원가입은 완료되었지만 자동 로그인에 실패했습니다. 이메일 로그인으로 다시 시도해주세요.',
+        errorCode: 'SIGNUP_SUCCESS_LOGIN_REQUIRED',
+        debugMessage:
+            'register=success, auto_login_failed=${loginResult.errorMessage}, debug=${loginResult.debugMessage}',
+      );
+    } on DioException catch (e) {
+      _logNetworkError('signUp', e);
+      final statusCode = e.response?.statusCode;
+      final apiMessage = _extractApiMessage(e.response?.data);
+
+      if (statusCode == 409) {
+        return AuthResult.failure(
+          apiMessage ?? '이미 가입된 이메일입니다. 로그인해주세요.',
+          errorCode: 'EMAIL_ALREADY_EXISTS',
+          debugMessage: 'HTTP 409 data=${e.response?.data}',
+        );
+      }
+      if (statusCode == 400) {
+        return AuthResult.failure(
+          apiMessage ?? '회원가입 조건을 만족하지 않습니다. 입력값을 확인해주세요.',
+          errorCode: 'SIGNUP_VALIDATION_FAILED',
+          debugMessage: 'HTTP 400 data=${e.response?.data}',
+        );
+      }
+      if (statusCode == 422) {
+        return AuthResult.failure(
+          apiMessage ?? '입력 형식이 올바르지 않습니다.',
+          errorCode: 'SIGNUP_SCHEMA_INVALID',
+          debugMessage: 'HTTP 422 data=${e.response?.data}',
+        );
+      }
+
+      return AuthResult.failure(
+        apiMessage ?? '회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.',
+        debugMessage:
+            'HTTP $statusCode data=${e.response?.data} message=${e.message}',
+      );
+    }
+  }
+
+  /// Upserts user terms agreements.
+  /// POST /api/v1/terms/agreements (Authorization required)
+  Future<TermsAgreementUpdateResult> saveTermsAgreements({
+    required String serviceCode,
+    required String channelCode,
+    required List<TermsAgreementItem> agreements,
+    String source = 'settings',
+  }) async {
+    final authHeader = await getAuthorizationHeader(refreshIfNeeded: true);
+    if (authHeader == null) {
+      return TermsAgreementUpdateResult.failure(
+        '로그인이 필요합니다.',
+        errorCode: 'AUTH_REQUIRED',
+      );
+    }
+
+    final normalizedAgreements = agreements
+        .map(
+          (e) => TermsAgreementItem(
+            termsType: e.termsType.toUpperCase(),
+            agreed: e.agreed,
+          ),
+        )
+        .toList();
+
+    final uri = _uri('/api/v1/terms/agreements');
+    try {
+      final response = await _dio.post(
+        uri.toString(),
+        data: {
+          'service_code': serviceCode,
+          'channel_code': channelCode,
+          'source': source,
+          'agreements': normalizedAgreements
+              .map((agreement) => agreement.toJson())
+              .toList(),
+        },
+        options: Options(
+          headers: {'Authorization': authHeader},
+          contentType: Headers.jsonContentType,
+          sendTimeout: _timeout,
+          receiveTimeout: _timeout,
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = _asJsonMap(response.data);
+        final missing = data['missing_term_types'] as List<dynamic>?;
+        return TermsAgreementUpdateResult.success(
+          message: data['message'] as String?,
+          insertedCount: _asInt(data['inserted_count']),
+          updatedCount: _asInt(data['updated_count']),
+          missingTermTypes:
+              missing?.map((e) => e.toString()).toList() ?? const [],
+        );
+      }
+
+      return TermsAgreementUpdateResult.failure(
+        _extractApiMessage(response.data) ?? '약관 동의 저장에 실패했습니다.',
+        debugMessage:
+            'HTTP ${response.statusCode} ${response.statusMessage ?? ''} data=${response.data}',
+      );
+    } on DioException catch (e) {
+      _logNetworkError('saveTermsAgreements', e);
+      final statusCode = e.response?.statusCode;
+      final apiMessage = _extractApiMessage(e.response?.data);
+
+      if (statusCode == 401 || statusCode == 403) {
+        return TermsAgreementUpdateResult.failure(
+          apiMessage ?? '로그인이 만료되었습니다. 다시 로그인해주세요.',
+          errorCode: 'AUTH_REQUIRED',
+          debugMessage: 'HTTP $statusCode data=${e.response?.data}',
+        );
+      }
+
+      return TermsAgreementUpdateResult.failure(
+        apiMessage ?? '약관 동의 저장에 실패했습니다. 잠시 후 다시 시도해주세요.',
+        debugMessage:
+            'HTTP $statusCode data=${e.response?.data} message=${e.message}',
+      );
+    }
   }
 
   /// Guest login (local only, no tokens persisted).
@@ -1235,6 +1469,68 @@ class AuthService extends ChangeNotifier {
       // ignore
     }
     return null;
+  }
+
+  String? _extractApiMessage(dynamic data) {
+    try {
+      if (data is Map<String, dynamic>) {
+        final direct = _extractFirstString([
+          data['detail'],
+          data['message'],
+          data['error'],
+        ]);
+        if (direct != null && direct.isNotEmpty) return direct;
+
+        final errors = data['errors'];
+        if (errors is List) {
+          final collected = errors
+              .map((e) {
+                if (e is String) return e;
+                if (e is Map<String, dynamic>) {
+                  return _extractFirstString([
+                    e['detail'],
+                    e['msg'],
+                    e['message'],
+                    e['error'],
+                  ]);
+                }
+                return null;
+              })
+              .whereType<String>()
+              .where((e) => e.trim().isNotEmpty)
+              .toList();
+          if (collected.isNotEmpty) return collected.join('\n');
+        }
+      } else if (data is String) {
+        final trimmed = data.trim();
+        if (trimmed.isEmpty) return null;
+        try {
+          final decoded = jsonDecode(trimmed);
+          return _extractApiMessage(decoded);
+        } catch (_) {
+          return trimmed;
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
+    return null;
+  }
+
+  String? _extractFirstString(List<dynamic> values) {
+    for (final value in values) {
+      if (value is String && value.trim().isNotEmpty) {
+        return value.trim();
+      }
+    }
+    return null;
+  }
+
+  String? _normalizeMobileNumber(String? mobileNumber) {
+    if (mobileNumber == null) return null;
+    final cleaned = mobileNumber.replaceAll(RegExp(r'\s+'), '');
+    if (cleaned.isEmpty) return null;
+    return cleaned.replaceAll('-', '');
   }
 
   DateTime? _parseAccessTokenExpiry(String? token) {
@@ -1525,10 +1821,182 @@ class AuthResult {
   bool get isUserNotRegistered => errorCode == 'USER_NOT_REGISTERED';
 }
 
+class TermsFetchResult {
+  final bool isSuccess;
+  final CurrentTermsBundle? bundle;
+  final String? errorMessage;
+  final String? debugMessage;
+
+  const TermsFetchResult._({
+    required this.isSuccess,
+    this.bundle,
+    this.errorMessage,
+    this.debugMessage,
+  });
+
+  factory TermsFetchResult.success(CurrentTermsBundle bundle) {
+    return TermsFetchResult._(isSuccess: true, bundle: bundle);
+  }
+
+  factory TermsFetchResult.failure(
+    String message, {
+    String? debugMessage,
+  }) {
+    return TermsFetchResult._(
+      isSuccess: false,
+      errorMessage: message,
+      debugMessage: debugMessage,
+    );
+  }
+}
+
+class CurrentTermsBundle {
+  final String serviceCode;
+  final String channelCode;
+  final String contentFormat;
+  final List<TermsDocument> terms;
+  final List<String> missingTermTypes;
+
+  const CurrentTermsBundle({
+    required this.serviceCode,
+    required this.channelCode,
+    required this.contentFormat,
+    required this.terms,
+    required this.missingTermTypes,
+  });
+
+  factory CurrentTermsBundle.fromJson(Map<String, dynamic> json) {
+    final termsRaw = json['terms'];
+    final missingRaw = json['missing_term_types'];
+    return CurrentTermsBundle(
+      serviceCode: json['service_code'] as String? ?? '',
+      channelCode: json['channel_code'] as String? ?? '',
+      contentFormat: json['content_format'] as String? ?? 'auto',
+      terms: termsRaw is List
+          ? termsRaw
+              .whereType<Map<String, dynamic>>()
+              .map(TermsDocument.fromJson)
+              .toList()
+          : const [],
+      missingTermTypes: missingRaw is List
+          ? missingRaw.map((e) => e.toString()).toList()
+          : const [],
+    );
+  }
+}
+
+class TermsDocument {
+  final String termsType;
+  final String termsVerId;
+  final bool requiredYn;
+  final String termsExplain;
+  final String content;
+  final String contentFormat;
+  final String applyStartYmd;
+  final String effectiveYmd;
+
+  const TermsDocument({
+    required this.termsType,
+    required this.termsVerId,
+    required this.requiredYn,
+    required this.termsExplain,
+    required this.content,
+    required this.contentFormat,
+    required this.applyStartYmd,
+    required this.effectiveYmd,
+  });
+
+  factory TermsDocument.fromJson(Map<String, dynamic> json) {
+    return TermsDocument(
+      termsType: json['terms_type'] as String? ?? '',
+      termsVerId: json['terms_ver_id']?.toString() ?? '',
+      requiredYn: _asYesNoBool(json['required_yn']),
+      termsExplain: json['terms_explain'] as String? ?? '',
+      content: json['content'] as String? ?? '',
+      contentFormat: json['content_format'] as String? ?? 'auto',
+      applyStartYmd: json['apply_start_ymd'] as String? ?? '',
+      effectiveYmd: json['effective_ymd'] as String? ?? '',
+    );
+  }
+}
+
+class TermsAgreementItem {
+  final String termsType;
+  final bool agreed;
+
+  const TermsAgreementItem({
+    required this.termsType,
+    required this.agreed,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'terms_type': termsType.toUpperCase(),
+      'agreed_yn': agreed ? 'Y' : 'N',
+    };
+  }
+}
+
+class TermsAgreementUpdateResult {
+  final bool isSuccess;
+  final String? message;
+  final int insertedCount;
+  final int updatedCount;
+  final List<String> missingTermTypes;
+  final String? errorMessage;
+  final String? debugMessage;
+  final String? errorCode;
+
+  const TermsAgreementUpdateResult._({
+    required this.isSuccess,
+    this.message,
+    this.insertedCount = 0,
+    this.updatedCount = 0,
+    this.missingTermTypes = const [],
+    this.errorMessage,
+    this.debugMessage,
+    this.errorCode,
+  });
+
+  factory TermsAgreementUpdateResult.success({
+    String? message,
+    int insertedCount = 0,
+    int updatedCount = 0,
+    List<String> missingTermTypes = const [],
+  }) {
+    return TermsAgreementUpdateResult._(
+      isSuccess: true,
+      message: message,
+      insertedCount: insertedCount,
+      updatedCount: updatedCount,
+      missingTermTypes: missingTermTypes,
+    );
+  }
+
+  factory TermsAgreementUpdateResult.failure(
+    String message, {
+    String? debugMessage,
+    String? errorCode,
+  }) {
+    return TermsAgreementUpdateResult._(
+      isSuccess: false,
+      errorMessage: message,
+      debugMessage: debugMessage,
+      errorCode: errorCode,
+    );
+  }
+}
+
 int _asInt(dynamic value) {
   if (value is int) return value;
   if (value is String) return int.tryParse(value) ?? 0;
   return 0;
+}
+
+bool _asYesNoBool(dynamic value) {
+  if (value is bool) return value;
+  final normalized = value?.toString().trim().toUpperCase();
+  return normalized == 'Y' || normalized == 'YES' || normalized == 'TRUE';
 }
 
 /// Google Sign-In 결과를 담는 클래스

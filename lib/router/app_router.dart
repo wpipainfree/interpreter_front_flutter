@@ -15,6 +15,7 @@ import '../screens/result/result_summary_screen.dart';
 import '../screens/result/user_result_detail_screen.dart';
 import '../screens/result/user_result_single_screen.dart';
 import '../screens/settings/notification_settings_screen.dart';
+import '../screens/settings/terms_agreement_settings_screen.dart';
 import '../screens/splash_screen.dart';
 import '../screens/test/test_note_screen.dart';
 import '../screens/test/wpi_review_screen.dart';
@@ -53,6 +54,8 @@ class AppRouter {
             fullscreenDialog: true);
       case AppRoutes.notificationSettings:
         return _page(settings, (_) => const NotificationSettingsScreen());
+      case AppRoutes.termsAgreementSettings:
+        return _page(settings, (_) => const TermsAgreementSettingsScreen());
       case AppRoutes.userResultDetail:
         {
           final args = settings.arguments;

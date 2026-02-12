@@ -234,7 +234,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
         children: [
           _ProfileHeader(user: user),
           if (user.counselingClient != null) ...[
-            _SectionTitle('매칭된 내담자 정보'),
+            const _SectionTitle('매칭된 내담자 정보'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _CounselingInfoCard(client: user.counselingClient!),
@@ -242,7 +242,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
             const SizedBox(height: 16),
           ],
           const Divider(height: 32),
-          _SectionTitle('소셜 계정 연동'),
+          const _SectionTitle('소셜 계정 연동'),
           if (_isLoadingProviders)
             const Padding(
               padding: EdgeInsets.all(16),
@@ -273,12 +273,19 @@ class _MyPageScreenState extends State<MyPageScreen> {
             ),
           ],
           const Divider(height: 32),
-          _SectionTitle('설정'),
+          const _SectionTitle('설정'),
           _SettingTile(
             icon: Icons.notifications_outlined,
             title: '알림 설정',
             onTap: () {
               Navigator.of(context).pushNamed(AppRoutes.notificationSettings);
+            },
+          ),
+          _SettingTile(
+            icon: Icons.gavel_outlined,
+            title: '약관 동의 관리',
+            onTap: () {
+              Navigator.of(context).pushNamed(AppRoutes.termsAgreementSettings);
             },
           ),
           _SettingTile(
@@ -345,7 +352,7 @@ class _ProfileHeader extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 36,
-            backgroundColor: AppColors.primary.withOpacity(0.08),
+            backgroundColor: AppColors.primary.withValues(alpha: 0.08),
             child: const Icon(Icons.person_rounded,
                 size: 32, color: AppColors.primary),
           ),
@@ -552,7 +559,7 @@ class _SocialAccountLinkTile extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: _providerColor(provider).withOpacity(0.1),
+          color: _providerColor(provider).withValues(alpha: 0.1),
           shape: BoxShape.circle,
         ),
         child: Icon(
@@ -569,7 +576,7 @@ class _SocialAccountLinkTile extends StatelessWidget {
         !isEnabled ? 'iOS 전용' : (isLinked ? '연동 완료' : '연동 안됨'),
         style: AppTextStyles.caption.copyWith(
           color: !isEnabled
-              ? AppColors.textSecondary.withOpacity(0.5)
+              ? AppColors.textSecondary.withValues(alpha: 0.5)
               : (isLinked ? Colors.green : AppColors.textSecondary),
         ),
       ),
@@ -580,7 +587,7 @@ class _SocialAccountLinkTile extends StatelessWidget {
             ? Center(
                 child: Icon(
                   Icons.lock_outline,
-                  color: AppColors.textSecondary.withOpacity(0.5),
+                  color: AppColors.textSecondary.withValues(alpha: 0.5),
                   size: 20,
                 ),
               )
