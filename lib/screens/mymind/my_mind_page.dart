@@ -648,26 +648,41 @@ class _ResultPanelState extends State<_ResultPanel> {
 
 
 class _ResultCard extends StatelessWidget {
-
   const _ResultCard({required this.item});
-
-
 
   final UserAccountItem item;
 
-
+  /// resultId를 가져옵니다. item.resultId가 null이면 result 객체에서 ID를 추출합니다.
+  int? get _effectiveResultId {
+    if (item.resultId != null) return item.resultId;
+    // result 객체에서 ID 추출 시도
+    final resultData = item.result;
+    if (resultData == null) return null;
+    final id = resultData['ID'] ?? resultData['id'] ?? resultData['result_id'];
+    if (id is int && id > 0) return id;
+    if (id is String) {
+      final parsed = int.tryParse(id);
+      if (parsed != null && parsed > 0) return parsed;
+    }
+    return null;
+  }
 
   void _openDetail(BuildContext context) {
-
-    if (item.resultId == null) return;
+    final resultId = _effectiveResultId;
+    if (resultId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('검사 결과가 아직 준비되지 않았습니다.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
 
     Navigator.of(context).pushNamed(
       AppRoutes.userResultSingle,
-
-      arguments: UserResultDetailArgs(resultId: item.resultId!, testId: item.testId),
-
+      arguments: UserResultDetailArgs(resultId: resultId, testId: item.testId),
     );
-
   }
 
 
@@ -693,11 +708,8 @@ class _ResultCard extends StatelessWidget {
 
 
   void _resumeOther(BuildContext context) {
-
     final testId = item.testId;
-
-    final resultId = item.resultId;
-
+    final resultId = _effectiveResultId;
     if (testId == null || resultId == null) return;
 
 

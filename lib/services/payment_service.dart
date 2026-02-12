@@ -68,6 +68,86 @@ class PaymentInfo {
   bool get isFailed => status == '5' || status == '9' || status == 'failed' || status == 'cancelled';
 }
 
+/// 결제 내역 항목 모델
+class PaymentHistoryItem {
+  final int paymentId;
+  final String? orderId;
+  final int? testId;
+  final String? testName;
+  final int amount;
+  final String status;
+  final String statusText;
+  final int? paymentType;
+  final String paymentTypeName;
+  final DateTime? paymentDate;
+  final DateTime createdAt;
+
+  const PaymentHistoryItem({
+    required this.paymentId,
+    this.orderId,
+    this.testId,
+    this.testName,
+    required this.amount,
+    required this.status,
+    required this.statusText,
+    this.paymentType,
+    required this.paymentTypeName,
+    this.paymentDate,
+    required this.createdAt,
+  });
+
+  factory PaymentHistoryItem.fromJson(Map<String, dynamic> json) {
+    return PaymentHistoryItem(
+      paymentId: json['payment_id'] as int,
+      orderId: json['order_id'] as String?,
+      testId: json['test_id'] as int?,
+      testName: json['test_name'] as String?,
+      amount: json['amount'] as int? ?? 0,
+      status: json['status'] as String? ?? '',
+      statusText: json['status_text'] as String? ?? '',
+      paymentType: json['payment_type'] as int?,
+      paymentTypeName: json['payment_type_name'] as String? ?? '',
+      paymentDate: json['payment_date'] != null
+          ? DateTime.tryParse(json['payment_date'] as String)
+          : null,
+      createdAt: DateTime.parse(json['created_at'] as String),
+    );
+  }
+
+  bool get isCompleted => status == '2';
+  bool get isCancelled => status == '5';
+}
+
+/// 결제 내역 응답 모델
+class PaymentHistoryResponse {
+  final List<PaymentHistoryItem> items;
+  final int total;
+  final int page;
+  final int pageSize;
+  final bool hasMore;
+
+  const PaymentHistoryResponse({
+    required this.items,
+    required this.total,
+    required this.page,
+    required this.pageSize,
+    required this.hasMore,
+  });
+
+  factory PaymentHistoryResponse.fromJson(Map<String, dynamic> json) {
+    return PaymentHistoryResponse(
+      items: (json['items'] as List<dynamic>?)
+              ?.map((e) => PaymentHistoryItem.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      total: json['total'] as int? ?? 0,
+      page: json['page'] as int? ?? 1,
+      pageSize: json['page_size'] as int? ?? 20,
+      hasMore: json['has_more'] as bool? ?? false,
+    );
+  }
+}
+
 /// 결제 생성 요청 모델 (백엔드 API 스펙에 맞춤)
 class CreatePaymentRequest {
   final int userId;
@@ -204,7 +284,46 @@ class PaymentService {
     }
   }
 
-  // ... (중략) ...
+  /// 결제 내역 조회
+  Future<PaymentHistoryResponse> getPaymentHistory({
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    final authHeader = await _authService.getAuthorizationHeader();
+    if (authHeader == null) {
+      throw const AuthRequiredException('로그인이 필요합니다.');
+    }
+
+    final uri = _uri('/api/v1/mobile-payments/history');
+    _log('getPaymentHistory', 'Requesting page $page to $uri');
+
+    try {
+      final response = await _dio.get(
+        uri.toString(),
+        queryParameters: {
+          'page': page,
+          'page_size': pageSize,
+        },
+        options: Options(
+          headers: {'Authorization': authHeader},
+          responseType: ResponseType.json,
+        ),
+      );
+
+      _log('getPaymentHistory', 'Response Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = _asJsonMap(response.data);
+        return PaymentHistoryResponse.fromJson(data);
+      }
+
+      throw Exception(_extractErrorMessage(response));
+    } on DioException catch (e) {
+      _logError('getPaymentHistory', e);
+      final message = _extractErrorMessage(e.response) ?? e.message;
+      throw Exception('결제 내역 조회 오류: $message');
+    }
+  }
 
   Uri _uri(String path) {
     final base = AppConfig.apiBaseUrl.endsWith('/')

@@ -16,6 +16,7 @@ class AppRoutes {
 
   static const notificationSettings = '/settings/notifications';
   static const termsAgreementSettings = '/settings/terms-agreements';
+  static const paymentHistory = '/settings/payment-history';
 
   static const userResultDetail = '/result/detail';
   static const userResultSingle = '/result/single';

@@ -18,6 +18,16 @@ class EntryScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Align(
+                alignment: Alignment.topLeft,
+                child: IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () {
+                    Navigator.of(context).pushReplacementNamed(AppRoutes.main);
+                  },
+                  tooltip: '닫기',
+                ),
+              ),
               const Spacer(flex: 3),
               Text(
                 '당신의 이야기를\n구조적으로 정리해요.',

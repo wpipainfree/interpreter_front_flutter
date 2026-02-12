@@ -273,7 +273,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
             ),
           ],
           const Divider(height: 32),
-          const _SectionTitle('설정'),
+          _SectionTitle('결제 정보'),
+          _SettingTile(
+            icon: Icons.receipt_long_outlined,
+            title: '결제 내역',
+            onTap: () {
+              Navigator.of(context).pushNamed(AppRoutes.paymentHistory);
+            },
+          ),
+          const Divider(height: 32),
+          _SectionTitle('설정'),
           _SettingTile(
             icon: Icons.notifications_outlined,
             title: '알림 설정',
