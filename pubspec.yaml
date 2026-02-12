@@ -1,7 +1,7 @@
 name: wpi_app
 publish_to: 'none'
 description: WPI 심리 검사 애플리케이션
-version: 0.1.0+1
+version: 0.1.0+2
 
 environment:
   sdk: '>=3.1.0 <4.0.0'
