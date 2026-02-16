@@ -17,10 +17,12 @@ class WpiSelectionScreen extends StatefulWidget {
     super.key,
     required this.testId,
     required this.testTitle,
+    this.viewModel,
   });
 
   final int testId;
   final String testTitle;
+  final WpiSelectionViewModel? viewModel;
 
   @override
   State<WpiSelectionScreen> createState() => _WpiSelectionScreenState();
@@ -53,7 +55,8 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
   @override
   void initState() {
     super.initState();
-    _viewModel = WpiSelectionViewModel(AppScope.instance.psychTestRepository);
+    _viewModel = widget.viewModel ??
+        WpiSelectionViewModel(AppScope.instance.psychTestRepository);
     _init();
   }
 

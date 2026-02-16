@@ -23,6 +23,7 @@ class WpiSelectionFlowNew extends StatefulWidget {
     this.exitMode = FlowExitMode.openResultDetail,
     this.existingResultId,
     this.initialRole,
+    this.viewModel,
   });
 
   final int testId;
@@ -32,6 +33,7 @@ class WpiSelectionFlowNew extends StatefulWidget {
   final FlowExitMode exitMode;
   final int? existingResultId;
   final EvaluationRole? initialRole;
+  final WpiSelectionFlowViewModel? viewModel;
 
   @override
   State<WpiSelectionFlowNew> createState() => _WpiSelectionFlowNewState();
@@ -68,7 +70,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
   @override
   void initState() {
     super.initState();
-    _viewModel =
+    _viewModel = widget.viewModel ??
         WpiSelectionFlowViewModel(AppScope.instance.psychTestRepository);
     _resultId = widget.existingResultId;
     _init();

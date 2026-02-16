@@ -18,6 +18,7 @@ class WpiReviewScreen extends StatefulWidget {
     this.processSequence,
     this.deferNavigation = false,
     this.existingResultId,
+    this.viewModel,
   });
 
   final int testId;
@@ -27,6 +28,7 @@ class WpiReviewScreen extends StatefulWidget {
   final int? processSequence;
   final bool deferNavigation;
   final int? existingResultId;
+  final WpiReviewViewModel? viewModel;
 
   @override
   State<WpiReviewScreen> createState() => _WpiReviewScreenState();
@@ -41,7 +43,8 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
   @override
   void initState() {
     super.initState();
-    _viewModel = WpiReviewViewModel(AppScope.instance.psychTestRepository)
+    _viewModel = (widget.viewModel ??
+        WpiReviewViewModel(AppScope.instance.psychTestRepository))
       ..addListener(_onViewModelChanged);
     _buckets = {
       1: widget.items

@@ -112,7 +112,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
       ),
     );
     return DashboardPaymentSession(
-      paymentId: created.paymentId,
+      paymentId: created.paymentId.toString(),
       webviewUrl: created.webviewUrl,
     );
   }
