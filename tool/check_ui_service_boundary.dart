@@ -14,6 +14,9 @@ void main(List<String> args) {
               'lib/screens/result/user_result_single_screen.dart',
               'lib/screens/result/user_result_detail_screen.dart',
               'lib/screens/result/user_result_detail',
+              'lib/screens/payment/payment_webview_screen.dart',
+              'lib/screens/profile/payment_history_screen.dart',
+              'lib/screens/settings/notification_settings_screen.dart',
               'lib/screens/settings/terms_agreement_settings_screen.dart',
             ]);
 

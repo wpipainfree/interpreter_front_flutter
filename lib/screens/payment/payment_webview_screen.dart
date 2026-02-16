@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import '../../services/payment_service.dart';
+import '../../app/di/app_scope.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_navigator.dart';
 
@@ -111,7 +111,8 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
     // 현재 프레임이 완료된 후 안전하게 네비게이션 수행
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      debugPrint('[PaymentWebView] PostFrame callback, notifying and popping to main');
+      debugPrint(
+          '[PaymentWebView] PostFrame callback, notifying and popping to main');
       // 먼저 결제 결과 알림 (MainShell에서 수신 대기)
       PaymentResult.notify(result);
       debugPrint('[PaymentWebView] Result notified, now popping');
@@ -119,7 +120,8 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final navigator = AppNavigator.key.currentState;
         if (navigator != null) {
-          navigator.popUntil((route) => route.settings.name == '/main' || route.isFirst);
+          navigator.popUntil(
+              (route) => route.settings.name == '/main' || route.isFirst);
         }
       });
     });
@@ -231,9 +233,11 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
     debugPrint('[PaymentWebView] Starting payment success handler');
 
     try {
-      final paymentService = PaymentService();
-      final status = await paymentService.getPaymentStatus(widget.paymentId);
-      debugPrint('[PaymentWebView] Status received: isSuccess=${status.isSuccess}, status=${status.status}');
+      final status = await AppScope.instance.paymentRepository.getPaymentStatus(
+        widget.paymentId,
+      );
+      debugPrint(
+          '[PaymentWebView] Status received: isSuccess=${status.isSuccess}, status=${status.status}');
 
       final result = status.isSuccess
           ? PaymentResult.success(widget.paymentId)
@@ -280,7 +284,8 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
             if (data.containsKey('detail')) {
               final detail = data['detail'];
               if (detail is String) {
-                _navigateToMainWithResult(PaymentResult.failed('결제 오류: $detail'));
+                _navigateToMainWithResult(
+                    PaymentResult.failed('결제 오류: $detail'));
                 return;
               }
             }
@@ -395,7 +400,8 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
             LinearProgressIndicator(
               value: _progress > 0 ? _progress : null,
               backgroundColor: Colors.grey.shade200,
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
           if (_isVerifying)
             Container(
@@ -444,8 +450,9 @@ class _WebPaymentDialogState extends State<_WebPaymentDialog> {
     });
 
     try {
-      final paymentService = PaymentService();
-      final status = await paymentService.getPaymentStatus(widget.paymentId);
+      final status = await AppScope.instance.paymentRepository.getPaymentStatus(
+        widget.paymentId,
+      );
 
       if (!mounted) return;
 

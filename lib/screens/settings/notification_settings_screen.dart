@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../services/notification_service.dart';
+
+import '../../app/di/app_scope.dart';
+import '../../ui/settings/notification_settings_view_model.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 
@@ -7,34 +9,34 @@ class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
 
   @override
-  State<NotificationSettingsScreen> createState() => _NotificationSettingsScreenState();
+  State<NotificationSettingsScreen> createState() =>
+      _NotificationSettingsScreenState();
 }
 
-class _NotificationSettingsScreenState extends State<NotificationSettingsScreen> {
-  final NotificationService _notificationService = NotificationService();
-  
-  bool _notificationsEnabled = true;
-  bool _reminderEnabled = true;
-  int _reminderDays = 30;
-  bool _isLoading = true;
+class _NotificationSettingsScreenState
+    extends State<NotificationSettingsScreen> {
+  late final NotificationSettingsViewModel _viewModel;
 
   @override
   void initState() {
     super.initState();
-    _loadSettings();
+    _viewModel = NotificationSettingsViewModel(
+      AppScope.instance.notificationRepository,
+    );
+    _viewModel.addListener(_handleViewModelChanged);
+    _viewModel.start();
   }
 
-  Future<void> _loadSettings() async {
-    final notificationsEnabled = await _notificationService.isNotificationsEnabled();
-    final reminderEnabled = await _notificationService.isReminderEnabled();
-    final reminderDays = await _notificationService.getReminderDays();
-    
-    setState(() {
-      _notificationsEnabled = notificationsEnabled;
-      _reminderEnabled = reminderEnabled;
-      _reminderDays = reminderDays;
-      _isLoading = false;
-    });
+  @override
+  void dispose() {
+    _viewModel.removeListener(_handleViewModelChanged);
+    _viewModel.dispose();
+    super.dispose();
+  }
+
+  void _handleViewModelChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   @override
@@ -47,30 +49,29 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: _isLoading
+      body: _viewModel.loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 안내 텍스트
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0F4C81).withOpacity(0.1),
+                      color: const Color(0xFF0F4C81).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Row(
+                    child: const Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.notifications_active_outlined,
                           color: Color(0xFF0F4C81),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            '알림을 통해 검사 결과와 리마인더를 받아보세요.',
+                            '??? ?? ?? ??? ????? ?????.',
                             style: TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 14,
@@ -80,10 +81,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                       ],
                     ),
                   ),
-                  
                   const SizedBox(height: 24),
-                  
-                  // 전체 알림 설정
                   _buildSettingsCard(
                     title: '알림 설정',
                     children: [
@@ -92,25 +90,15 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                         iconColor: const Color(0xFF0F4C81),
                         title: '알림 받기',
                         subtitle: '모든 알림을 켜거나 끕니다',
-                        value: _notificationsEnabled,
-                        onChanged: (value) async {
-                          setState(() => _notificationsEnabled = value);
-                          await _notificationService.setNotificationsEnabled(value);
-                          
-                          if (value) {
-                            await _notificationService.requestPermission();
-                          }
-                        },
+                        value: _viewModel.notificationsEnabled,
+                        onChanged: _viewModel.setNotificationsEnabled,
                       ),
                     ],
                   ),
-                  
                   const SizedBox(height: 16),
-                  
-                  // 검사 완료 알림
                   _buildSettingsCard(
                     title: '검사 완료 알림',
-                    enabled: _notificationsEnabled,
+                    enabled: _viewModel.notificationsEnabled,
                     children: [
                       _buildInfoTile(
                         icon: Icons.check_circle_outline_rounded,
@@ -120,36 +108,29 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                       ),
                     ],
                   ),
-                  
                   const SizedBox(height: 16),
-                  
-                  // 검사 권유 알림
                   _buildSettingsCard(
                     title: '검사 리마인더',
-                    enabled: _notificationsEnabled,
+                    enabled: _viewModel.notificationsEnabled,
                     children: [
                       _buildSwitchTile(
                         icon: Icons.event_repeat_rounded,
                         iconColor: const Color(0xFFF57C00),
                         title: '정기 검사 알림',
                         subtitle: '설정한 기간이 지나면 검사를 권유합니다',
-                        value: _reminderEnabled,
-                        onChanged: _notificationsEnabled
-                            ? (value) async {
-                                setState(() => _reminderEnabled = value);
-                                await _notificationService.setReminderEnabled(value);
-                              }
+                        value: _viewModel.reminderEnabled,
+                        onChanged: _viewModel.notificationsEnabled
+                            ? _viewModel.setReminderEnabled
                             : null,
                       ),
-                      if (_reminderEnabled && _notificationsEnabled) ...[
+                      if (_viewModel.reminderEnabled &&
+                          _viewModel.notificationsEnabled) ...[
                         const Divider(height: 1),
                         _buildReminderDaysTile(),
                       ],
                     ],
                   ),
-                  
                   const SizedBox(height: 24),
-                  
                   const SizedBox(height: 40),
                 ],
               ),
@@ -170,7 +151,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -213,7 +194,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
+              color: iconColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: iconColor, size: 24),
@@ -245,7 +226,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
           Switch.adaptive(
             value: value,
             onChanged: onChanged,
-            activeColor: const Color(0xFF0F4C81),
+            activeThumbColor: const Color(0xFF0F4C81),
           ),
         ],
       ),
@@ -266,7 +247,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
+              color: iconColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: iconColor, size: 24),
@@ -298,7 +279,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
+              color: iconColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
@@ -322,7 +303,11 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
         children: [
           Row(
             children: [
-              const Icon(Icons.schedule, size: 20, color: AppColors.textSecondary),
+              const Icon(
+                Icons.schedule,
+                size: 20,
+                color: AppColors.textSecondary,
+              ),
               const SizedBox(width: 8),
               const Text(
                 '알림 주기',
@@ -333,7 +318,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
               ),
               const Spacer(),
               Text(
-                '$_reminderDays일 후',
+                '${_viewModel.reminderDays}일 후',
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -360,12 +345,9 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
   }
 
   Widget _buildDaysChip(int days, String label) {
-    final isSelected = _reminderDays == days;
+    final isSelected = _viewModel.reminderDays == days;
     return GestureDetector(
-      onTap: () async {
-        setState(() => _reminderDays = days);
-        await _notificationService.setReminderDays(days);
-      },
+      onTap: () => _viewModel.setReminderDays(days),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
@@ -382,7 +364,4 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
       ),
     );
   }
-
-
 }
-

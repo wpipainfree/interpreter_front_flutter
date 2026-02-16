@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
-import '../../services/payment_service.dart';
+
+import '../../app/di/app_scope.dart';
+import '../../domain/model/payment_models.dart';
+import '../../ui/profile/payment_history_view_model.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 
-/// 날짜 포맷 헬퍼
 String _formatDate(DateTime date) {
   return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')} '
       '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
 }
 
-/// 금액 포맷 헬퍼 (천 단위 콤마)
 String _formatCurrency(int amount) {
   final str = amount.toString();
   final buffer = StringBuffer();
@@ -30,81 +31,37 @@ class PaymentHistoryScreen extends StatefulWidget {
 }
 
 class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
-  final PaymentService _paymentService = PaymentService();
   final ScrollController _scrollController = ScrollController();
-
-  List<PaymentHistoryItem> _items = [];
-  bool _isLoading = true;
-  bool _isLoadingMore = false;
-  String? _error;
-  int _currentPage = 1;
-  bool _hasMore = true;
+  late final PaymentHistoryViewModel _viewModel;
 
   @override
   void initState() {
     super.initState();
-    _loadPaymentHistory();
+    _viewModel = PaymentHistoryViewModel(AppScope.instance.paymentRepository);
+    _viewModel.addListener(_handleViewModelChanged);
+    _viewModel.start();
     _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
+    _viewModel.removeListener(_handleViewModelChanged);
+    _viewModel.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _handleViewModelChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   void _onScroll() {
     if (_scrollController.position.pixels >=
             _scrollController.position.maxScrollExtent - 200 &&
-        !_isLoadingMore &&
-        _hasMore) {
-      _loadMore();
-    }
-  }
-
-  Future<void> _loadPaymentHistory() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final response = await _paymentService.getPaymentHistory(page: 1);
-      if (!mounted) return;
-      setState(() {
-        _items = response.items;
-        _currentPage = 1;
-        _hasMore = response.hasMore;
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _loadMore() async {
-    if (_isLoadingMore || !_hasMore) return;
-
-    setState(() => _isLoadingMore = true);
-
-    try {
-      final response = await _paymentService.getPaymentHistory(
-        page: _currentPage + 1,
-      );
-      if (!mounted) return;
-      setState(() {
-        _items.addAll(response.items);
-        _currentPage++;
-        _hasMore = response.hasMore;
-        _isLoadingMore = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoadingMore = false);
+        !_viewModel.loadingMore &&
+        _viewModel.hasMore) {
+      _viewModel.loadMore();
     }
   }
 
@@ -124,29 +81,32 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
   }
 
   Widget _buildBody() {
-    if (_isLoading) {
+    if (_viewModel.loading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_error != null) {
+    if (_viewModel.error != null) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline,
-                  size: 48, color: AppColors.textSecondary),
+              const Icon(
+                Icons.error_outline,
+                size: 48,
+                color: AppColors.textSecondary,
+              ),
               const SizedBox(height: 16),
               Text(
-                _error!,
+                _viewModel.error!,
                 style: AppTextStyles.bodyMedium
                     .copyWith(color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: _loadPaymentHistory,
+                onPressed: _viewModel.load,
                 child: const Text('다시 시도'),
               ),
             ],
@@ -155,19 +115,23 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
       );
     }
 
-    if (_items.isEmpty) {
+    if (_viewModel.items.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.receipt_long_outlined,
-                  size: 64, color: AppColors.textSecondary.withOpacity(0.5)),
+              Icon(
+                Icons.receipt_long_outlined,
+                size: 64,
+                color: AppColors.textSecondary.withValues(alpha: 0.5),
+              ),
               const SizedBox(height: 16),
               Text(
                 '결제 내역이 없습니다',
-                style: AppTextStyles.h4.copyWith(color: AppColors.textSecondary),
+                style:
+                    AppTextStyles.h4.copyWith(color: AppColors.textSecondary),
               ),
               const SizedBox(height: 8),
               Text(
@@ -183,19 +147,19 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: _loadPaymentHistory,
+      onRefresh: _viewModel.refresh,
       child: ListView.builder(
         controller: _scrollController,
         padding: const EdgeInsets.all(16),
-        itemCount: _items.length + (_isLoadingMore ? 1 : 0),
+        itemCount: _viewModel.items.length + (_viewModel.loadingMore ? 1 : 0),
         itemBuilder: (context, index) {
-          if (index == _items.length) {
+          if (index == _viewModel.items.length) {
             return const Padding(
               padding: EdgeInsets.all(16),
               child: Center(child: CircularProgressIndicator()),
             );
           }
-          return _PaymentHistoryCard(item: _items[index]);
+          return _PaymentHistoryCard(item: _viewModel.items[index]);
         },
       ),
     );
@@ -203,9 +167,9 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
 }
 
 class _PaymentHistoryCard extends StatelessWidget {
-  final PaymentHistoryItem item;
-
   const _PaymentHistoryCard({required this.item});
+
+  final PaymentHistoryEntry item;
 
   @override
   Widget build(BuildContext context) {
@@ -261,7 +225,7 @@ class _PaymentHistoryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Divider(color: AppColors.border.withOpacity(0.5)),
+          Divider(color: AppColors.border.withValues(alpha: 0.5)),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -305,15 +269,15 @@ class _PaymentHistoryCard extends StatelessWidget {
 }
 
 class _StatusBadge extends StatelessWidget {
-  final String text;
-  final bool isCompleted;
-  final bool isCancelled;
-
   const _StatusBadge({
     required this.text,
     required this.isCompleted,
     required this.isCancelled,
   });
+
+  final String text;
+  final bool isCompleted;
+  final bool isCancelled;
 
   @override
   Widget build(BuildContext context) {
