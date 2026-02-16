@@ -2,8 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+import '../../app/di/app_scope.dart';
+import '../../domain/model/signup_request.dart';
+import '../../domain/model/terms.dart';
 import '../../router/app_routes.dart';
-import '../../services/auth_service.dart';
+import '../../ui/auth/view_models/signup_view_model.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 
@@ -17,7 +20,8 @@ class SignUpScreen extends StatefulWidget {
 class _SignUpScreenState extends State<SignUpScreen> {
   static const _requiredTermTypes = {'TERMS', 'PRIVACY'};
 
-  final _authService = AuthService();
+  final SignUpViewModel _viewModel =
+      SignUpViewModel(AppScope.instance.authRepository);
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -79,26 +83,27 @@ class _SignUpScreenState extends State<SignUpScreen> {
       _termsErrorMessage = null;
     });
 
-    final result = await _authService.getCurrentTerms();
+    final result = await _viewModel.loadCurrentTerms();
     if (!mounted) return;
 
-    if (result.isSuccess && result.bundle != null) {
-      final bundle = result.bundle!;
-      setState(() {
-        _serviceCode =
-            bundle.serviceCode.isNotEmpty ? bundle.serviceCode : _serviceCode;
-        _channelCode =
-            bundle.channelCode.isNotEmpty ? bundle.channelCode : _channelCode;
-        _terms = bundle.terms;
-        _isTermsLoading = false;
-      });
-      return;
-    }
-
-    setState(() {
-      _isTermsLoading = false;
-      _termsErrorMessage = result.errorMessage ?? '약관 정보를 불러오지 못했습니다.';
-    });
+    result.when(
+      success: (bundle) {
+        setState(() {
+          _serviceCode =
+              bundle.serviceCode.isNotEmpty ? bundle.serviceCode : _serviceCode;
+          _channelCode =
+              bundle.channelCode.isNotEmpty ? bundle.channelCode : _channelCode;
+          _terms = bundle.terms;
+          _isTermsLoading = false;
+        });
+      },
+      failure: (failure) {
+        setState(() {
+          _isTermsLoading = false;
+          _termsErrorMessage = failure.userMessage;
+        });
+      },
+    );
   }
 
   Future<void> _pickBirthday() async {
@@ -171,7 +176,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Text(
-                    '버전 ${term.termsVerId} · 시행일 ${term.effectiveYmd}',
+                    'ë²„ì „ ${term.termsVerId} Â· ì‹œí–‰ì¼ ${term.effectiveYmd}',
                     style: AppTextStyles.captionSmall
                         .copyWith(color: AppColors.textSecondary),
                   ),
@@ -205,11 +210,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
   String _termTitle(String type) {
     switch (type.toUpperCase()) {
       case 'TERMS':
-        return '이용약관';
+        return 'ì´ìš©ì•½ê´€';
       case 'PRIVACY':
-        return '개인정보 처리방침';
+        return 'ê°œì¸ì •ë³´ ì²˜ë¦¬ë°©ì¹¨';
       case 'MARKETING':
-        return '마케팅 정보 수신 동의';
+        return 'ë§ˆì¼€íŒ… ì •ë³´ ìˆ˜ì‹  ë™ì˜';
       default:
         return type;
     }
@@ -217,39 +222,39 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   String? _validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return '이메일을 입력해주세요.';
+      return 'ì´ë©”ì¼ì„ ìž…ë ¥í•´ì£¼ì„¸ìš”.';
     }
     const pattern = r'^[^@\s]+@[^@\s]+\.[^@\s]+$';
     if (!RegExp(pattern).hasMatch(value.trim())) {
-      return '올바른 이메일 형식을 입력해주세요.';
+      return 'ì˜¬ë°”ë¥¸ ì´ë©”ì¼ í˜•ì‹ì„ ìž…ë ¥í•´ì£¼ì„¸ìš”.';
     }
     return null;
   }
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return '비밀번호를 입력해주세요.';
+      return 'ë¹„ë°€ë²ˆí˜¸ë¥¼ ìž…ë ¥í•´ì£¼ì„¸ìš”.';
     }
     const pattern = r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,20}$';
     if (!RegExp(pattern).hasMatch(value)) {
-      return '8~20자, 영문/숫자/특수문자를 모두 포함해야 합니다.';
+      return '8~20ìž, ì˜ë¬¸/ìˆ«ìž/íŠ¹ìˆ˜ë¬¸ìžë¥¼ ëª¨ë‘ í¬í•¨í•´ì•¼ í•©ë‹ˆë‹¤.';
     }
     return null;
   }
 
   String? _validateName(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return '이름을 입력해주세요.';
+      return 'ì´ë¦„ì„ ìž…ë ¥í•´ì£¼ì„¸ìš”.';
     }
     return null;
   }
 
   String? _validateBirthday(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return '생년월일을 선택해주세요.';
+      return 'ìƒë…„ì›”ì¼ì„ ì„ íƒí•´ì£¼ì„¸ìš”.';
     }
     if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value.trim())) {
-      return '생년월일 형식이 올바르지 않습니다.';
+      return 'ìƒë…„ì›”ì¼ í˜•ì‹ì´ ì˜¬ë°”ë¥´ì§€ ì•ŠìŠµë‹ˆë‹¤.';
     }
     return null;
   }
@@ -261,7 +266,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final cleaned =
         value.trim().replaceAll(RegExp(r'\s+'), '').replaceAll('-', '');
     if (!RegExp(r'^\+?\d+$').hasMatch(cleaned)) {
-      return '휴대폰 번호는 숫자 또는 +국가코드 형식으로 입력해주세요.';
+      return 'íœ´ëŒ€í° ë²ˆí˜¸ëŠ” ìˆ«ìž ë˜ëŠ” +êµ­ê°€ì½”ë“œ í˜•ì‹ìœ¼ë¡œ ìž…ë ¥í•´ì£¼ì„¸ìš”.';
     }
     return null;
   }
@@ -272,21 +277,23 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     if (!_hasRequiredTerms) {
       setState(() {
-        _errorMessage = '필수 약관 정보를 불러오지 못해 가입을 진행할 수 없습니다. 약관 다시 불러오기를 시도해주세요.';
+        _errorMessage =
+            'í•„ìˆ˜ ì•½ê´€ ì •ë³´ë¥¼ ë¶ˆëŸ¬ì˜¤ì§€ ëª»í•´ ê°€ìž…ì„ ì§„í–‰í•  ìˆ˜ ì—†ìŠµë‹ˆë‹¤. ì•½ê´€ ë‹¤ì‹œ ë¶ˆëŸ¬ì˜¤ê¸°ë¥¼ ì‹œë„í•´ì£¼ì„¸ìš”.';
       });
       return;
     }
 
     if (!_termsAgreed || !_privacyAgreed) {
       setState(() {
-        _errorMessage = '필수 약관(이용약관, 개인정보 처리방침)에 동의해야 가입할 수 있습니다.';
+        _errorMessage =
+            'í•„ìˆ˜ ì•½ê´€(ì´ìš©ì•½ê´€, ê°œì¸ì •ë³´ ì²˜ë¦¬ë°©ì¹¨)ì— ë™ì˜í•´ì•¼ ê°€ìž…í•  ìˆ˜ ìžˆìŠµë‹ˆë‹¤.';
       });
       return;
     }
 
     if (_selectedGender == null) {
       setState(() {
-        _errorMessage = '성별을 선택해주세요.';
+        _errorMessage = 'ì„±ë³„ì„ ì„ íƒí•´ì£¼ì„¸ìš”.';
       });
       return;
     }
@@ -299,33 +306,35 @@ class _SignUpScreenState extends State<SignUpScreen> {
       _debugMessage = null;
     });
 
-    final result = await _authService.signUp(
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-      name: _nameController.text.trim(),
-      gender: _selectedGender!,
-      birthdayYmd: birthdayYmd,
-      termsAgreed: _termsAgreed,
-      privacyAgreed: _privacyAgreed,
-      marketingAgreed: _marketingAgreed,
-      serviceCode: _serviceCode,
-      channelCode: _channelCode,
-      mobileNumber: _mobileController.text.trim(),
+    final result = await _viewModel.signUp(
+      SignUpRequest(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        name: _nameController.text.trim(),
+        gender: _selectedGender!,
+        birthdayYmd: birthdayYmd,
+        termsAgreed: _termsAgreed,
+        privacyAgreed: _privacyAgreed,
+        marketingAgreed: _marketingAgreed,
+        serviceCode: _serviceCode,
+        channelCode: _channelCode,
+        mobileNumber: _mobileController.text.trim(),
+      ),
     );
 
     if (!mounted) return;
 
     setState(() => _isSubmitting = false);
 
-    if (result.isSuccess) {
-      _completeAuth(success: true);
-      return;
-    }
-
-    setState(() {
-      _errorMessage = result.errorMessage;
-      _debugMessage = result.debugMessage;
-    });
+    result.when(
+      success: (_) => _completeAuth(success: true),
+      failure: (failure) {
+        setState(() {
+          _errorMessage = failure.userMessage;
+          _debugMessage = failure.debugMessage;
+        });
+      },
+    );
   }
 
   void _completeAuth({required bool success}) {
@@ -375,7 +384,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
-                          labelText: '이메일',
+                          labelText: 'ì´ë©”ì¼',
                           prefixIcon: Icon(Icons.email_outlined),
                         ),
                         validator: _validateEmail,
@@ -387,8 +396,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         obscureText: true,
                         textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
-                          labelText: '비밀번호',
-                          hintText: '8~20자, 영문/숫자/특수문자 포함',
+                          labelText: 'ë¹„ë°€ë²ˆí˜¸',
+                          hintText:
+                              '8~20ìž, ì˜ë¬¸/ìˆ«ìž/íŠ¹ìˆ˜ë¬¸ìž í¬í•¨',
                           prefixIcon: Icon(Icons.lock_outlined),
                         ),
                         validator: _validatePassword,
@@ -399,7 +409,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         enabled: !_isSubmitting,
                         textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
-                          labelText: '이름',
+                          labelText: 'ì´ë¦„',
                           prefixIcon: Icon(Icons.person_outline),
                         ),
                         validator: _validateName,
@@ -408,19 +418,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       DropdownButtonFormField<String>(
                         initialValue: _selectedGender,
                         decoration: const InputDecoration(
-                          labelText: '성별',
+                          labelText: 'ì„±ë³„',
                           prefixIcon: Icon(Icons.wc_outlined),
                         ),
                         items: const [
-                          DropdownMenuItem(value: '남', child: Text('남')),
-                          DropdownMenuItem(value: '여', child: Text('여')),
+                          DropdownMenuItem(value: 'ë‚¨', child: Text('ë‚¨')),
+                          DropdownMenuItem(value: 'ì—¬', child: Text('ì—¬')),
                         ],
                         onChanged: _isSubmitting
                             ? null
                             : (value) =>
                                 setState(() => _selectedGender = value),
-                        validator: (value) =>
-                            value == null ? '성별을 선택해주세요.' : null,
+                        validator: (value) => value == null
+                            ? 'ì„±ë³„ì„ ì„ íƒí•´ì£¼ì„¸ìš”.'
+                            : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
@@ -429,7 +440,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         readOnly: true,
                         onTap: _pickBirthday,
                         decoration: const InputDecoration(
-                          labelText: '생년월일',
+                          labelText: 'ìƒë…„ì›”ì¼',
                           hintText: 'YYYY-MM-DD',
                           prefixIcon: Icon(Icons.cake_outlined),
                         ),
@@ -442,8 +453,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         keyboardType: TextInputType.phone,
                         textInputAction: TextInputAction.done,
                         decoration: const InputDecoration(
-                          labelText: '휴대폰 번호 (선택)',
-                          hintText: '예: 01012345678 또는 +821012345678',
+                          labelText: 'íœ´ëŒ€í° ë²ˆí˜¸ (ì„ íƒ)',
+                          hintText: 'ì˜ˆ: 01012345678 ë˜ëŠ” +821012345678',
                           prefixIcon: Icon(Icons.phone_outlined),
                         ),
                         validator: _validateMobile,
@@ -500,7 +511,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             ),
                           )
                         : Text(
-                            '회원가입',
+                            'íšŒì›ê°€ìž…',
                             style: AppTextStyles.buttonMedium,
                           ),
                   ),
@@ -515,7 +526,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 .pushReplacementNamed(AppRoutes.login);
                           },
                     child: Text(
-                      '이미 계정이 있으신가요? 로그인',
+                      'ì´ë¯¸ ê³„ì •ì´ ìžˆìœ¼ì‹ ê°€ìš”? ë¡œê·¸ì¸',
                       style: AppTextStyles.bodySmall.copyWith(
                         color: AppColors.secondary,
                         decoration: TextDecoration.underline,
@@ -541,13 +552,13 @@ class _Header extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
-          '회원가입',
+          'íšŒì›ê°€ìž…',
           style: AppTextStyles.h2,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
         Text(
-          '약관 동의 후 이메일 회원가입을 진행해주세요.',
+          'ì•½ê´€ ë™ì˜ í›„ ì´ë©”ì¼ íšŒì›ê°€ìž…ì„ ì§„í–‰í•´ì£¼ì„¸ìš”.',
           style:
               AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
           textAlign: TextAlign.center,
@@ -608,7 +619,7 @@ class _TermsSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('약관 동의', style: AppTextStyles.h5),
+          Text('ì•½ê´€ ë™ì˜', style: AppTextStyles.h5),
           const SizedBox(height: 8),
           if (isLoading)
             const Padding(
@@ -627,7 +638,7 @@ class _TermsSection extends StatelessWidget {
                 const SizedBox(height: 8),
                 OutlinedButton(
                   onPressed: isSubmitting ? null : onRetry,
-                  child: const Text('약관 다시 불러오기'),
+                  child: const Text('ì•½ê´€ ë‹¤ì‹œ ë¶ˆëŸ¬ì˜¤ê¸°'),
                 ),
               ],
             )
@@ -638,7 +649,7 @@ class _TermsSection extends StatelessWidget {
               onChanged: isSubmitting ? null : onToggleAll,
               controlAffinity: ListTileControlAffinity.leading,
               title: Text(
-                '약관 전체 동의',
+                'ì•½ê´€ ì „ì²´ ë™ì˜',
                 style: AppTextStyles.bodyMedium.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -646,7 +657,7 @@ class _TermsSection extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             _AgreementTile(
-              title: '이용약관',
+              title: 'ì´ìš©ì•½ê´€',
               requiredYn: true,
               value: termsAgreed,
               enabled: !isSubmitting,
@@ -656,7 +667,7 @@ class _TermsSection extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             _AgreementTile(
-              title: '개인정보 처리방침',
+              title: 'ê°œì¸ì •ë³´ ì²˜ë¦¬ë°©ì¹¨',
               requiredYn: true,
               value: privacyAgreed,
               enabled: !isSubmitting,
@@ -666,7 +677,7 @@ class _TermsSection extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             _AgreementTile(
-              title: '마케팅 정보 수신 동의',
+              title: 'ë§ˆì¼€íŒ… ì •ë³´ ìˆ˜ì‹  ë™ì˜',
               requiredYn: false,
               value: marketingAgreed,
               enabled: !isSubmitting,
@@ -677,7 +688,7 @@ class _TermsSection extends StatelessWidget {
             if (!hasRequiredTerms) ...[
               const SizedBox(height: 8),
               Text(
-                '필수 약관(TERMS/PRIVACY)이 누락되어 있어 가입할 수 없습니다.',
+                'í•„ìˆ˜ ì•½ê´€(TERMS/PRIVACY)ì´ ëˆ„ë½ë˜ì–´ ìžˆì–´ ê°€ìž…í•  ìˆ˜ ì—†ìŠµë‹ˆë‹¤.',
                 style:
                     AppTextStyles.captionSmall.copyWith(color: AppColors.error),
               ),
@@ -729,7 +740,7 @@ class _AgreementTile extends StatelessWidget {
                 style: AppTextStyles.bodySmall,
                 children: [
                   TextSpan(
-                    text: requiredYn ? ' (필수)' : ' (선택)',
+                    text: requiredYn ? ' (í•„ìˆ˜)' : ' (ì„ íƒ)',
                     style: AppTextStyles.captionSmall.copyWith(
                       color: requiredYn
                           ? AppColors.primary
@@ -743,11 +754,11 @@ class _AgreementTile extends StatelessWidget {
           if (term != null)
             TextButton(
               onPressed: () => onViewTerm(term!),
-              child: const Text('보기'),
+              child: const Text('ë³´ê¸°'),
             )
           else
             Text(
-              '미제공',
+              'ë¯¸ì œê³µ',
               style:
                   AppTextStyles.captionSmall.copyWith(color: AppColors.error),
             ),

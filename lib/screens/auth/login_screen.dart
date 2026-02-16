@@ -3,8 +3,9 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../app/di/app_scope.dart';
 import '../../router/app_routes.dart';
-import '../../services/auth_service.dart';
+import '../../ui/auth/view_models/login_view_model.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/feature_flags.dart';
@@ -17,7 +18,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _authService = AuthService();
+  final LoginViewModel _viewModel =
+      LoginViewModel(AppScope.instance.authRepository);
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -30,25 +32,26 @@ class _LoginScreenState extends State<LoginScreen> {
       _debugMessage = null;
     });
 
-    final result = await _authService.loginWithSocial(provider);
+    final result = await _viewModel.loginWithSocial(provider);
 
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    if (result.isSuccess) {
+    if (result.action == LoginAction.success) {
       _completeAuth(success: true);
       return;
     }
 
-    if (result.isUserNotRegistered) {
+    if (result.action == LoginAction.signupRequired) {
       Navigator.of(context, rootNavigator: true)
           .pushReplacementNamed(AppRoutes.signup);
       return;
     }
 
+    final failure = result.failure;
     setState(() {
-      _errorMessage = result.errorMessage;
-      _debugMessage = result.debugMessage;
+      _errorMessage = failure?.userMessage;
+      _debugMessage = failure?.debugMessage;
     });
   }
 
@@ -59,11 +62,20 @@ class _LoginScreenState extends State<LoginScreen> {
       _debugMessage = null;
     });
 
-    await _authService.loginAsGuest();
+    final result = await _viewModel.loginAsGuest();
     if (!mounted) return;
 
     setState(() => _isLoading = false);
-    _completeAuth(success: true);
+    if (result.action == LoginAction.success) {
+      _completeAuth(success: true);
+      return;
+    }
+
+    final failure = result.failure;
+    setState(() {
+      _errorMessage = failure?.userMessage ?? '게스트 로그인에 실패했습니다.';
+      _debugMessage = failure?.debugMessage;
+    });
   }
 
   Future<void> _openEmailLogin() async {

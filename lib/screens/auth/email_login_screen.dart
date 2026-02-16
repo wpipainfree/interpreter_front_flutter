@@ -1,8 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../app/di/app_scope.dart';
 import '../../router/app_routes.dart';
-import '../../services/auth_service.dart';
+import '../../ui/auth/view_models/email_login_view_model.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/feature_flags.dart';
@@ -15,7 +16,8 @@ class EmailLoginScreen extends StatefulWidget {
 }
 
 class _EmailLoginScreenState extends State<EmailLoginScreen> {
-  final _authService = AuthService();
+  final EmailLoginViewModel _viewModel =
+      EmailLoginViewModel(AppScope.instance.authRepository);
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -40,23 +42,23 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
       _debugMessage = null;
     });
 
-    final result = await _authService.loginWithEmail(
-      _emailController.text.trim(),
-      _passwordController.text,
+    final result = await _viewModel.loginWithEmail(
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
     );
 
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    if (result.isSuccess) {
-      _completeAuth(success: true);
-      return;
-    }
-
-    setState(() {
-      _errorMessage = result.errorMessage;
-      _debugMessage = result.debugMessage;
-    });
+    result.when(
+      success: (_) => _completeAuth(success: true),
+      failure: (failure) {
+        setState(() {
+          _errorMessage = failure.userMessage;
+          _debugMessage = failure.debugMessage;
+        });
+      },
+    );
   }
 
   void _completeAuth({required bool success}) {

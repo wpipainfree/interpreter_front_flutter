@@ -2,7 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
-import '../../services/auth_service.dart';
+import '../../app/di/app_scope.dart';
+import '../../domain/model/terms.dart';
+import '../../ui/auth/view_models/terms_agreement_settings_view_model.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/auth_ui.dart';
@@ -17,7 +19,8 @@ class TermsAgreementSettingsScreen extends StatefulWidget {
 
 class _TermsAgreementSettingsScreenState
     extends State<TermsAgreementSettingsScreen> {
-  final AuthService _authService = AuthService();
+  final TermsAgreementSettingsViewModel _viewModel =
+      TermsAgreementSettingsViewModel(AppScope.instance.authRepository);
 
   bool _isLoading = true;
   bool _isSaving = false;
@@ -54,27 +57,28 @@ class _TermsAgreementSettingsScreenState
       _debugMessage = null;
     });
 
-    final result = await _authService.getCurrentTerms();
+    final result = await _viewModel.loadCurrentTerms();
     if (!mounted) return;
 
-    if (result.isSuccess && result.bundle != null) {
-      final bundle = result.bundle!;
-      setState(() {
-        _serviceCode =
-            bundle.serviceCode.isNotEmpty ? bundle.serviceCode : _serviceCode;
-        _channelCode =
-            bundle.channelCode.isNotEmpty ? bundle.channelCode : _channelCode;
-        _terms = bundle.terms;
-        _isLoading = false;
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoading = false;
-      _errorMessage = result.errorMessage ?? '약관 정보를 불러오지 못했습니다.';
-      _debugMessage = result.debugMessage;
-    });
+    result.when(
+      success: (bundle) {
+        setState(() {
+          _serviceCode =
+              bundle.serviceCode.isNotEmpty ? bundle.serviceCode : _serviceCode;
+          _channelCode =
+              bundle.channelCode.isNotEmpty ? bundle.channelCode : _channelCode;
+          _terms = bundle.terms;
+          _isLoading = false;
+        });
+      },
+      failure: (failure) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = failure.userMessage;
+          _debugMessage = failure.debugMessage;
+        });
+      },
+    );
   }
 
   Future<void> _saveAgreements({bool retryOnAuthFailure = true}) async {
@@ -84,7 +88,7 @@ class _TermsAgreementSettingsScreenState
       _debugMessage = null;
     });
 
-    final result = await _authService.saveTermsAgreements(
+    final result = await _viewModel.saveTermsAgreements(
       serviceCode: _serviceCode,
       channelCode: _channelCode,
       source: 'settings',
@@ -98,31 +102,34 @@ class _TermsAgreementSettingsScreenState
     if (!mounted) return;
     setState(() => _isSaving = false);
 
-    if (result.isSuccess) {
-      final message = result.message ??
-          '동의 설정이 저장되었습니다. '
-              '(신규 ${result.insertedCount}건, 변경 ${result.updatedCount}건)';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: AppColors.success,
-        ),
-      );
-      return;
-    }
+    result.when(
+      success: (summary) {
+        final message = summary.message ??
+            'ë™ì˜ ì„¤ì •ì´ ì €ìž¥ë˜ì—ˆìŠµë‹ˆë‹¤. '
+                '(ì‹ ê·œ ${summary.insertedCount}ê±´, ë³€ê²½ ${summary.updatedCount}ê±´)';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      },
+      failure: (failure) async {
+        if (retryOnAuthFailure && failure.hasCode('AUTH_REQUIRED')) {
+          final ok = await AuthUi.promptLogin(context: context);
+          if (ok && mounted) {
+            await _saveAgreements(retryOnAuthFailure: false);
+          }
+          return;
+        }
 
-    if (retryOnAuthFailure && result.errorCode == 'AUTH_REQUIRED') {
-      final ok = await AuthUi.promptLogin(context: context);
-      if (ok && mounted) {
-        await _saveAgreements(retryOnAuthFailure: false);
-      }
-      return;
-    }
-
-    setState(() {
-      _errorMessage = result.errorMessage ?? '동의 설정 저장에 실패했습니다.';
-      _debugMessage = result.debugMessage;
-    });
+        if (!mounted) return;
+        setState(() {
+          _errorMessage = failure.userMessage;
+          _debugMessage = failure.debugMessage;
+        });
+      },
+    );
   }
 
   void _showTermDialog(TermsDocument term) {
@@ -179,7 +186,7 @@ class _TermsAgreementSettingsScreenState
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Text(
-                    '버전 ${term.termsVerId} · 시행일 ${term.effectiveYmd}',
+                    'ë²„ì „ ${term.termsVerId} Â· ì‹œí–‰ì¼ ${term.effectiveYmd}',
                     style: AppTextStyles.captionSmall
                         .copyWith(color: AppColors.textSecondary),
                   ),
@@ -195,11 +202,11 @@ class _TermsAgreementSettingsScreenState
   String _termTitle(String type) {
     switch (type.toUpperCase()) {
       case 'TERMS':
-        return '이용약관';
+        return 'ì´ìš©ì•½ê´€';
       case 'PRIVACY':
-        return '개인정보 처리방침';
+        return 'ê°œì¸ì •ë³´ ì²˜ë¦¬ë°©ì¹¨';
       case 'MARKETING':
-        return '마케팅 정보 수신 동의';
+        return 'ë§ˆì¼€íŒ… ì •ë³´ ìˆ˜ì‹  ë™ì˜';
       default:
         return type;
     }
@@ -236,7 +243,7 @@ class _TermsAgreementSettingsScreenState
         backgroundColor: AppColors.backgroundLight,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
-        title: Text('약관 동의 관리', style: AppTextStyles.h4),
+        title: Text('ì•½ê´€ ë™ì˜ ê´€ë¦¬', style: AppTextStyles.h4),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -264,15 +271,15 @@ class _TermsAgreementSettingsScreenState
                         border: Border.all(color: AppColors.border),
                       ),
                       child: Text(
-                        '현재 스코프: $_serviceCode / $_channelCode\n'
-                        '동의 상태를 변경 후 저장하면 서버에 즉시 반영됩니다.',
+                        'í˜„ìž¬ ìŠ¤ì½”í”„: $_serviceCode / $_channelCode\n'
+                        'ë™ì˜ ìƒíƒœë¥¼ ë³€ê²½ í›„ ì €ìž¥í•˜ë©´ ì„œë²„ì— ì¦‰ì‹œ ë°˜ì˜ë©ë‹ˆë‹¤.',
                         style: AppTextStyles.bodySmall
                             .copyWith(color: AppColors.textSecondary),
                       ),
                     ),
                     const SizedBox(height: 12),
                     _AgreementSwitchTile(
-                      title: '이용약관',
+                      title: 'ì´ìš©ì•½ê´€',
                       requiredYn: true,
                       value: _termsAgreed,
                       enabled: !_isSaving,
@@ -283,7 +290,7 @@ class _TermsAgreementSettingsScreenState
                     ),
                     const SizedBox(height: 8),
                     _AgreementSwitchTile(
-                      title: '개인정보 처리방침',
+                      title: 'ê°œì¸ì •ë³´ ì²˜ë¦¬ë°©ì¹¨',
                       requiredYn: true,
                       value: _privacyAgreed,
                       enabled: !_isSaving,
@@ -295,7 +302,7 @@ class _TermsAgreementSettingsScreenState
                     ),
                     const SizedBox(height: 8),
                     _AgreementSwitchTile(
-                      title: '마케팅 정보 수신 동의',
+                      title: 'ë§ˆì¼€íŒ… ì •ë³´ ìˆ˜ì‹  ë™ì˜',
                       requiredYn: false,
                       value: _marketingAgreed,
                       enabled: !_isSaving,
@@ -308,7 +315,7 @@ class _TermsAgreementSettingsScreenState
                     if (requiredUnchecked) ...[
                       const SizedBox(height: 10),
                       Text(
-                        '필수 항목을 미동의로 저장하면 서비스 이용에 제한이 생길 수 있습니다.',
+                        'í•„ìˆ˜ í•­ëª©ì„ ë¯¸ë™ì˜ë¡œ ì €ìž¥í•˜ë©´ ì„œë¹„ìŠ¤ ì´ìš©ì— ì œí•œì´ ìƒê¸¸ ìˆ˜ ìžˆìŠµë‹ˆë‹¤.',
                         style: AppTextStyles.captionSmall
                             .copyWith(color: AppColors.error),
                       ),
@@ -330,7 +337,7 @@ class _TermsAgreementSettingsScreenState
                                 ),
                               )
                             : Text(
-                                '동의 설정 저장',
+                                'ë™ì˜ ì„¤ì • ì €ìž¥',
                                 style: AppTextStyles.buttonMedium,
                               ),
                       ),
@@ -384,7 +391,7 @@ class _AgreementSwitchTile extends StatelessWidget {
                         .copyWith(fontWeight: FontWeight.w600),
                     children: [
                       TextSpan(
-                        text: requiredYn ? ' (필수)' : ' (선택)',
+                        text: requiredYn ? ' (í•„ìˆ˜)' : ' (ì„ íƒ)',
                         style: AppTextStyles.captionSmall.copyWith(
                           color: requiredYn
                               ? AppColors.primary
@@ -409,7 +416,7 @@ class _AgreementSwitchTile extends StatelessWidget {
           if (onView != null)
             TextButton(
               onPressed: onView,
-              child: const Text('보기'),
+              child: const Text('ë³´ê¸°'),
             ),
           Switch.adaptive(
             value: value,
@@ -439,14 +446,14 @@ class _EmptyTermsView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            '현재 적용 가능한 약관을 찾을 수 없습니다.',
+            'í˜„ìž¬ ì ìš© ê°€ëŠ¥í•œ ì•½ê´€ì„ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤.',
             style: AppTextStyles.bodySmall
                 .copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 10),
           OutlinedButton(
             onPressed: onRetry,
-            child: const Text('다시 시도'),
+            child: const Text('ë‹¤ì‹œ ì‹œë„'),
           ),
         ],
       ),
