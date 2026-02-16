@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import '../services/ai_assistant_service.dart';
-import '../services/auth_service.dart';
-import '../services/payment_service.dart';
-import '../services/psych_tests_service.dart';
+import '../app/di/app_scope.dart';
+import '../domain/model/dashboard_models.dart';
 import '../test_flow/test_flow_coordinator.dart';
 import '../test_flow/test_flow_models.dart';
+import '../ui/dashboard/dashboard_view_model.dart';
 import '../router/app_routes.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_text_styles.dart';
@@ -22,74 +21,36 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final AuthService _authService = AuthService();
-  final PsychTestsService _testsService = PsychTestsService();
-  final AiAssistantService _aiService = AiAssistantService();
-  final List<UserAccountItem> _accounts = [];
-  final List<_RecordSummary> _records = [];
-  bool _loading = true;
-  bool _recordsLoading = true;
-  bool _pendingIdeal = false;
-  String? _error;
-  String? _recordsError;
-  static const int _maxRecent = 3;
-  static const int _maxRecordPreview = 3;
-  bool _recordsHasMore = false;
-  late final VoidCallback _authListener;
+  final DashboardViewModel _viewModel =
+      DashboardViewModel(AppScope.instance.dashboardRepository);
   late final VoidCallback _tabListener;
   late final VoidCallback _refreshListener;
-  bool _lastLoggedIn = false;
-  String? _lastUserId;
   int _lastShellIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _lastLoggedIn = _authService.isLoggedIn;
-    _lastUserId = _authService.currentUser?.id;
-    _authListener = _handleAuthChanged;
-    _authService.addListener(_authListener);
+    _viewModel.addListener(_handleViewModelChanged);
     _lastShellIndex = MainShellTabController.index.value;
     _tabListener = _handleShellTabChanged;
     MainShellTabController.index.addListener(_tabListener);
     _refreshListener = _handleRefresh;
     MainShellTabController.refreshTick.addListener(_refreshListener);
-    _loadAccounts();
-    _loadRecords();
-    _loadPendingIdeal();
+    _viewModel.start();
   }
 
   @override
   void dispose() {
-    _authService.removeListener(_authListener);
+    _viewModel.removeListener(_handleViewModelChanged);
+    _viewModel.dispose();
     MainShellTabController.index.removeListener(_tabListener);
     MainShellTabController.refreshTick.removeListener(_refreshListener);
     super.dispose();
   }
 
-  void _handleAuthChanged() {
+  void _handleViewModelChanged() {
     if (!mounted) return;
-    final nowLoggedIn = _authService.isLoggedIn;
-    final nowUserId = _authService.currentUser?.id;
-    if (nowLoggedIn == _lastLoggedIn && nowUserId == _lastUserId) return;
-
-    _lastLoggedIn = nowLoggedIn;
-    _lastUserId = nowUserId;
-
-    if (!nowLoggedIn) {
-      setState(() {
-        _accounts.clear();
-        _loading = false;
-        _error = AppStrings.loginRequired;
-        _records.clear();
-        _recordsLoading = false;
-        _recordsHasMore = false;
-        _recordsError = AppStrings.loginRequired;
-      });
-      return;
-    }
-    _loadAccounts();
-    _loadRecords();
+    setState(() {});
   }
 
   void _handleShellTabChanged() {
@@ -98,127 +59,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (idx == _lastShellIndex) return;
     _lastShellIndex = idx;
     if (idx != 0) return;
-    _loadPendingIdeal();
-    if (_authService.isLoggedIn) {
-      _loadAccounts();
-      _loadRecords();
+    _viewModel.loadPendingIdeal();
+    if (_viewModel.isLoggedIn) {
+      _viewModel.loadAccounts();
+      _viewModel.loadRecords();
     }
   }
 
   void _handleRefresh() {
     if (!mounted) return;
     if (MainShellTabController.index.value != 0) return;
-    _loadPendingIdeal();
-    if (_authService.isLoggedIn) {
-      _loadAccounts();
-      _loadRecords();
+    _viewModel.loadPendingIdeal();
+    if (_viewModel.isLoggedIn) {
+      _viewModel.loadAccounts();
+      _viewModel.loadRecords();
     }
   }
 
   Future<void> _promptLoginAndReload() async {
     final ok = await AuthUi.promptLogin(context: context);
     if (ok && mounted) {
-      await _loadAccounts();
-      await _loadRecords();
+      await _viewModel.reloadAfterLogin();
     }
-  }
-
-  Future<void> _loadAccounts() async {
-    final userId = (_authService.currentUser?.id ?? '').trim();
-    if (userId.isEmpty) {
-      setState(() {
-        _loading = false;
-        _error = '로그인이 필요합니다.';
-      });
-      return;
-    }
-    try {
-      final res = await _testsService.fetchUserAccounts(
-        userId: userId,
-        page: 1,
-        pageSize: _maxRecent,
-        fetchAll: false,
-        testIds: const [1, 3],
-      );
-      if (!mounted) return;
-      setState(() {
-        _accounts
-          ..clear()
-          ..addAll(res.items);
-        _loading = false;
-        _error = null;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = e.toString();
-      });
-    }
-  }
-
-  Future<void> _loadRecords() async {
-    final loggedIn = _authService.isLoggedIn;
-    if (!loggedIn) {
-      setState(() {
-        _records.clear();
-        _recordsLoading = false;
-        _recordsHasMore = false;
-        _recordsError = AppStrings.loginRequired;
-      });
-      return;
-    }
-
-    setState(() {
-      _recordsLoading = true;
-      _recordsError = null;
-    });
-
-    try {
-      final res = await _aiService.fetchConversationSummaries(
-        skip: 0,
-        limit: _maxRecordPreview,
-      );
-      final raw = (res['conversations'] ?? res['items'] ?? res['data'])
-              as List<dynamic>? ??
-          const [];
-      final fetched = raw
-          .whereType<Map<String, dynamic>>()
-          .map(_RecordSummary.fromJson)
-          .toList();
-      if (!mounted) return;
-      setState(() {
-        _records
-          ..clear()
-          ..addAll(fetched);
-        _recordsHasMore = fetched.length == _maxRecordPreview;
-        _recordsLoading = false;
-        _recordsError = null;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _recordsLoading = false;
-        _recordsError = e.toString();
-      });
-    }
-  }
-
-  Future<void> _loadPendingIdeal() async {
-    final pending = await TestFlowCoordinator.hasPendingIdeal();
-    if (!mounted) return;
-    setState(() => _pendingIdeal = pending);
   }
 
   /// 결제 처리
   Future<void> _handlePayment() async {
     // 1. 로그인 확인
-    if (!_authService.isLoggedIn) {
+    if (!_viewModel.isLoggedIn) {
       final ok = await AuthUi.promptLogin(context: context);
       if (!ok || !mounted) return;
     }
 
-    final user = _authService.currentUser;
+    final user = _viewModel.currentUser;
     if (user == null) return;
 
     // 2. 결제 수단 및 검사 유형 선택 다이얼로그
@@ -231,19 +104,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // 3. 결제 생성
     try {
-      final paymentService = PaymentService();
-      final request = CreatePaymentRequest(
-        userId: int.tryParse(user.id) ?? 0,
-        amount: 1000, // WPI 검사 금액 (원)
-        productName: testName,
-        buyerName: user.displayName,
-        buyerEmail: user.email.isNotEmpty ? user.email : 'user@wpiapp.com',
-        buyerTel: '01000000000', // TODO: 사용자 전화번호 필드 추가 필요
-        callbackUrl: 'wpiapp://payment/result',
-        testId: testId,
-        paymentType: paymentType,
-      );
-
       // 로딩 표시
       if (mounted) {
         showDialog(
@@ -253,7 +113,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       }
 
-      final payment = await paymentService.createPayment(request);
+      final payment = await _viewModel.createPayment(
+        userId: int.tryParse(user.id) ?? 0,
+        testId: testId,
+        paymentType: paymentType,
+        productName: testName,
+        buyerName: user.displayName,
+        buyerEmail: user.email.isNotEmpty ? user.email : 'user@wpiapp.com',
+      );
 
       if (mounted) {
         Navigator.of(context).pop(); // 로딩 닫기
@@ -278,7 +145,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         );
         // 결제 완료 후 계정 목록 새로고침
-        await _loadAccounts();
+        await _viewModel.loadAccounts();
       } else if (result.message != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -427,7 +294,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = _authService.currentUser;
+    final user = _viewModel.currentUser;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
@@ -446,7 +313,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  SliverAppBar _buildHeader(UserInfo? user) {
+  SliverAppBar _buildHeader(DashboardUser? user) {
     final name = (user?.displayName ?? '게스트').trim();
 
     return SliverAppBar(
@@ -593,15 +460,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ],
                       ),
                     ),
-                    if (_pendingIdeal) ...[
+                    if (_viewModel.pendingIdeal) ...[
                       const SizedBox(height: 12),
                       OutlinedButton(
                         onPressed: () async {
                           final coordinator = TestFlowCoordinator();
                           await coordinator.startIdealOnly(context);
                           if (!mounted) return;
-                          await _loadPendingIdeal();
-                          await _loadAccounts();
+                          await _viewModel.loadPendingIdeal();
+                          await _viewModel.loadAccounts();
                         },
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.textOnDark,
@@ -704,7 +571,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   SliverToBoxAdapter _buildHistoryHeader() {
-    final hasMore = _accounts.length >= _maxRecent;
+    final hasMore = _viewModel.accounts.length >= DashboardViewModel.maxRecent;
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
@@ -727,8 +594,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: const Text('더보기'),
                   )
                 : Text(
-                    '${_accounts.length}건',
-                    style: TextStyle(
+                    '${_viewModel.accounts.length}건',
+                    style: const TextStyle(
                       fontSize: 14,
                       color: AppColors.textSecondary,
                     ),
@@ -740,7 +607,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildHistoryList() {
-    if (_loading) {
+    if (_viewModel.accountsLoading) {
       return const SliverToBoxAdapter(
         child: Padding(
           padding: EdgeInsets.all(24),
@@ -748,49 +615,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       );
     }
-    if (_error != null) {
-      final loggedIn = _authService.isLoggedIn;
+    if (_viewModel.accountsError != null) {
+      final loggedIn = _viewModel.isLoggedIn;
       return SliverToBoxAdapter(
         child: AppErrorView(
           title: loggedIn ? '불러오지 못했어요' : '로그인이 필요합니다',
-          message: _error!,
+          message: _viewModel.accountsError!,
           primaryActionLabel: loggedIn ? '다시 시도' : '로그인하기',
           primaryActionStyle: loggedIn
               ? AppErrorPrimaryActionStyle.outlined
               : AppErrorPrimaryActionStyle.filled,
-          onPrimaryAction:
-              loggedIn ? () => _loadAccounts() : () => _promptLoginAndReload(),
+          onPrimaryAction: loggedIn
+              ? () => _viewModel.loadAccounts()
+              : () => _promptLoginAndReload(),
         ),
       );
     }
-    if (_accounts.isEmpty) {
+    if (_viewModel.accounts.isEmpty) {
       return SliverToBoxAdapter(child: _buildEmptyState());
     }
 
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (context, index) {
-          final item = _accounts[index];
+          final item = _viewModel.accounts[index];
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
             child: _AccountCard(
               item: item,
-              onResumeComplete: _loadAccounts,
+              onResumeComplete: _viewModel.loadAccounts,
             ),
           );
         },
-        childCount: _accounts.length,
+        childCount: _viewModel.accounts.length,
       ),
     );
   }
 
   SliverToBoxAdapter _buildRecordHeader() {
-    final loggedIn = _authService.isLoggedIn;
+    final loggedIn = _viewModel.isLoggedIn;
     // 로그인이 안 된 상태에서는 이 섹션을 숨김 (최근 검사 기록에서 로그인 메시지 표시)
     if (!loggedIn) {
       return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
-    final hasMore = _recordsHasMore;
+    final hasMore = _viewModel.recordsHasMore;
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
@@ -814,7 +682,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               )
             else
               Text(
-                '${_records.length}건',
+                '${_viewModel.records.length}건',
                 style: const TextStyle(
                   fontSize: 14,
                   color: AppColors.textSecondary,
@@ -828,10 +696,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildRecordList() {
     // 로그인이 안 된 상태에서는 이 섹션을 숨김
-    if (!_authService.isLoggedIn) {
+    if (!_viewModel.isLoggedIn) {
       return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
-    if (_recordsLoading) {
+    if (_viewModel.recordsLoading) {
       return const SliverToBoxAdapter(
         child: Padding(
           padding: EdgeInsets.all(24),
@@ -839,18 +707,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       );
     }
-    if (_recordsError != null) {
+    if (_viewModel.recordsError != null) {
       return SliverToBoxAdapter(
         child: AppErrorView(
           title: '불러오지 못했어요',
-          message: _recordsError!,
+          message: _viewModel.recordsError!,
           primaryActionLabel: AppStrings.retry,
           primaryActionStyle: AppErrorPrimaryActionStyle.outlined,
-          onPrimaryAction: () => _loadRecords(),
+          onPrimaryAction: () => _viewModel.loadRecords(),
         ),
       );
     }
-    if (_records.isEmpty) {
+    if (_viewModel.records.isEmpty) {
       return SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -862,13 +730,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (context, index) {
-          final item = _records[index];
+          final item = _viewModel.records[index];
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
             child: _RecordCard(item: item),
           );
         },
-        childCount: _records.length,
+        childCount: _viewModel.records.length,
       ),
     );
   }
@@ -943,7 +811,7 @@ class _AccountCard extends StatelessWidget {
     this.onResumeComplete,
   });
 
-  final UserAccountItem item;
+  final DashboardAccount item;
   final Future<void> Function()? onResumeComplete;
 
   /// resultId를 가져옵니다. item.resultId가 null이면 result 객체에서 ID를 추출합니다.
@@ -962,7 +830,9 @@ class _AccountCard extends StatelessWidget {
   }
 
   bool get _canResumeOther {
-    return item.status == '3' && _effectiveResultId != null && item.testId != null;
+    return item.status == '3' &&
+        _effectiveResultId != null &&
+        item.testId != null;
   }
 
   WpiTestKind _kindForTest(int testId) {
@@ -988,7 +858,7 @@ class _AccountCard extends StatelessWidget {
         kind: _kindForTest(testId),
         exitMode: FlowExitMode.openResultDetail,
         existingResultId: resultId,
-        initialRole: EvaluationRole.other,
+        initialRole: WpiEvaluationRole.other,
       ),
     );
     if (context.mounted) {
@@ -1129,12 +999,12 @@ class _AccountCard extends StatelessWidget {
     return 'WPI';
   }
 
-  String _tester(UserAccountItem item) {
+  String _tester(DashboardAccount item) {
     final name = item.result?['TEST_TARGET_NAME'] ?? '';
     return name is String && name.isNotEmpty ? name : '미입력';
   }
 
-  String? _resultType(UserAccountItem item, {String key = 'DESCRIPTION'}) {
+  String? _resultType(DashboardAccount item, {String key = 'DESCRIPTION'}) {
     final byKey = item.result?[key];
     if (byKey is String && byKey.isNotEmpty) return byKey;
     final desc = item.result?['DESCRIPTION'] ?? item.result?['description'];
@@ -1188,85 +1058,10 @@ class _AccountCard extends StatelessWidget {
   }
 }
 
-class _RecordSummary {
-  const _RecordSummary({
-    required this.id,
-    required this.title,
-    required this.firstMessageAt,
-    required this.lastMessageAt,
-    required this.totalMessages,
-  });
-
-  factory _RecordSummary.fromJson(Map<String, dynamic> json) {
-    final title = _readString(
-      json,
-      keys: const [
-        'title',
-        'prompt_text',
-        'first_prompt_text',
-        'request_message',
-        'first_request_message',
-        'first_message',
-        'interpretation_title',
-        'conversation_title',
-      ],
-    );
-    return _RecordSummary(
-      id: (json['conversation_id'] ?? json['session_id'] ?? json['id'] ?? '')
-          .toString(),
-      title: title,
-      firstMessageAt: _parseDate(json['first_message_at']?.toString()),
-      lastMessageAt: _parseDate(json['last_message_at']?.toString()),
-      totalMessages: (json['total_messages'] as int?) ?? 0,
-    );
-  }
-
-  final String id;
-  final String title;
-  final DateTime? firstMessageAt;
-  final DateTime? lastMessageAt;
-  final int totalMessages;
-
-  String get displayTitle =>
-      title.trim().isNotEmpty ? title.trim() : '\ub300\ud654 \uae30\ub85d';
-
-  String get dateRangeLabel {
-    final start = _formatDate(firstMessageAt);
-    final end = _formatDate(lastMessageAt);
-    if (start.isEmpty && end.isEmpty) return '-';
-    if (start == end) return start;
-    return '$start ~ $end';
-  }
-
-  static DateTime? _parseDate(String? raw) {
-    if (raw == null || raw.isEmpty) return null;
-    return DateTime.tryParse(raw);
-  }
-
-  static String _readString(
-    Map<String, dynamic> json, {
-    required List<String> keys,
-  }) {
-    for (final key in keys) {
-      final value = json[key];
-      if (value == null) continue;
-      final str = value.toString().trim();
-      if (str.isEmpty || str == 'null') continue;
-      return str;
-    }
-    return '';
-  }
-
-  static String _formatDate(DateTime? date) {
-    if (date == null) return '';
-    return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
-  }
-}
-
 class _RecordCard extends StatelessWidget {
   const _RecordCard({required this.item});
 
-  final _RecordSummary item;
+  final DashboardRecordSummary item;
 
   @override
   Widget build(BuildContext context) {

@@ -10,6 +10,7 @@ void main(List<String> args) {
           ? const ['lib/screens']
           : const [
               'lib/screens/auth',
+              'lib/screens/dashboard_screen.dart',
               'lib/screens/settings/terms_agreement_settings_screen.dart',
             ]);
 

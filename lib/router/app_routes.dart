@@ -2,6 +2,8 @@ import '../models/wpi_result.dart';
 import '../services/psych_tests_service.dart';
 import '../test_flow/test_flow_models.dart';
 
+typedef WpiEvaluationRole = EvaluationRole;
+
 class AppRoutes {
   AppRoutes._();
 
