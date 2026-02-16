@@ -266,14 +266,13 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     if (_checklist == null || _selectedIds.length != _totalTarget) return;
     setState(() => _submitting = true);
     final c = _checklist!;
-    final rank1 = _selectedIds.take(c.firstCount).toList();
-    final rank2 = _selectedIds.skip(c.firstCount).take(c.secondCount).toList();
-    final rank3 = _selectedIds.skip(c.firstCount + c.secondCount).toList();
-    final selections = WpiSelections(
-      checklistId: c.id,
-      rank1: rank1,
-      rank2: rank2,
-      rank3: rank3,
+    final selections = _viewModel.createSelectionsFromOrderedIds(
+      checklist: c,
+      orderedQuestionIds: _selectedIds,
+    );
+    final processSequence = _viewModel.resolveProcessSequence(
+      checklist: c,
+      stageIndex: _stageIndex,
     );
     try {
       final result = await AuthUi.withLoginRetry(
@@ -282,7 +281,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
           testId: widget.testId,
           selections: selections,
           mindFocus: widget.mindFocus,
-          processSequence: c.sequence == 0 ? _stageIndex + 1 : c.sequence,
+          processSequence: processSequence,
           resultId: _resultId,
         ),
       );

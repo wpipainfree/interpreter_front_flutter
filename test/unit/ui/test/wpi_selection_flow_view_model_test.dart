@@ -93,6 +93,52 @@ void main() {
       expect(index, 1);
     });
 
+    test('createSelectionsFromOrderedIds splits ids by checklist counts', () {
+      final viewModel = WpiSelectionFlowViewModel(FakePsychTestRepository());
+      const checklist = PsychTestChecklist(
+        id: 10,
+        name: 'Self',
+        description: '',
+        firstCount: 2,
+        secondCount: 2,
+        thirdCount: 1,
+        sequence: 1,
+        question: '',
+        questions: [],
+      );
+
+      final selections = viewModel.createSelectionsFromOrderedIds(
+        checklist: checklist,
+        orderedQuestionIds: const [1, 2, 3, 4, 5],
+      );
+
+      expect(selections.rank1, [1, 2]);
+      expect(selections.rank2, [3, 4]);
+      expect(selections.rank3, [5]);
+    });
+
+    test('resolveProcessSequence uses stage index when sequence is zero', () {
+      final viewModel = WpiSelectionFlowViewModel(FakePsychTestRepository());
+      const checklist = PsychTestChecklist(
+        id: 10,
+        name: 'Self',
+        description: '',
+        firstCount: 3,
+        secondCount: 4,
+        thirdCount: 5,
+        sequence: 0,
+        question: '',
+        questions: [],
+      );
+
+      final sequence = viewModel.resolveProcessSequence(
+        checklist: checklist,
+        stageIndex: 1,
+      );
+
+      expect(sequence, 2);
+    });
+
     test('submitSelection uses submitResults when resultId is null', () async {
       final fake = FakePsychTestRepository()
         ..submitResult = const {'result_id': 111};
