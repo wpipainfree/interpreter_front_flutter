@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../app/di/app_scope.dart';
 import '../../domain/model/psych_test_models.dart';
 import '../../router/app_routes.dart';
+import '../../ui/test/wpi_selection_view_model.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/auth_ui.dart';
@@ -28,7 +29,7 @@ class WpiSelectionScreen extends StatefulWidget {
 class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
   static const Color _brandRed = Color(0xFFA5192B);
 
-  final _repository = AppScope.instance.psychTestRepository;
+  late final WpiSelectionViewModel _viewModel;
 
   bool _loading = true;
   String? _error;
@@ -52,11 +53,12 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
   @override
   void initState() {
     super.initState();
+    _viewModel = WpiSelectionViewModel(AppScope.instance.psychTestRepository);
     _init();
   }
 
   Future<void> _init() async {
-    if (!_repository.isLoggedIn) {
+    if (!_viewModel.isLoggedIn) {
       final ok = await AuthUi.promptLogin(context: context);
       if (!ok && mounted) {
         _exitTestFlow();
@@ -74,7 +76,7 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
     try {
       final lists = await AuthUi.withLoginRetry(
         context: context,
-        action: () => _repository.fetchChecklists(widget.testId),
+        action: () => _viewModel.loadChecklists(widget.testId),
       );
       if (lists == null) {
         if (!mounted) return;
@@ -85,13 +87,6 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
         return;
       }
       if (!mounted) return;
-      if (lists.isEmpty) {
-        setState(() {
-          _loading = false;
-          _error = '체크리스트가 비어 있습니다.';
-        });
-        return;
-      }
       _checklists
         ..clear()
         ..addAll(lists);
@@ -185,20 +180,9 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
     final checklist = _checklist;
     if (checklist == null) return;
 
-    final selections = WpiSelections(
+    final selections = _viewModel.createSelections(
       checklistId: checklist.id,
-      rank1: _selectedRanks.entries
-          .where((e) => e.value == 1)
-          .map((e) => e.key)
-          .toList(),
-      rank2: _selectedRanks.entries
-          .where((e) => e.value == 2)
-          .map((e) => e.key)
-          .toList(),
-      rank3: _selectedRanks.entries
-          .where((e) => e.value == 3)
-          .map((e) => e.key)
-          .toList(),
+      selectedRanks: _selectedRanks,
     );
 
     if (!mounted) return;
@@ -210,8 +194,10 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
         testTitle: '${widget.testTitle} / ${checklist.name}',
         items: checklist.questions,
         selections: selections,
-        processSequence:
-            checklist.sequence == 0 ? _stageIndex + 1 : checklist.sequence,
+        processSequence: _viewModel.resolveProcessSequence(
+          checklist: checklist,
+          stageIndex: _stageIndex,
+        ),
         deferNavigation: !isLastStage,
         existingResultId: _resultId,
       ),
@@ -220,7 +206,7 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
     if (!mounted) return;
     if (!isLastStage) {
       if (result == null) return;
-      _resultId ??= _extractResultId(result);
+      _resultId ??= _viewModel.extractResultId(result);
       _prepareStage(_stageIndex + 1);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -362,25 +348,6 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
   }
 
   String _roundLabel(int rank) => '$rank순위';
-
-  int? _extractResultId(dynamic res) {
-    if (res == null) return null;
-    if (res is int) return res;
-    if (res is String) return int.tryParse(res);
-    if (res is Map<String, dynamic>) {
-      int? fromKey(String key) {
-        final v = res[key];
-        if (v is int) return v;
-        if (v is String) return int.tryParse(v);
-        return null;
-      }
-
-      return fromKey('result_id') ??
-          fromKey('RESULT_ID') ??
-          fromKey('resultId');
-    }
-    return null;
-  }
 }
 
 class _StickyHeader extends StatelessWidget {
