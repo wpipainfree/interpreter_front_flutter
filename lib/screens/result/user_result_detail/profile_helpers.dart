@@ -1,4 +1,4 @@
-import '../../../services/psych_tests_service.dart';
+import '../../../domain/model/result_models.dart';
 
 List<double?> extractScores(
   List<ResultClassItem> items,
@@ -17,12 +17,10 @@ List<double?> extractScores(
       map[name] = value;
     }
   }
-  return labels
-      .map((label) {
-        final key = _normalize(label);
-        return map[key];
-      })
-      .toList();
+  return labels.map((label) {
+    final key = _normalize(label);
+    return map[key];
+  }).toList();
 }
 
 String _normalize(String raw) {
@@ -30,4 +28,3 @@ String _normalize(String raw) {
   if (normalized == 'romantist') return 'romanticist';
   return normalized;
 }
-

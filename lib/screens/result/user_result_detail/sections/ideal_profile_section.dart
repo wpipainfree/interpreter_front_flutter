@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../services/psych_tests_service.dart';
-import '../../../../utils/app_colors.dart';
+import '../../../../domain/model/result_models.dart';
 import '../../../../utils/app_text_styles.dart';
 import '../profile_helpers.dart';
 import '../widgets/interactive_line_chart.dart';

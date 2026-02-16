@@ -1,11 +1,7 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import '../../models/openai_interpret_response.dart';
+import '../../app/di/app_scope.dart';
 import '../../router/app_routes.dart';
-import '../../services/auth_service.dart';
-import '../../services/psych_tests_service.dart';
-import '../../services/user_result_detail_service.dart';
+import '../../ui/result/view_models/user_result_detail_view_model.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/auth_ui.dart';
@@ -31,206 +27,78 @@ class UserResultDetailScreen extends StatefulWidget {
 }
 
 class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
-  final AuthService _authService = AuthService();
-  final UserResultDetailService _detailService = UserResultDetailService();
+  late final UserResultDetailViewModel _viewModel;
   final TextEditingController _storyController = TextEditingController();
-
-  bool _loading = true;
-  String? _error;
-  UserResultDetail? _realityDetail;
-  UserResultDetail? _idealDetail;
-  String? _mindFocus;
-
-  InitialInterpretationState _initialState = InitialInterpretationState.idle;
-  OpenAIInterpretResponse? _initialInterpretation;
-  String? _initialError;
-
-  late final VoidCallback _authListener;
-  bool _lastLoggedIn = false;
-  String? _lastUserId;
+  String _lastSyncedStory = '';
 
   @override
   void initState() {
     super.initState();
-    _lastLoggedIn = _authService.isLoggedIn;
-    _lastUserId = _authService.currentUser?.id;
-    _authListener = _handleAuthChanged;
-    _authService.addListener(_authListener);
-    _load();
+    _viewModel = UserResultDetailViewModel(
+      AppScope.instance.resultRepository,
+      resultId: widget.resultId,
+      testId: widget.testId,
+    );
+    _viewModel.addListener(_handleViewModelChanged);
+    _viewModel.start();
   }
 
   @override
   void dispose() {
-    _authService.removeListener(_authListener);
+    _viewModel.removeListener(_handleViewModelChanged);
+    _viewModel.dispose();
     _storyController.dispose();
     super.dispose();
   }
 
-  void _handleAuthChanged() {
-    if (!mounted) return;
-
-    final nowLoggedIn = _authService.isLoggedIn;
-    final nowUserId = _authService.currentUser?.id;
-    if (nowLoggedIn == _lastLoggedIn && nowUserId == _lastUserId) return;
-
-    _lastLoggedIn = nowLoggedIn;
-    _lastUserId = nowUserId;
-
-    if (nowLoggedIn) {
-      _load();
-      return;
-    }
-
-    setState(() {
-      _realityDetail = null;
-      _idealDetail = null;
-      _mindFocus = null;
-      _initialState = InitialInterpretationState.idle;
-      _initialInterpretation = null;
-      _initialError = null;
-      _loading = false;
-      _error = AppStrings.loginRequired;
-    });
-    _storyController.clear();
-  }
-
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-
-    try {
-      final bundle = await _detailService.loadBundle(
-        resultId: widget.resultId,
-        testId: widget.testId,
-      );
-      if (!mounted) return;
-
-      final resultStory = (bundle.mindFocus ?? '').trim();
-      final effectiveStory = resultStory;
-
-      setState(() {
-        _mindFocus = effectiveStory.isEmpty ? null : effectiveStory;
-        _realityDetail = bundle.reality;
-        _idealDetail = bundle.ideal;
-      });
-      _storyController.text = effectiveStory;
-
-      unawaited(
-        _loadInitialInterpretation(
-          reality: bundle.reality,
-          ideal: bundle.ideal,
-          mindFocus: effectiveStory.isEmpty ? null : effectiveStory,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _error = e.toString());
-    } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      } else {
-        _loading = false;
+  void _handleViewModelChanged() {
+    final nextStory = (_viewModel.mindFocus ?? '').trim();
+    if (nextStory != _lastSyncedStory) {
+      final localStory = _storyController.text.trim();
+      final canOverwrite = localStory.isEmpty || localStory == _lastSyncedStory;
+      if (canOverwrite && localStory != nextStory) {
+        _storyController.value = TextEditingValue(
+          text: nextStory,
+          selection: TextSelection.collapsed(offset: nextStory.length),
+        );
       }
+      _lastSyncedStory = nextStory;
     }
+
+    if (!mounted) return;
+    setState(() {});
   }
 
-  Future<void> _submitStoryAndGenerate({
-    required UserResultDetail reality,
-    required UserResultDetail? ideal,
-  }) async {
+  Future<void> _submitStoryAndGenerate() async {
     final story = _storyController.text.trim();
     if (story.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('사연을 입력해 주세요.')),
+        const SnackBar(
+            content: Text(
+                '\uc0ac\uc5f0\uc744 \uc785\ub825\ud574 \uc8fc\uc138\uc694.')),
       );
       return;
     }
 
-    setState(() => _mindFocus = story);
-
-    await _loadInitialInterpretation(
-      reality: reality,
-      ideal: ideal,
-      mindFocus: story,
-      force: false,
-    );
-  }
-
-  Future<void> _loadInitialInterpretation({
-    required UserResultDetail? reality,
-    required UserResultDetail? ideal,
-    required String? mindFocus,
-    bool force = false,
-  }) async {
-    final story = (mindFocus ?? '').trim();
-    final realityDetail = reality;
-
-    if (story.isEmpty || realityDetail == null) {
-      if (!mounted) return;
-      setState(() {
-        _initialState = InitialInterpretationState.idle;
-        _initialInterpretation = null;
-        _initialError = null;
-      });
-      return;
-    }
-
-    if (!mounted) return;
-    setState(() {
-      _initialState = InitialInterpretationState.loading;
-      _initialInterpretation = null;
-      _initialError = null;
-    });
-
-    try {
-      final parsed = await _detailService.fetchInitialInterpretation(
-        reality: realityDetail,
-        ideal: ideal,
-        story: story,
-        force: force,
-      );
-
-      if (!mounted) return;
-      setState(() {
-        _initialState = InitialInterpretationState.success;
-        _initialInterpretation = parsed;
-        _initialError = null;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _initialState = InitialInterpretationState.error;
-        _initialError = _detailService.friendlyAiError(e);
-      });
-    }
+    await _viewModel.submitStory(story);
   }
 
   Future<void> _promptLoginAndReload() async {
     final ok = await AuthUi.promptLogin(context: context);
     if (ok && mounted) {
-      await _load();
+      await _viewModel.reloadAfterLogin();
     }
   }
 
-  int? _nextTurn(OpenAIInterpretResponse? response) {
-    final sessionId = (response?.session?.sessionId ?? '').trim();
-    if (sessionId.isEmpty) return null;
-    final serverTurn = response?.session?.turn;
-    if (serverTurn == null) return 2;
-    return serverTurn + 1;
-  }
-
   void _openPhase3({String? initialPrompt}) {
-    final realityResultId = _realityDetail?.result.id;
+    final realityResultId = _viewModel.realityDetail?.result.id;
     if (realityResultId == null) return;
 
-    final sessionId = (_initialInterpretation?.session?.sessionId ?? '').trim();
+    final sessionId = _viewModel.initialSessionId;
     if (sessionId.isEmpty) return;
 
-    final idealResultId = _idealDetail?.result.id;
-    final mindFocus = (_mindFocus ?? '').trim();
+    final idealResultId = _viewModel.idealDetail?.result.id;
+    final mindFocus = (_viewModel.mindFocus ?? '').trim();
     Navigator.of(context).pushNamed(
       AppRoutes.interpretation,
       arguments: InterpretationArgs(
@@ -238,7 +106,7 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
         initialIdealResultId: idealResultId,
         mindFocus: mindFocus.isNotEmpty ? mindFocus : null,
         initialSessionId: sessionId,
-        initialTurn: _nextTurn(_initialInterpretation),
+        initialTurn: _viewModel.nextTurn,
         initialPrompt: initialPrompt,
         startInPhase3: true,
       ),
@@ -260,24 +128,26 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
   }
 
   Widget _buildBody() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_viewModel.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-    if (_error != null) {
-      final loggedIn = _authService.isLoggedIn;
+    if (_viewModel.error != null) {
+      final loggedIn = _viewModel.isLoggedIn;
       return AppErrorView(
         title: loggedIn ? '불러오지 못했어요' : '로그인이 필요합니다',
-        message: _error!,
+        message: _viewModel.error!,
         primaryActionLabel: loggedIn ? AppStrings.retry : AppStrings.login,
         primaryActionStyle: loggedIn
             ? AppErrorPrimaryActionStyle.outlined
             : AppErrorPrimaryActionStyle.filled,
         onPrimaryAction:
-            loggedIn ? () => _load() : () => _promptLoginAndReload(),
+            loggedIn ? () => _viewModel.load() : () => _promptLoginAndReload(),
       );
     }
 
-    final reality = _realityDetail;
-    final ideal = _idealDetail;
+    final reality = _viewModel.realityDetail;
+    final ideal = _viewModel.idealDetail;
     if (reality == null && ideal == null) {
       return Center(
         child: Text(AppStrings.resultDetailLoadFail,
@@ -287,21 +157,24 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
 
     final headerDate = _formatDateTime((reality ?? ideal)!.result.createdAt);
 
-    const selfKeyLabels = ['Realist', 'Romanticist', 'Humanist', 'Idealist', 'Agent'];
+    const selfKeyLabels = [
+      'Realist',
+      'Romanticist',
+      'Humanist',
+      'Idealist',
+      'Agent'
+    ];
     const otherKeyLabels = ['Relation', 'Trust', 'Manual', 'Self', 'Culture'];
     const selfDisplayLabels = ['리얼리스트', '로맨티스트', '휴머니스트', '아이디얼리스트', '에이전트'];
     const otherDisplayLabels = ['릴레이션', '트러스트', '매뉴얼', '셀프', '컬처'];
 
-    final storyForAi = (reality != null) ? (_mindFocus ?? '') : '';
-    final canOpenPhase3 =
-        (_initialInterpretation?.session?.sessionId ?? '').trim().isNotEmpty;
-
+    final storyForAi = (reality != null) ? (_viewModel.mindFocus ?? '') : '';
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _topHeader(date: headerDate, mindFocus: _mindFocus),
+          _topHeader(date: headerDate, mindFocus: _viewModel.mindFocus),
           const SizedBox(height: 20),
           RealityProfileSection(
             detail: reality,
@@ -357,13 +230,10 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed:
-                          _initialState == InitialInterpretationState.loading
-                              ? null
-                              : () => _submitStoryAndGenerate(
-                                    reality: reality,
-                                    ideal: ideal,
-                                  ),
+                      onPressed: _viewModel.initialState ==
+                              InitialInterpretationLoadState.loading
+                          ? null
+                          : _submitStoryAndGenerate,
                       child: const Text('자동 해석 생성'),
                     ),
                   ),
@@ -373,16 +243,11 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
           ] else ...[
             InitialInterpretationSection(
               story: storyForAi,
-              state: _initialState,
-              response: _initialInterpretation,
-              errorMessage: _initialError,
-              canOpenPhase3: canOpenPhase3,
-              onRetry: () => _loadInitialInterpretation(
-                reality: reality,
-                ideal: ideal,
-                mindFocus: storyForAi,
-                force: true,
-              ),
+              state: _viewModel.initialState,
+              response: _viewModel.initialInterpretation,
+              errorMessage: _viewModel.initialError,
+              canOpenPhase3: _viewModel.canOpenPhase3,
+              onRetry: _viewModel.retryInitialInterpretation,
               onOpenPhase3: _openPhase3,
             ),
           ],
@@ -392,7 +257,6 @@ class _UserResultDetailScreenState extends State<UserResultDetailScreen> {
   }
 
   Widget _topHeader({required String date, String? mindFocus}) {
-    final trimmedFocus = (mindFocus ?? '').trim();
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

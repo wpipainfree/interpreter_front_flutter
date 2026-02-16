@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../services/psych_tests_service.dart';
+import '../../../../domain/model/result_models.dart';
 import '../profile_helpers.dart';
 import '../widgets/atom_header_card.dart';
 import '../widgets/interactive_line_chart.dart';
@@ -125,7 +125,9 @@ class RealityProfileSection extends StatelessWidget {
     List<double?> otherScores,
   ) {
     final index = _atomTypeIndex(atomType);
-    if (index < 0 || index >= selfScores.length || index >= otherScores.length) {
+    if (index < 0 ||
+        index >= selfScores.length ||
+        index >= otherScores.length) {
       return AtomState.base;
     }
 

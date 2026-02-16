@@ -11,6 +11,9 @@ void main(List<String> args) {
           : const [
               'lib/screens/auth',
               'lib/screens/dashboard_screen.dart',
+              'lib/screens/result/user_result_single_screen.dart',
+              'lib/screens/result/user_result_detail_screen.dart',
+              'lib/screens/result/user_result_detail',
               'lib/screens/settings/terms_agreement_settings_screen.dart',
             ]);
 

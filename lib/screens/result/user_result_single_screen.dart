@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../services/auth_service.dart';
-import '../../services/psych_tests_service.dart';
+import '../../app/di/app_scope.dart';
+import '../../domain/model/result_models.dart';
+import '../../ui/result/view_models/user_result_single_view_model.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/auth_ui.dart';
@@ -29,16 +30,7 @@ class UserResultSingleScreen extends StatefulWidget {
 }
 
 class _UserResultSingleScreenState extends State<UserResultSingleScreen> {
-  final AuthService _authService = AuthService();
-  final PsychTestsService _testsService = PsychTestsService();
-
-  bool _loading = true;
-  String? _error;
-  UserResultDetail? _detail;
-
-  late final VoidCallback _authListener;
-  bool _lastLoggedIn = false;
-  String? _lastUserId;
+  late final UserResultSingleViewModel _viewModel;
 
   static const List<String> _selfKeyLabels = [
     'Realist',
@@ -72,79 +64,31 @@ class _UserResultSingleScreenState extends State<UserResultSingleScreen> {
   @override
   void initState() {
     super.initState();
-    _lastLoggedIn = _authService.isLoggedIn;
-    _lastUserId = _authService.currentUser?.id;
-    _authListener = _handleAuthChanged;
-    _authService.addListener(_authListener);
-    _load();
+    _viewModel = UserResultSingleViewModel(
+      AppScope.instance.resultRepository,
+      resultId: widget.resultId,
+      testId: widget.testId,
+    );
+    _viewModel.addListener(_handleViewModelChanged);
+    _viewModel.start();
   }
 
   @override
   void dispose() {
-    _authService.removeListener(_authListener);
+    _viewModel.removeListener(_handleViewModelChanged);
+    _viewModel.dispose();
     super.dispose();
   }
 
-  void _handleAuthChanged() {
+  void _handleViewModelChanged() {
     if (!mounted) return;
-
-    final nowLoggedIn = _authService.isLoggedIn;
-    final nowUserId = _authService.currentUser?.id;
-    if (nowLoggedIn == _lastLoggedIn && nowUserId == _lastUserId) return;
-
-    _lastLoggedIn = nowLoggedIn;
-    _lastUserId = nowUserId;
-
-    if (nowLoggedIn) {
-      _load();
-      return;
-    }
-
-    setState(() {
-      _detail = null;
-      _loading = false;
-      _error = AppStrings.loginRequired;
-    });
-  }
-
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-
-    if (!_authService.isLoggedIn) {
-      setState(() {
-        _detail = null;
-        _loading = false;
-        _error = AppStrings.loginRequired;
-      });
-      return;
-    }
-
-    try {
-      final detail = await _testsService.fetchResultDetail(widget.resultId);
-      if (!mounted) return;
-      setState(() {
-        _detail = detail;
-        _error = null;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _error = e.toString());
-    } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      } else {
-        _loading = false;
-      }
-    }
+    setState(() {});
   }
 
   Future<void> _promptLoginAndReload() async {
     final ok = await AuthUi.promptLogin(context: context);
     if (ok && mounted) {
-      await _load();
+      await _viewModel.reloadAfterLogin();
     }
   }
 
@@ -168,23 +112,25 @@ class _UserResultSingleScreenState extends State<UserResultSingleScreen> {
   }
 
   Widget _buildBody() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_viewModel.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-    if (_error != null) {
-      final loggedIn = _authService.isLoggedIn;
+    if (_viewModel.error != null) {
+      final loggedIn = _viewModel.isLoggedIn;
       return AppErrorView(
         title: loggedIn ? '불러오지 못했어요' : '로그인이 필요합니다',
-        message: _error!,
+        message: _viewModel.error!,
         primaryActionLabel: loggedIn ? AppStrings.retry : AppStrings.login,
         primaryActionStyle: loggedIn
             ? AppErrorPrimaryActionStyle.outlined
             : AppErrorPrimaryActionStyle.filled,
         onPrimaryAction:
-            loggedIn ? () => _load() : () => _promptLoginAndReload(),
+            loggedIn ? () => _viewModel.load() : () => _promptLoginAndReload(),
       );
     }
 
-    final detail = _detail;
+    final detail = _viewModel.detail;
     if (detail == null) {
       return Center(
         child: Text(
@@ -312,7 +258,9 @@ class _UserResultSingleScreenState extends State<UserResultSingleScreen> {
     List<double?> otherScores,
   ) {
     final index = _atomTypeIndex(atomType);
-    if (index < 0 || index >= selfScores.length || index >= otherScores.length) {
+    if (index < 0 ||
+        index >= selfScores.length ||
+        index >= otherScores.length) {
       return AtomState.base;
     }
 

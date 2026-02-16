@@ -3,12 +3,11 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../../../../models/initial_interpretation_v1.dart';
 import '../../../../models/openai_interpret_response.dart';
+import '../../../../ui/result/view_models/user_result_detail_view_model.dart';
 import '../../../../utils/app_colors.dart';
 import '../../../../utils/app_text_styles.dart';
 import '../../../../utils/strings.dart';
 import '../widgets/result_section_header.dart';
-
-enum InitialInterpretationState { idle, loading, success, error }
 
 class InitialInterpretationSection extends StatelessWidget {
   const InitialInterpretationSection({
@@ -23,7 +22,7 @@ class InitialInterpretationSection extends StatelessWidget {
   });
 
   final String story;
-  final InitialInterpretationState state;
+  final InitialInterpretationLoadState state;
   final OpenAIInterpretResponse? response;
   final String? errorMessage;
   final bool canOpenPhase3;
@@ -43,7 +42,8 @@ class InitialInterpretationSection extends StatelessWidget {
     final interpretation = response?.interpretation;
     final viewModel = interpretation?.viewModel;
     final fallbackText = (interpretation?.response ?? '').trim();
-    final isParseProblem = interpretation != null && interpretation.viewModelMalformed;
+    final isParseProblem =
+        interpretation != null && interpretation.viewModelMalformed;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,9 +53,9 @@ class InitialInterpretationSection extends StatelessWidget {
           subtitle: '지금 내 마음은 이렇습니다.',
         ),
         const SizedBox(height: 12),
-        if (state == InitialInterpretationState.loading) ...[
+        if (state == InitialInterpretationLoadState.loading) ...[
           const _LoadingCard(),
-        ] else if (state == InitialInterpretationState.error) ...[
+        ] else if (state == InitialInterpretationLoadState.error) ...[
           _ErrorCard(
             message: errorMessage ?? '해석을 불러오지 못했습니다.',
             onRetry: onRetry,
@@ -166,12 +166,14 @@ class _ErrorCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             message,
-            style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+            style: AppTextStyles.bodySmall
+                .copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 12),
           OutlinedButton(
             onPressed: onRetry,
-            style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44)),
+            style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(44)),
             child: const Text(AppStrings.retry),
           ),
         ],
@@ -211,7 +213,7 @@ class _HeadlineCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.06),
+        color: AppColors.primary.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),
@@ -245,12 +247,14 @@ class _InterpretationCard extends StatelessWidget {
         children: [
           Text(
             card.title,
-            style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w800),
+            style:
+                AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 8),
           Text(
             card.summary,
-            style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+            style: AppTextStyles.bodySmall
+                .copyWith(color: AppColors.textSecondary),
           ),
           if (bullets.isNotEmpty) ...[
             const SizedBox(height: 10),
@@ -264,7 +268,8 @@ class _InterpretationCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         bullet,
-                        style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                        style: AppTextStyles.bodySmall
+                            .copyWith(color: AppColors.textSecondary),
                       ),
                     ),
                   ],
@@ -276,7 +281,8 @@ class _InterpretationCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               '체크 질문: ${card.checkQuestion}',
-              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+              style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textSecondary),
             ),
           ],
         ],
@@ -339,7 +345,9 @@ class _CtaAndSuggestions extends StatelessWidget {
                 .map(
                   (prompt) => ActionChip(
                     label: Text(prompt),
-                    onPressed: canOpenPhase3 ? () => onOpenPhase3(initialPrompt: prompt) : null,
+                    onPressed: canOpenPhase3
+                        ? () => onOpenPhase3(initialPrompt: prompt)
+                        : null,
                   ),
                 )
                 .toList(),
@@ -378,7 +386,8 @@ class _MarkdownCard extends StatelessWidget {
           h3: baseTextStyle.copyWith(fontSize: 14, fontWeight: FontWeight.w700),
           strong: baseTextStyle.copyWith(fontWeight: FontWeight.w700),
           em: baseTextStyle.copyWith(fontStyle: FontStyle.italic),
-          blockquotePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          blockquotePadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           blockquoteDecoration: BoxDecoration(
             color: AppColors.backgroundLight,
             borderRadius: BorderRadius.circular(8),
