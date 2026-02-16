@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/di/app_scope.dart';
 import '../../domain/model/psych_test_models.dart';
+import '../../domain/model/wpi_flow_state.dart';
 import '../../router/app_routes.dart';
 import '../../test_flow/role_transition_screen.dart';
 import '../../test_flow/test_flow_models.dart';
@@ -44,12 +45,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
   final ScrollController _listController = ScrollController();
   final GlobalKey _selectedAnchorKey = GlobalKey();
 
-  bool _loading = true;
-  bool _submitting = false;
-  String? _error;
-  final List<PsychTestChecklist> _checklists = [];
-  int _stageIndex = 0;
-  int? _resultId;
+  WpiFlowState _flowState = const WpiFlowState();
   final List<PsychTestItem> _allItems = [];
   final List<int> _selectedIds = [];
   final Map<int, int> _originalOrder = {};
@@ -58,8 +54,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
   bool _limitSnackArmed = true;
   bool _shownOtherTransition = false;
 
-  PsychTestChecklist? get _checklist =>
-      _checklists.isEmpty ? null : _checklists[_stageIndex];
+  PsychTestChecklist? get _checklist => _flowState.currentChecklist;
 
   int get _totalTarget {
     final c = _checklist;
@@ -72,7 +67,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     super.initState();
     _viewModel = widget.viewModel ??
         WpiSelectionFlowViewModel(AppScope.instance.psychTestRepository);
-    _resultId = widget.existingResultId;
+    _flowState = _flowState.copyWith(resultId: widget.existingResultId);
     _init();
   }
 
@@ -95,8 +90,10 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
 
   Future<void> _load() async {
     setState(() {
-      _loading = true;
-      _error = null;
+      _flowState = _flowState.copyWith(
+        loading: true,
+        error: null,
+      );
     });
     try {
       final lists = await AuthUi.withLoginRetry(
@@ -106,33 +103,40 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       if (lists == null) {
         if (!mounted) return;
         setState(() {
-          _loading = false;
-          _error = 'Login is required.';
+          _flowState = _flowState.copyWith(
+            loading: false,
+            error: 'Login is required.',
+          );
         });
         return;
       }
       if (lists.isEmpty) {
         throw const PsychTestException('No checklist data.');
       }
-      _checklists
-        ..clear()
-        ..addAll(lists);
-      _prepareStage(_viewModel.resolveInitialIndex(
+      _prepareStage(
         checklists: lists,
-        initialRole: widget.initialRole,
-      ));
+        index: _viewModel.resolveInitialIndex(
+          checklists: lists,
+          initialRole: widget.initialRole,
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _loading = false;
-        _error = e.toString();
+        _flowState = _flowState.copyWith(
+          loading: false,
+          error: e.toString(),
+        );
       });
     }
   }
 
-  void _prepareStage(int index) {
-    if (index < 0 || index >= _checklists.length) return;
-    final checklist = _checklists[index];
+  void _prepareStage({
+    required List<PsychTestChecklist> checklists,
+    required int index,
+  }) {
+    if (index < 0 || index >= checklists.length) return;
+    final checklist = checklists[index];
     _allItems
       ..clear()
       ..addAll(checklist.questions);
@@ -144,14 +148,19 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       _itemById[item.id] = item;
     }
     setState(() {
-      _stageIndex = index;
-      if (index == 0 && widget.existingResultId == null) _resultId = null;
+      _flowState = _flowState.copyWith(
+        checklists: checklists,
+        stageIndex: index,
+        resultId: index == 0 && widget.existingResultId == null
+            ? null
+            : _flowState.resultId,
+        loading: false,
+        error: null,
+        submitting: false,
+      );
       if (index == 0) _shownOtherTransition = false;
       _selectedIds.clear();
       _limitSnackArmed = true;
-      _loading = false;
-      _error = null;
-      _submitting = false;
     });
     _resetScrollPosition();
   }
@@ -264,9 +273,11 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
   }
 
   Future<void> _submit() async {
-    if (_submitting) return;
+    if (_flowState.submitting) return;
     if (_checklist == null || _selectedIds.length != _totalTarget) return;
-    setState(() => _submitting = true);
+    setState(() {
+      _flowState = _flowState.copyWith(submitting: true);
+    });
     final c = _checklist!;
     final selections = _viewModel.createSelectionsFromOrderedIds(
       checklist: c,
@@ -274,7 +285,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     );
     final processSequence = _viewModel.resolveProcessSequence(
       checklist: c,
-      stageIndex: _stageIndex,
+      stageIndex: _flowState.stageIndex,
     );
     try {
       final result = await AuthUi.withLoginRetry(
@@ -284,13 +295,15 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
           selections: selections,
           mindFocus: widget.mindFocus,
           processSequence: processSequence,
-          resultId: _resultId,
+          resultId: _flowState.resultId,
         ),
       );
       if (result == null) return;
-      _resultId ??= _viewModel.extractResultId(result);
+      _flowState = _flowState.copyWith(
+        resultId: _flowState.resultId ?? _viewModel.extractResultId(result),
+      );
       if (!mounted) return;
-      final hasNext = _stageIndex + 1 < _checklists.length;
+      final hasNext = _flowState.hasNextStage;
       if (hasNext) {
         final messenger = ScaffoldMessenger.of(context);
         messenger.clearSnackBars();
@@ -300,12 +313,17 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
             duration: Duration(seconds: 2),
           ),
         );
-        final nextIndex = _stageIndex + 1;
+        final nextIndex = _flowState.stageIndex + 1;
         await _maybeShowOtherTransition(
-            _checklists[_stageIndex], _checklists[nextIndex]);
-        _prepareStage(nextIndex);
+          _flowState.checklists[_flowState.stageIndex],
+          _flowState.checklists[nextIndex],
+        );
+        _prepareStage(
+          checklists: _flowState.checklists,
+          index: nextIndex,
+        );
       } else {
-        final rid = _resultId ?? _viewModel.extractResultId(result);
+        final rid = _flowState.resultId ?? _viewModel.extractResultId(result);
         if (rid != null) {
           if (widget.exitMode == FlowExitMode.popWithResult) {
             Navigator.of(context).pop(
@@ -330,7 +348,11 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
         SnackBar(content: Text(e.toString())),
       );
     } finally {
-      if (mounted) setState(() => _submitting = false);
+      if (mounted) {
+        setState(() {
+          _flowState = _flowState.copyWith(submitting: false);
+        });
+      }
     }
   }
 
@@ -356,7 +378,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
+    if (_flowState.loading) {
       return PopScope(
         canPop: false,
         child: Scaffold(
@@ -374,7 +396,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
         ),
       );
     }
-    if (_error != null) {
+    if (_flowState.error != null) {
       final loggedIn = _viewModel.isLoggedIn;
       return PopScope(
         canPop: false,
@@ -391,7 +413,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
           ),
           body: AppErrorView(
             title: loggedIn ? '불러오지 못했어요' : '로그인이 필요합니다',
-            message: _error!,
+            message: _flowState.error!,
             primaryActionLabel: loggedIn ? '다시 시도' : '로그인하기',
             primaryActionStyle: loggedIn
                 ? AppErrorPrimaryActionStyle.outlined
@@ -404,9 +426,9 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
 
     final checklist = _checklist!;
     final total = _totalTarget;
-    final canSubmit = _selectedIds.length == total && !_submitting;
+    final canSubmit = _selectedIds.length == total && !_flowState.submitting;
     final stageLabel =
-        '${_stageIndex + 1}/${_checklists.length} ${checklist.name}';
+        '${_flowState.stageIndex + 1}/${_flowState.checklists.length} ${checklist.name}';
     final selectedItems = _selectedItems;
     final availableItems = _availableItems;
 
@@ -559,7 +581,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
                     backgroundColor:
                         canSubmit ? AppColors.secondary : AppColors.disabled,
                   ),
-                  child: _submitting
+                  child: _flowState.submitting
                       ? const SizedBox(
                           width: 22,
                           height: 22,

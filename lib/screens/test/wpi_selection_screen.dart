@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../../app/di/app_scope.dart';
 import '../../domain/model/psych_test_models.dart';
+import '../../domain/model/wpi_flow_state.dart';
 import '../../router/app_routes.dart';
 import '../../ui/test/wpi_selection_view_model.dart';
 import '../../utils/app_colors.dart';
@@ -33,13 +34,8 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
 
   late final WpiSelectionViewModel _viewModel;
 
-  bool _loading = true;
-  String? _error;
-  final List<PsychTestChecklist> _checklists = [];
-  int _stageIndex = 0;
-  int? _resultId;
-  PsychTestChecklist? get _checklist =>
-      _checklists.isEmpty ? null : _checklists[_stageIndex];
+  WpiFlowState _flowState = const WpiFlowState();
+  PsychTestChecklist? get _checklist => _flowState.currentChecklist;
 
   // questionId -> rank(1,2,3)
   final Map<int, int> _selectedRanks = {};
@@ -73,8 +69,10 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
 
   Future<void> _loadChecklist() async {
     setState(() {
-      _loading = true;
-      _error = null;
+      _flowState = _flowState.copyWith(
+        loading: true,
+        error: null,
+      );
     });
     try {
       final lists = await AuthUi.withLoginRetry(
@@ -84,35 +82,42 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
       if (lists == null) {
         if (!mounted) return;
         setState(() {
-          _loading = false;
-          _error = 'Login is required.';
+          _flowState = _flowState.copyWith(
+            loading: false,
+            error: 'Login is required.',
+          );
         });
         return;
       }
       if (!mounted) return;
-      _checklists
-        ..clear()
-        ..addAll(lists);
-      _prepareStage(0);
+      _prepareStage(checklists: lists, index: 0);
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _loading = false;
-        _error = e.toString();
+        _flowState = _flowState.copyWith(
+          loading: false,
+          error: e.toString(),
+        );
       });
     }
   }
 
-  void _prepareStage(int index) {
-    if (!mounted || index < 0 || index >= _checklists.length) return;
+  void _prepareStage({
+    required List<PsychTestChecklist> checklists,
+    required int index,
+  }) {
+    if (!mounted || index < 0 || index >= checklists.length) return;
     setState(() {
-      _stageIndex = index;
+      _flowState = _flowState.copyWith(
+        checklists: checklists,
+        stageIndex: index,
+        resultId: index == 0 ? null : _flowState.resultId,
+        loading: false,
+        error: null,
+      );
       _roundIndex = 0;
       _selectedRanks.clear();
       _limitSnackVisible = false;
-      if (index == 0) _resultId = null;
-      _loading = false;
-      _error = null;
     });
   }
 
@@ -189,7 +194,7 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
     );
 
     if (!mounted) return;
-    final isLastStage = _stageIndex + 1 >= _checklists.length;
+    final isLastStage = !_flowState.hasNextStage;
     final result = await Navigator.of(context).pushNamed(
       AppRoutes.wpiReview,
       arguments: WpiReviewArgs(
@@ -199,18 +204,23 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
         selections: selections,
         processSequence: _viewModel.resolveProcessSequence(
           checklist: checklist,
-          stageIndex: _stageIndex,
+          stageIndex: _flowState.stageIndex,
         ),
         deferNavigation: !isLastStage,
-        existingResultId: _resultId,
+        existingResultId: _flowState.resultId,
       ),
     );
 
     if (!mounted) return;
     if (!isLastStage) {
       if (result == null) return;
-      _resultId ??= _viewModel.extractResultId(result);
-      _prepareStage(_stageIndex + 1);
+      _flowState = _flowState.copyWith(
+        resultId: _flowState.resultId ?? _viewModel.extractResultId(result),
+      );
+      _prepareStage(
+        checklists: _flowState.checklists,
+        index: _flowState.stageIndex + 1,
+      );
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('다음 체크리스트로 이동합니다.'),
@@ -230,7 +240,7 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
+    if (_flowState.loading) {
       return PopScope(
         canPop: false,
         child: Scaffold(
@@ -248,7 +258,7 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
         ),
       );
     }
-    if (_error != null) {
+    if (_flowState.error != null) {
       return PopScope(
         canPop: false,
         child: Scaffold(
@@ -266,7 +276,7 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
           ),
           body: AppErrorView(
             title: '불러오지 못했어요',
-            message: _error!,
+            message: _flowState.error!,
             primaryActionLabel: '다시 시도',
             primaryActionStyle: AppErrorPrimaryActionStyle.outlined,
             onPrimaryAction: () => _loadChecklist(),
@@ -284,7 +294,7 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
         .toList();
     final canProceed = currentSelections.length == target;
     final stageLabel =
-        '${_stageIndex + 1}/${_checklists.length} ${checklist.name}';
+        '${_flowState.stageIndex + 1}/${_flowState.checklists.length} ${checklist.name}';
 
     return PopScope(
       canPop: false,
