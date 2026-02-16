@@ -2,9 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import '../../services/ai_assistant_service.dart';
-import '../../services/auth_service.dart';
-import '../../services/psych_tests_service.dart';
+import '../../app/di/app_scope.dart';
+import '../../domain/model/result_models.dart';
 import '../../router/app_routes.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
@@ -40,9 +39,7 @@ class InterpretationPanel extends StatefulWidget {
 }
 
 class _InterpretationPanelState extends State<InterpretationPanel> {
-  final PsychTestsService _testsService = PsychTestsService();
-  final AiAssistantService _aiService = AiAssistantService();
-  final AuthService _authService = AuthService();
+  final _repository = AppScope.instance.resultRepository;
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   late final VoidCallback _authListener;
@@ -51,8 +48,8 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
   String? _lastUserId;
 
   final Map<int, _WpiScoreProfile> _profileCache = {};
-  final List<UserAccountItem> _realityItems = [];
-  final List<UserAccountItem> _idealItems = [];
+  final List<ResultAccount> _realityItems = [];
+  final List<ResultAccount> _idealItems = [];
   final List<_ChatMessage> _messages = [];
 
   Timer? _pollTimer;
@@ -70,12 +67,24 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
   int? _activeRealityResultId;
   int? _activeIdealResultId;
   List<Map<String, dynamic>>? _activeSources;
-  UserAccountItem? _selectedReality;
-  UserAccountItem? _selectedIdeal;
+  ResultAccount? _selectedReality;
+  ResultAccount? _selectedIdeal;
   _InterpretationUiState _uiState = _InterpretationUiState.idle;
 
-  static const _selfKeys = ['realist', 'romantic', 'humanist', 'idealist', 'agent'];
-  static const _standardKeys = ['relation', 'trust', 'manual', 'self', 'culture'];
+  static const _selfKeys = [
+    'realist',
+    'romantic',
+    'humanist',
+    'idealist',
+    'agent'
+  ];
+  static const _standardKeys = [
+    'relation',
+    'trust',
+    'manual',
+    'self',
+    'culture'
+  ];
   static const _suggestedQuestions = [
     '지금 마음 한 문장',
     '가장 큰 충돌은?',
@@ -96,8 +105,7 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
   bool get _showTyping =>
       _uiState == _InterpretationUiState.creating ||
       _uiState == _InterpretationUiState.polling;
-  bool get _hasConversation =>
-      _conversationId != null && _messages.isNotEmpty;
+  bool get _hasConversation => _conversationId != null && _messages.isNotEmpty;
   bool get _showSuggestions =>
       _canChat && !_messages.any((message) => message.isUser);
 
@@ -123,10 +131,10 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
       _inputController.text = initialPrompt;
     }
 
-    _lastLoggedIn = _authService.isLoggedIn;
-    _lastUserId = _authService.currentUser?.id;
+    _lastLoggedIn = _repository.isLoggedIn;
+    _lastUserId = _repository.currentUserId;
     _authListener = _handleAuthChanged;
-    _authService.addListener(_authListener);
+    _repository.addAuthListener(_authListener);
     _refreshListener = _handleRefresh;
     MainShellTabController.refreshTick.addListener(_refreshListener);
     _load();
@@ -135,7 +143,7 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
   @override
   void dispose() {
     _pollTimer?.cancel();
-    _authService.removeListener(_authListener);
+    _repository.removeAuthListener(_authListener);
     MainShellTabController.refreshTick.removeListener(_refreshListener);
     _inputController.dispose();
     _scrollController.dispose();
@@ -154,7 +162,7 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
       _loading = true;
       _error = null;
     });
-    final userId = (_authService.currentUser?.id ?? '').trim();
+    final userId = (_repository.currentUserId ?? '').trim();
     if (userId.isEmpty) {
       setState(() {
         _loading = false;
@@ -177,12 +185,14 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
 
       final selectedReality = _resolveSelected(
         items: _realityItems,
-        initialResultId: _appliedInitialSelection ? null : widget.initialRealityResultId,
+        initialResultId:
+            _appliedInitialSelection ? null : widget.initialRealityResultId,
         current: _selectedReality,
       );
       final selectedIdeal = _resolveSelected(
         items: _idealItems,
-        initialResultId: _appliedInitialSelection ? null : widget.initialIdealResultId,
+        initialResultId:
+            _appliedInitialSelection ? null : widget.initialIdealResultId,
         current: _selectedIdeal,
       );
 
@@ -215,8 +225,8 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
   void _handleAuthChanged() {
     if (!mounted) return;
 
-    final nowLoggedIn = _authService.isLoggedIn;
-    final nowUserId = _authService.currentUser?.id;
+    final nowLoggedIn = _repository.isLoggedIn;
+    final nowUserId = _repository.currentUserId;
     if (nowLoggedIn == _lastLoggedIn && nowUserId == _lastUserId) return;
 
     _lastLoggedIn = nowLoggedIn;
@@ -255,17 +265,17 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
     }
   }
 
-  Future<List<UserAccountItem>> _fetchAllAccounts({
+  Future<List<ResultAccount>> _fetchAllAccounts({
     required String userId,
     required int testId,
   }) async {
-    final items = <UserAccountItem>[];
+    final items = <ResultAccount>[];
     var page = 1;
     var hasNext = true;
     var safety = 0;
     while (hasNext && safety < 50) {
       safety += 1;
-      final res = await _testsService.fetchUserAccounts(
+      final res = await _repository.fetchUserAccounts(
         userId: userId,
         page: page,
         pageSize: 30,
@@ -279,7 +289,7 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
     return items;
   }
 
-  DateTime _itemDate(UserAccountItem item) {
+  DateTime _itemDate(ResultAccount item) {
     final raw = item.createDate ?? item.paymentDate ?? item.modifyDate;
     final parsed = raw != null ? DateTime.tryParse(raw) : null;
     return parsed ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -287,10 +297,11 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
 
   void _ensureInitialItemPresent({required int userId}) {
     final initialReality = widget.initialRealityResultId;
-    if (initialReality != null && !_realityItems.any((e) => e.resultId == initialReality)) {
+    if (initialReality != null &&
+        !_realityItems.any((e) => e.resultId == initialReality)) {
       _realityItems.insert(
         0,
-        UserAccountItem(
+        ResultAccount(
           id: 0,
           userId: userId,
           testId: 1,
@@ -301,10 +312,11 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
     }
 
     final initialIdeal = widget.initialIdealResultId;
-    if (initialIdeal != null && !_idealItems.any((e) => e.resultId == initialIdeal)) {
+    if (initialIdeal != null &&
+        !_idealItems.any((e) => e.resultId == initialIdeal)) {
       _idealItems.insert(
         0,
-        UserAccountItem(
+        ResultAccount(
           id: 0,
           userId: userId,
           testId: 3,
@@ -315,14 +327,14 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
     }
   }
 
-  UserAccountItem? _resolveSelected({
-    required List<UserAccountItem> items,
+  ResultAccount? _resolveSelected({
+    required List<ResultAccount> items,
     required int? initialResultId,
-    required UserAccountItem? current,
+    required ResultAccount? current,
   }) {
     if (items.isEmpty) return null;
 
-    UserAccountItem? findByResultId(int? resultId) {
+    ResultAccount? findByResultId(int? resultId) {
       if (resultId == null) return null;
       for (final item in items) {
         if (item.resultId == resultId) return item;
@@ -339,12 +351,12 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
     return items.first;
   }
 
-  Future<_WpiScoreProfile?> _loadProfile(UserAccountItem item) async {
+  Future<_WpiScoreProfile?> _loadProfile(ResultAccount item) async {
     final resultId = item.resultId;
     if (resultId == null) return null;
     final cached = _profileCache[resultId];
     if (cached != null) return cached;
-    final detail = await _testsService.fetchResultDetail(resultId);
+    final detail = await _repository.fetchResultDetail(resultId);
     final profile = _buildProfile(detail);
     _profileCache[resultId] = profile;
     return profile;
@@ -383,7 +395,8 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
 
   String _normalizeKey(String raw) {
     final normalized = raw.toLowerCase().replaceAll(' ', '').split('/').first;
-    if (normalized == 'romantist' || normalized == 'romanticist') return 'romantic';
+    if (normalized == 'romantist' || normalized == 'romanticist')
+      return 'romantic';
     return normalized;
   }
 
@@ -419,17 +432,17 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
     return sources;
   }
 
-  UserAccountItem? _resolveActiveItem({
+  ResultAccount? _resolveActiveItem({
     required int? resultId,
     required int testId,
-    required List<UserAccountItem> items,
+    required List<ResultAccount> items,
   }) {
     if (resultId == null) return null;
     for (final item in items) {
       if (item.resultId == resultId) return item;
     }
-    final userId = int.tryParse(_authService.currentUser?.id ?? '') ?? 0;
-    return UserAccountItem(
+    final userId = int.tryParse(_repository.currentUserId ?? '') ?? 0;
+    return ResultAccount(
       id: 0,
       userId: userId,
       testId: testId,
@@ -555,7 +568,8 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
       _startPolling(sessionId);
     }
     try {
-      final activeRealityId = _activeRealityResultId ?? _selectedReality?.resultId;
+      final activeRealityId =
+          _activeRealityResultId ?? _selectedReality?.resultId;
       final activeIdealId = _activeIdealResultId ?? _selectedIdeal?.resultId;
       if (_activeSources == null || _activeSources!.isEmpty) {
         _setActiveSources(
@@ -617,7 +631,7 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
       if (isPhase3) {
         _appendMessage(_ChatMessage.user(trimmedFollowup));
       }
-      final response = await _aiService.interpret(payload);
+      final response = await _repository.interpret(payload);
       final session = response['session'] as Map<String, dynamic>?;
       final responseSessionId = session?['session_id']?.toString();
       final responseTurn = session?['turn'] as int?;
@@ -628,15 +642,17 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
         _startPolling(_conversationId!);
       }
       final interpretationRaw = response['interpretation'];
-      final interpretation =
-          interpretationRaw is Map ? interpretationRaw.cast<String, dynamic>() : null;
+      final interpretation = interpretationRaw is Map
+          ? interpretationRaw.cast<String, dynamic>()
+          : null;
       final responseTitle = interpretation?['title']?.toString().trim() ?? '';
       final responseText = (interpretation?['response'] ?? interpretationRaw)
               ?.toString()
               .trim() ??
           '';
 
-      if ((_conversationTitle ?? '').trim().isEmpty && responseTitle.isNotEmpty) {
+      if ((_conversationTitle ?? '').trim().isEmpty &&
+          responseTitle.isNotEmpty) {
         setState(() => _conversationTitle = responseTitle);
       }
 
@@ -690,7 +706,7 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
     if (_polling) return;
     _polling = true;
     try {
-      final data = await _aiService.fetchConversation(conversationId);
+      final data = await _repository.fetchConversation(conversationId);
       final entries = data['entries'] as List<dynamic>? ?? const [];
       if (entries.isNotEmpty) {
         final last = entries.last as Map<String, dynamic>;
@@ -732,7 +748,8 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
         final lastTitle = (last.title ?? '').trim();
         final nextTitle = (message.title ?? '').trim();
         if (lastTitle.isEmpty && nextTitle.isNotEmpty) {
-          setState(() => _messages[_messages.length - 1] = last.copyWith(title: nextTitle));
+          setState(() => _messages[_messages.length - 1] =
+              last.copyWith(title: nextTitle));
         }
         return;
       }
@@ -767,11 +784,12 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
     _submitInterpretation(phase: 3, followup: text);
   }
 
-  void _openPreview(UserAccountItem item) {
+  void _openPreview(ResultAccount item) {
     if (item.resultId == null) return;
     Navigator.of(context).pushNamed(
       AppRoutes.userResultDetail,
-      arguments: UserResultDetailArgs(resultId: item.resultId!, testId: item.testId),
+      arguments:
+          UserResultDetailArgs(resultId: item.resultId!, testId: item.testId),
     );
   }
 
@@ -788,7 +806,7 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
       return const Center(child: CircularProgressIndicator());
     }
     if (_error != null) {
-      final loggedIn = _authService.isLoggedIn;
+      final loggedIn = _repository.isLoggedIn;
       return AppErrorView(
         title: loggedIn ? '불러오지 못했어요' : '로그인이 필요합니다',
         message: _error!,
@@ -800,8 +818,7 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
             loggedIn ? () => _load() : () => _promptLoginAndReload(),
       );
     }
-    final buttonLabel =
-        _hasConversation ? '새 해석 만들기' : '해석 생성하기';
+    final buttonLabel = _hasConversation ? '새 해석 만들기' : '해석 생성하기';
     return Column(
       children: [
         Expanded(
@@ -964,7 +981,8 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
         children: [
           Text(
             'Mind focus',
-            style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+            style:
+                AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 6),
           Text(mindFocus, style: AppTextStyles.bodyMedium),
@@ -975,9 +993,9 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
 
   Widget _buildSelector({
     required String title,
-    required List<UserAccountItem> items,
-    required UserAccountItem? selected,
-    required ValueChanged<UserAccountItem?> onChanged,
+    required List<ResultAccount> items,
+    required ResultAccount? selected,
+    required ValueChanged<ResultAccount?> onChanged,
     required bool required,
     VoidCallback? onPreview,
   }) {
@@ -1028,10 +1046,11 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
           if (items.isEmpty)
             Text(
               '선택할 수 있는 결과가 없습니다.',
-              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+              style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textSecondary),
             )
           else
-            DropdownButtonFormField<UserAccountItem>(
+            DropdownButtonFormField<ResultAccount>(
               value: selected,
               items: items
                   .asMap()
@@ -1067,7 +1086,7 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
     );
   }
 
-  String _itemLabel(UserAccountItem item, {bool isRecent = false}) {
+  String _itemLabel(ResultAccount item, {bool isRecent = false}) {
     final date = _itemDate(item);
     final dateText =
         '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
@@ -1097,7 +1116,8 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
           const SizedBox(height: 8),
           Text(
             '먼저 해석을 생성한 뒤, 추가 질문을 할 수 있어요.',
-            style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+            style:
+                AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -1119,8 +1139,8 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
           const SizedBox(height: 8),
           Text(
             '아래 칩을 누르거나, 궁금한 내용을 직접 입력하면 됩니다.',
-            style:
-                AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+            style: AppTextStyles.bodySmall
+                .copyWith(color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -1234,7 +1254,8 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
                       if (title.isNotEmpty) ...[
                         Text(
                           title,
-                          style: baseTextStyle.copyWith(fontWeight: FontWeight.w700),
+                          style: baseTextStyle.copyWith(
+                              fontWeight: FontWeight.w700),
                         ),
                         if (body.isNotEmpty) const SizedBox(height: 8),
                       ],
@@ -1255,10 +1276,12 @@ class _InterpretationPanelState extends State<InterpretationPanel> {
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                             ),
-                            strong: baseTextStyle.copyWith(fontWeight: FontWeight.w700),
-                            em: baseTextStyle.copyWith(fontStyle: FontStyle.italic),
-                            blockquotePadding:
-                                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            strong: baseTextStyle.copyWith(
+                                fontWeight: FontWeight.w700),
+                            em: baseTextStyle.copyWith(
+                                fontStyle: FontStyle.italic),
+                            blockquotePadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
                             blockquoteDecoration: BoxDecoration(
                               color: AppColors.backgroundLight,
                               borderRadius: BorderRadius.circular(8),

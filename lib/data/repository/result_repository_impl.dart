@@ -14,14 +14,16 @@ class ResultRepositoryImpl implements ResultRepository {
     UserResultDetailService? userResultDetailService,
   })  : _authService = authService ?? AuthService(),
         _testsService = psychTestsService ?? tests.PsychTestsService(),
+        _aiService = aiAssistantService ?? AiAssistantService(),
         _detailService = userResultDetailService ??
             UserResultDetailService(
               psychTestsService: psychTestsService,
-              aiAssistantService: aiAssistantService,
+              aiAssistantService: aiAssistantService ?? AiAssistantService(),
             );
 
   final AuthService _authService;
   final tests.PsychTestsService _testsService;
+  final AiAssistantService _aiService;
   final UserResultDetailService _detailService;
 
   @override
@@ -59,6 +61,51 @@ class ResultRepositoryImpl implements ResultRepository {
       reality: raw.reality != null ? _mapDetail(raw.reality!) : null,
       ideal: raw.ideal != null ? _mapDetail(raw.ideal!) : null,
       mindFocus: raw.mindFocus,
+    );
+  }
+
+  @override
+  Future<domain.ResultAccountPage> fetchUserAccounts({
+    required String userId,
+    int page = 1,
+    int pageSize = 50,
+    bool fetchAll = false,
+    List<int>? testIds,
+  }) async {
+    final raw = await _testsService.fetchUserAccounts(
+      userId: userId,
+      page: page,
+      pageSize: pageSize,
+      fetchAll: fetchAll,
+      testIds: testIds,
+    );
+    return domain.ResultAccountPage(
+      items: raw.items.map(_mapAccount).toList(),
+      totalCount: raw.totalCount,
+      page: raw.page,
+      pageSize: raw.pageSize,
+      hasNext: raw.hasNext,
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> interpret(Map<String, dynamic> payload) {
+    return _aiService.interpret(payload);
+  }
+
+  @override
+  Future<Map<String, dynamic>> fetchConversation(String conversationId) {
+    return _aiService.fetchConversation(conversationId);
+  }
+
+  @override
+  Future<Map<String, dynamic>> fetchConversationSummaries({
+    int skip = 0,
+    int limit = 50,
+  }) {
+    return _aiService.fetchConversationSummaries(
+      skip: skip,
+      limit: limit,
     );
   }
 
@@ -147,6 +194,21 @@ class ResultRepositoryImpl implements ResultRepository {
             ),
           )
           .toList(),
+    );
+  }
+
+  domain.ResultAccount _mapAccount(tests.UserAccountItem raw) {
+    return domain.ResultAccount(
+      id: raw.id,
+      userId: raw.userId,
+      testId: raw.testId,
+      resultId: raw.resultId,
+      testRequestId: raw.testRequestId,
+      status: raw.status,
+      createDate: raw.createDate,
+      modifyDate: raw.modifyDate,
+      paymentDate: raw.paymentDate,
+      result: raw.result,
     );
   }
 }

@@ -19,6 +19,23 @@ abstract interface class ResultRepository {
     int? testId,
   });
 
+  Future<ResultAccountPage> fetchUserAccounts({
+    required String userId,
+    int page = 1,
+    int pageSize = 50,
+    bool fetchAll = false,
+    List<int>? testIds,
+  });
+
+  Future<Map<String, dynamic>> interpret(Map<String, dynamic> payload);
+
+  Future<Map<String, dynamic>> fetchConversation(String conversationId);
+
+  Future<Map<String, dynamic>> fetchConversationSummaries({
+    int skip = 0,
+    int limit = 50,
+  });
+
   Future<OpenAIInterpretResponse> fetchInitialInterpretation({
     required UserResultDetail reality,
     required UserResultDetail? ideal,

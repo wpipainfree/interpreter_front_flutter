@@ -3,10 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+import '../../app/di/app_scope.dart';
+import '../../domain/model/result_models.dart';
 import '../../models/initial_interpretation_v1.dart';
-import '../../services/ai_assistant_service.dart';
-import '../../services/auth_service.dart';
-import '../../services/psych_tests_service.dart';
 import '../../router/app_routes.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
@@ -38,8 +37,7 @@ class InterpretationRecordPanel extends StatefulWidget {
 }
 
 class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
-  final AiAssistantService _aiService = AiAssistantService();
-  final AuthService _authService = AuthService();
+  final _repository = AppScope.instance.resultRepository;
   final ScrollController _scrollController = ScrollController();
   late final VoidCallback _authListener;
   late final VoidCallback _refreshListener;
@@ -58,10 +56,10 @@ class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
   @override
   void initState() {
     super.initState();
-    _lastLoggedIn = _authService.isLoggedIn;
-    _lastUserId = _authService.currentUser?.id;
+    _lastLoggedIn = _repository.isLoggedIn;
+    _lastUserId = _repository.currentUserId;
     _authListener = _handleAuthChanged;
-    _authService.addListener(_authListener);
+    _repository.addAuthListener(_authListener);
     _scrollController.addListener(_onScroll);
     _refreshListener = _handleRefresh;
     MainShellTabController.refreshTick.addListener(_refreshListener);
@@ -70,7 +68,7 @@ class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
 
   @override
   void dispose() {
-    _authService.removeListener(_authListener);
+    _repository.removeAuthListener(_authListener);
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     MainShellTabController.refreshTick.removeListener(_refreshListener);
@@ -86,8 +84,8 @@ class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
   void _handleAuthChanged() {
     if (!mounted) return;
 
-    final nowLoggedIn = _authService.isLoggedIn;
-    final nowUserId = _authService.currentUser?.id;
+    final nowLoggedIn = _repository.isLoggedIn;
+    final nowUserId = _repository.currentUserId;
     if (nowLoggedIn == _lastLoggedIn && nowUserId == _lastUserId) return;
 
     _lastLoggedIn = nowLoggedIn;
@@ -138,7 +136,7 @@ class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
     }
 
     try {
-      final res = await _aiService.fetchConversationSummaries(
+      final res = await _repository.fetchConversationSummaries(
         skip: _skip,
         limit: _pageSize,
       );
@@ -178,7 +176,7 @@ class _InterpretationRecordPanelState extends State<InterpretationRecordPanel> {
     }
 
     if (_error != null) {
-      final loggedIn = _authService.isLoggedIn;
+      final loggedIn = _repository.isLoggedIn;
       return AppErrorView(
         title: loggedIn ? '불러오지 못했어요' : '로그인이 필요합니다',
         message: _error!,
@@ -339,7 +337,7 @@ class InterpretationRecordDetailScreen extends StatefulWidget {
 
 class _InterpretationRecordDetailScreenState
     extends State<InterpretationRecordDetailScreen> {
-  final AiAssistantService _aiService = AiAssistantService();
+  final _repository = AppScope.instance.resultRepository;
   final TextEditingController _followupController = TextEditingController();
   final FocusNode _followupFocus = FocusNode();
   bool _loading = true;
@@ -375,9 +373,7 @@ class _InterpretationRecordDetailScreenState
   int get _questionCount {
     final baseCount =
         _entries.where((entry) => entry.request.trim().isNotEmpty).length;
-    if (_pendingQuestion != null &&
-        _pendingEntryReady &&
-        _entries.isNotEmpty) {
+    if (_pendingQuestion != null && _pendingEntryReady && _entries.isNotEmpty) {
       return (baseCount - 1).clamp(0, baseCount).toInt();
     }
     return baseCount;
@@ -400,7 +396,7 @@ class _InterpretationRecordDetailScreenState
       });
     }
     try {
-      final res = await _aiService.fetchConversation(widget.conversationId);
+      final res = await _repository.fetchConversation(widget.conversationId);
       final resultsRaw = (res['results'] as List<dynamic>?) ?? const [];
       final results = resultsRaw
           .whereType<Map<String, dynamic>>()
@@ -424,9 +420,8 @@ class _InterpretationRecordDetailScreenState
           .map(_ConversationEntry.fromJson)
           .toList();
       if (!mounted) return;
-      final nextQuestionCount = items
-          .where((entry) => entry.request.trim().isNotEmpty)
-          .length;
+      final nextQuestionCount =
+          items.where((entry) => entry.request.trim().isNotEmpty).length;
       final resolvedPending = _expectedQuestionCount != null &&
           nextQuestionCount >= _expectedQuestionCount!;
       final streamingActive = _streamingFullAnswer != null &&
@@ -500,8 +495,9 @@ class _InterpretationRecordDetailScreenState
 
     try {
       final realityProfile = _buildProfile(_reality!);
-      final idealProfile =
-          _ideal != null ? _buildProfile(_ideal!) : const _WpiScoreProfile.empty();
+      final idealProfile = _ideal != null
+          ? _buildProfile(_ideal!)
+          : const _WpiScoreProfile.empty();
       final sources = _buildSources(
         realityResultId: _reality!.result.id,
         idealResultId: _ideal?.result.id,
@@ -521,7 +517,7 @@ class _InterpretationRecordDetailScreenState
         'followup': {'question': text},
       };
 
-      final response = await _aiService.interpret(payload);
+      final response = await _repository.interpret(payload);
       if (!mounted) return;
       final responseText = _extractResponseText(response);
       if (responseText.isNotEmpty) {
@@ -564,17 +560,15 @@ class _InterpretationRecordDetailScreenState
         ),
       ),
       bottomNavigationBar: _FollowupInputBar(
-              controller: _followupController,
-              focusNode: _followupFocus,
-              onSend: _sendFollowup,
-              enabled: !_submittingFollowup &&
-                  _pendingQuestion == null &&
-                  _canAskMore,
-              sending: _submittingFollowup,
-              remaining: _remainingQuestions,
-              maxQuestions: _maxQuestions,
-            
-            ),
+        controller: _followupController,
+        focusNode: _followupFocus,
+        onSend: _sendFollowup,
+        enabled:
+            !_submittingFollowup && _pendingQuestion == null && _canAskMore,
+        sending: _submittingFollowup,
+        remaining: _remainingQuestions,
+        maxQuestions: _maxQuestions,
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -598,31 +592,35 @@ class _InterpretationRecordDetailScreenState
                         (_pendingQuestion != null ? 1 : 0);
                     return ListView.separated(
                       padding: const EdgeInsets.all(20),
-                      itemBuilder: (context, index) {                        final profileOffset = showProfiles ? 1 : 0;
-                        final pendingOffset = _pendingQuestion != null ? 1 : 0;                    if (showProfiles && index == 0) {
-                      return _ConversationProfileSection(
-                        reality: _reality,
-                        ideal: _ideal,
-                      );
-                    }                    final entryIndex = index - profileOffset;
-                    if (_pendingQuestion != null &&
-                        entryIndex == displayEntryCount) {
-                      return _PendingChatExchangeCard(
-                        question: _pendingQuestion!,
-                        streamingAnswer: _streamingAnswer,
-                      );
-                    }
-                    final resolvedIndex = entryIndex;
-                    if (resolvedIndex >= displayEntryCount) {
-                      return const SizedBox.shrink();
-                    }
-                    final entry = _entries[resolvedIndex];
-                    if (resolvedIndex == 0 && _hasCardView(entry.viewModel)) {
-                      return _InitialInterpretationRecordSection(entry: entry);
-                    }
-                    if (resolvedIndex == 0) {
-                      return _ConversationEntryCard(entry: entry);
-                    }
+                      itemBuilder: (context, index) {
+                        final profileOffset = showProfiles ? 1 : 0;
+                        if (showProfiles && index == 0) {
+                          return _ConversationProfileSection(
+                            reality: _reality,
+                            ideal: _ideal,
+                          );
+                        }
+                        final entryIndex = index - profileOffset;
+                        if (_pendingQuestion != null &&
+                            entryIndex == displayEntryCount) {
+                          return _PendingChatExchangeCard(
+                            question: _pendingQuestion!,
+                            streamingAnswer: _streamingAnswer,
+                          );
+                        }
+                        final resolvedIndex = entryIndex;
+                        if (resolvedIndex >= displayEntryCount) {
+                          return const SizedBox.shrink();
+                        }
+                        final entry = _entries[resolvedIndex];
+                        if (resolvedIndex == 0 &&
+                            _hasCardView(entry.viewModel)) {
+                          return _InitialInterpretationRecordSection(
+                              entry: entry);
+                        }
+                        if (resolvedIndex == 0) {
+                          return _ConversationEntryCard(entry: entry);
+                        }
                         return _ChatExchangeCard(entry: entry);
                       },
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
@@ -807,8 +805,8 @@ class _ChatExchangeCard extends StatelessWidget {
           if (entry.statusLabel.trim().isNotEmpty)
             Text(
               entry.statusLabel,
-              style:
-                  AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+              style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textSecondary),
             ),
           const SizedBox(height: 8),
           _ChatBubble(
@@ -831,8 +829,8 @@ class _ChatExchangeCard extends StatelessWidget {
                           fontSize: 14, fontWeight: FontWeight.w700),
                       strong: baseStyle.copyWith(fontWeight: FontWeight.w700),
                       em: baseStyle.copyWith(fontStyle: FontStyle.italic),
-                      blockquotePadding:
-                          const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      blockquotePadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
                       blockquoteDecoration: BoxDecoration(
                         color: AppColors.backgroundLight,
                         borderRadius: BorderRadius.circular(8),
@@ -934,9 +932,7 @@ class _ChatBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bubbleColor = isUser
-        ? AppColors.primary
-        : AppColors.backgroundLight;
+    final bubbleColor = isUser ? AppColors.primary : AppColors.backgroundLight;
     final borderColor = isUser ? AppColors.primary : AppColors.border;
     final textColor = isUser ? Colors.white : AppColors.textPrimary;
     return Align(
@@ -997,57 +993,6 @@ class _ConversationProfileSection extends StatelessWidget {
   }
 }
 
-class _FollowupCtaCard extends StatelessWidget {
-  const _FollowupCtaCard({
-    required this.enabled,
-    required this.remaining,
-    required this.maxQuestions,
-    required this.onPressed,
-  });
-
-  final bool enabled;
-  final int remaining;
-  final int maxQuestions;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final helperText = remaining <= 0
-        ? '최대 $maxQuestions개 질문까지 가능합니다.'
-        : '남은 질문: $remaining/$maxQuestions';
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: enabled ? onPressed : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                minimumSize: const Size.fromHeight(52),
-              ),
-              child: const Text('내 마음 더 알아보기'),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            helperText,
-            style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _FollowupInputBar extends StatelessWidget {
   const _FollowupInputBar({
     required this.controller,
@@ -1096,7 +1041,7 @@ class _FollowupInputBar extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                  child: ConstrainedBox(
+                    child: ConstrainedBox(
                       constraints: const BoxConstraints(minHeight: 44),
                       child: TextField(
                         controller: controller,
@@ -1200,7 +1145,8 @@ Map<String, double> _fillScores(
 
 String _normalizeKey(String raw) {
   final normalized = raw.toLowerCase().replaceAll(' ', '').split('/').first;
-  if (normalized == 'romantist' || normalized == 'romanticist') return 'romantic';
+  if (normalized == 'romantist' || normalized == 'romanticist')
+    return 'romantic';
   return normalized;
 }
 
@@ -1345,9 +1291,8 @@ class _ConversationEntry {
     }
     final promptText = (json['prompt_text'] ?? '').toString();
     final requestMessage = (json['request_message'] ?? '').toString();
-    final resolvedRequest = promptText.trim().isNotEmpty
-        ? promptText
-        : requestMessage;
+    final resolvedRequest =
+        promptText.trim().isNotEmpty ? promptText : requestMessage;
     final promptKind = json['prompt_kind']?.toString();
     final testIds = _readIntList(json['test_ids']);
     return _ConversationEntry(

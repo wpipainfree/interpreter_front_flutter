@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../app/di/app_scope.dart';
+import '../../domain/model/result_models.dart';
 import '../../router/app_routes.dart';
-import '../../services/auth_service.dart';
-import '../../services/psych_tests_service.dart';
-import '../../services/user_result_detail_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/auth_ui.dart';
@@ -18,9 +17,7 @@ class TodayMindReadFlowScreen extends StatefulWidget {
 }
 
 class _TodayMindReadFlowScreenState extends State<TodayMindReadFlowScreen> {
-  final AuthService _authService = AuthService();
-  final PsychTestsService _testsService = PsychTestsService();
-  final UserResultDetailService _detailService = UserResultDetailService();
+  final _resultRepository = AppScope.instance.resultRepository;
   final TextEditingController _storyController = TextEditingController();
   final ScrollController _listController = ScrollController();
 
@@ -29,10 +26,10 @@ class _TodayMindReadFlowScreenState extends State<TodayMindReadFlowScreen> {
   String? _error;
   int _stepIndex = 0;
 
-  final List<UserAccountItem> _realityItems = [];
-  final List<UserAccountItem> _idealItems = [];
-  UserAccountItem? _selectedReality;
-  UserAccountItem? _selectedIdeal;
+  final List<ResultAccount> _realityItems = [];
+  final List<ResultAccount> _idealItems = [];
+  ResultAccount? _selectedReality;
+  ResultAccount? _selectedIdeal;
 
   @override
   void initState() {
@@ -48,7 +45,7 @@ class _TodayMindReadFlowScreenState extends State<TodayMindReadFlowScreen> {
   }
 
   Future<void> _init() async {
-    if (!_authService.isLoggedIn) {
+    if (!_resultRepository.isLoggedIn) {
       final ok = await AuthUi.promptLogin(context: context);
       if (!ok && mounted) {
         Navigator.of(context).pop();
@@ -64,7 +61,7 @@ class _TodayMindReadFlowScreenState extends State<TodayMindReadFlowScreen> {
       _error = null;
     });
     try {
-      final userId = (_authService.currentUser?.id ?? '').trim();
+      final userId = (_resultRepository.currentUserId ?? '').trim();
       if (userId.isEmpty) {
         throw Exception('로그인이 필요합니다.');
       }
@@ -94,17 +91,17 @@ class _TodayMindReadFlowScreenState extends State<TodayMindReadFlowScreen> {
     }
   }
 
-  Future<List<UserAccountItem>> _fetchAllAccounts({
+  Future<List<ResultAccount>> _fetchAllAccounts({
     required String userId,
     required int testId,
   }) async {
-    final items = <UserAccountItem>[];
+    final items = <ResultAccount>[];
     var page = 1;
     var hasNext = true;
     var safety = 0;
     while (hasNext && safety < 50) {
       safety += 1;
-      final res = await _testsService.fetchUserAccounts(
+      final res = await _resultRepository.fetchUserAccounts(
         userId: userId,
         page: page,
         pageSize: 30,
@@ -118,7 +115,7 @@ class _TodayMindReadFlowScreenState extends State<TodayMindReadFlowScreen> {
     return items;
   }
 
-  DateTime _itemDate(UserAccountItem item) {
+  DateTime _itemDate(ResultAccount item) {
     final raw = item.createDate ?? item.paymentDate ?? item.modifyDate;
     final parsed = raw != null ? DateTime.tryParse(raw) : null;
     return parsed ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -176,9 +173,10 @@ class _TodayMindReadFlowScreenState extends State<TodayMindReadFlowScreen> {
 
     setState(() => _submitting = true);
     try {
-      final realityDetail = await _testsService.fetchResultDetail(realityId);
-      final idealDetail = await _testsService.fetchResultDetail(idealId);
-      final response = await _detailService.fetchInitialInterpretation(
+      final realityDetail =
+          await _resultRepository.fetchResultDetail(realityId);
+      final idealDetail = await _resultRepository.fetchResultDetail(idealId);
+      final response = await _resultRepository.fetchInitialInterpretation(
         reality: realityDetail,
         ideal: idealDetail,
         story: story,
@@ -218,7 +216,7 @@ class _TodayMindReadFlowScreenState extends State<TodayMindReadFlowScreen> {
     return '${trimmed.substring(0, 22)}...';
   }
 
-  String _formatDate(UserAccountItem item) {
+  String _formatDate(ResultAccount item) {
     final raw = item.createDate ?? item.paymentDate ?? item.modifyDate;
     if (raw == null || raw.isEmpty) return '-';
     final parsed = DateTime.tryParse(raw);
@@ -232,7 +230,7 @@ class _TodayMindReadFlowScreenState extends State<TodayMindReadFlowScreen> {
     return 'WPI 검사';
   }
 
-  String? _resultType(UserAccountItem item) {
+  String? _resultType(ResultAccount item) {
     final byKey = item.result?['DESCRIPTION'];
     if (byKey is String && byKey.isNotEmpty) return byKey;
     final desc = item.result?['description'];
@@ -242,14 +240,13 @@ class _TodayMindReadFlowScreenState extends State<TodayMindReadFlowScreen> {
     return null;
   }
 
-  String? _targetName(UserAccountItem item) {
+  String? _targetName(ResultAccount item) {
     final raw = item.result?['TEST_TARGET_NAME'] ??
         item.result?['test_target_name'] ??
         item.result?['testTargetName'];
     if (raw is String && raw.trim().isNotEmpty) return raw.trim();
     return null;
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -399,10 +396,10 @@ class _TodayMindReadFlowScreenState extends State<TodayMindReadFlowScreen> {
 
   Widget _buildResultList({
     required String title,
-    required List<UserAccountItem> items,
-    required UserAccountItem? selected,
+    required List<ResultAccount> items,
+    required ResultAccount? selected,
     required String emptyMessage,
-    required ValueChanged<UserAccountItem> onSelect,
+    required ValueChanged<ResultAccount> onSelect,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -490,7 +487,8 @@ class _TodayMindReadFlowScreenState extends State<TodayMindReadFlowScreen> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: (_selectedIdeal == null || _submitting) ? null : _submitPhase2,
+        onPressed:
+            (_selectedIdeal == null || _submitting) ? null : _submitPhase2,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
@@ -534,7 +532,7 @@ class _ResultSelectCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final borderColor = isSelected ? AppColors.primary : AppColors.border;
     final background = isSelected
-        ? AppColors.primary.withOpacity(0.06)
+        ? AppColors.primary.withValues(alpha: 0.06)
         : AppColors.cardBackground;
     final hasTarget = (targetName ?? '').trim().isNotEmpty;
     final hasTestLabel = (testLabel ?? '').trim().isNotEmpty;
@@ -576,7 +574,7 @@ class _ResultSelectCard extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.1),
+                              color: AppColors.primary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(

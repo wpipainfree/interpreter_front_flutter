@@ -13,6 +13,16 @@ class FakeResultRepository implements ResultRepository {
     ideal: null,
     mindFocus: null,
   );
+  Map<String, dynamic> interpretResult = const {};
+  Map<String, dynamic> conversationResult = const {};
+  Map<String, dynamic> conversationSummariesResult = const {};
+  ResultAccountPage accountPageResult = const ResultAccountPage(
+    items: [],
+    totalCount: 0,
+    page: 1,
+    pageSize: 50,
+    hasNext: false,
+  );
   OpenAIInterpretResponse initialInterpretationResult =
       const OpenAIInterpretResponse(
     session: OpenAIInterpretSession(sessionId: 'session-1', turn: 1),
@@ -27,6 +37,10 @@ class FakeResultRepository implements ResultRepository {
 
   Object? detailError;
   Object? bundleError;
+  Object? accountPageError;
+  Object? interpretError;
+  Object? conversationError;
+  Object? conversationSummariesError;
   Object? initialInterpretationError;
 
   final List<VoidCallback> _authListeners = [];
@@ -60,6 +74,39 @@ class FakeResultRepository implements ResultRepository {
   }) async {
     if (bundleError != null) throw bundleError!;
     return bundleResult;
+  }
+
+  @override
+  Future<ResultAccountPage> fetchUserAccounts({
+    required String userId,
+    int page = 1,
+    int pageSize = 50,
+    bool fetchAll = false,
+    List<int>? testIds,
+  }) async {
+    if (accountPageError != null) throw accountPageError!;
+    return accountPageResult;
+  }
+
+  @override
+  Future<Map<String, dynamic>> interpret(Map<String, dynamic> payload) async {
+    if (interpretError != null) throw interpretError!;
+    return interpretResult;
+  }
+
+  @override
+  Future<Map<String, dynamic>> fetchConversation(String conversationId) async {
+    if (conversationError != null) throw conversationError!;
+    return conversationResult;
+  }
+
+  @override
+  Future<Map<String, dynamic>> fetchConversationSummaries({
+    int skip = 0,
+    int limit = 50,
+  }) async {
+    if (conversationSummariesError != null) throw conversationSummariesError!;
+    return conversationSummariesResult;
   }
 
   @override
