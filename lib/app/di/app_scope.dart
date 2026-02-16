@@ -2,12 +2,14 @@ import '../../data/repository/auth_repository_impl.dart';
 import '../../data/repository/dashboard_repository_impl.dart';
 import '../../data/repository/notification_repository_impl.dart';
 import '../../data/repository/payment_repository_impl.dart';
+import '../../data/repository/psych_test_repository_impl.dart';
 import '../../data/repository/profile_repository_impl.dart';
 import '../../data/repository/result_repository_impl.dart';
 import '../../domain/repository/auth_repository.dart';
 import '../../domain/repository/dashboard_repository.dart';
 import '../../domain/repository/notification_repository.dart';
 import '../../domain/repository/payment_repository.dart';
+import '../../domain/repository/psych_test_repository.dart';
 import '../../domain/repository/profile_repository.dart';
 import '../../domain/repository/result_repository.dart';
 import '../../services/auth_service.dart';
@@ -37,6 +39,11 @@ class AppScope {
     authService: _authService,
     psychTestsService: PsychTestsService(),
     aiAssistantService: AiAssistantService(),
+  );
+
+  late final PsychTestRepository psychTestRepository = PsychTestRepositoryImpl(
+    authService: _authService,
+    psychTestsService: PsychTestsService(),
   );
 
   late final PaymentRepository paymentRepository = PaymentRepositoryImpl(

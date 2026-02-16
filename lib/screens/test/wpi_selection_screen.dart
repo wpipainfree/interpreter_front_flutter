@@ -2,8 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../services/auth_service.dart';
-import '../../services/psych_tests_service.dart';
+import '../../app/di/app_scope.dart';
+import '../../domain/model/psych_test_models.dart';
 import '../../router/app_routes.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
@@ -28,15 +28,15 @@ class WpiSelectionScreen extends StatefulWidget {
 class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
   static const Color _brandRed = Color(0xFFA5192B);
 
-  final PsychTestsService _service = PsychTestsService();
-  final AuthService _auth = AuthService();
+  final _repository = AppScope.instance.psychTestRepository;
 
   bool _loading = true;
   String? _error;
   final List<PsychTestChecklist> _checklists = [];
   int _stageIndex = 0;
   int? _resultId;
-  PsychTestChecklist? get _checklist => _checklists.isEmpty ? null : _checklists[_stageIndex];
+  PsychTestChecklist? get _checklist =>
+      _checklists.isEmpty ? null : _checklists[_stageIndex];
 
   // questionId -> rank(1,2,3)
   final Map<int, int> _selectedRanks = {};
@@ -56,7 +56,7 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
   }
 
   Future<void> _init() async {
-    if (!_auth.isLoggedIn) {
+    if (!_repository.isLoggedIn) {
       final ok = await AuthUi.promptLogin(context: context);
       if (!ok && mounted) {
         _exitTestFlow();
@@ -74,13 +74,13 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
     try {
       final lists = await AuthUi.withLoginRetry(
         context: context,
-        action: () => _service.fetchChecklists(widget.testId),
+        action: () => _repository.fetchChecklists(widget.testId),
       );
       if (lists == null) {
         if (!mounted) return;
         setState(() {
           _loading = false;
-          _error = const AuthRequiredException().toString();
+          _error = 'Login is required.';
         });
         return;
       }
@@ -120,11 +120,14 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
 
   void _toggleSelect(PsychTestItem item) {
     final currentRank = _roundIndex + 1;
-    final locked = _selectedRanks[item.id] != null && _selectedRanks[item.id]! < currentRank;
+    final locked = _selectedRanks[item.id] != null &&
+        _selectedRanks[item.id]! < currentRank;
     if (locked) return;
 
-    final currentSelections =
-        _selectedRanks.entries.where((e) => e.value == currentRank).map((e) => e.key).toList();
+    final currentSelections = _selectedRanks.entries
+        .where((e) => e.value == currentRank)
+        .map((e) => e.key)
+        .toList();
     final alreadySelected = _selectedRanks[item.id] == currentRank;
 
     if (alreadySelected) {
@@ -170,7 +173,8 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
 
   Future<void> _goNext() async {
     final target = _roundTargets[_roundIndex];
-    final count = _selectedRanks.values.where((v) => v == _roundIndex + 1).length;
+    final count =
+        _selectedRanks.values.where((v) => v == _roundIndex + 1).length;
     if (count != target) return;
 
     if (_roundIndex < 2) {
@@ -183,9 +187,18 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
 
     final selections = WpiSelections(
       checklistId: checklist.id,
-      rank1: _selectedRanks.entries.where((e) => e.value == 1).map((e) => e.key).toList(),
-      rank2: _selectedRanks.entries.where((e) => e.value == 2).map((e) => e.key).toList(),
-      rank3: _selectedRanks.entries.where((e) => e.value == 3).map((e) => e.key).toList(),
+      rank1: _selectedRanks.entries
+          .where((e) => e.value == 1)
+          .map((e) => e.key)
+          .toList(),
+      rank2: _selectedRanks.entries
+          .where((e) => e.value == 2)
+          .map((e) => e.key)
+          .toList(),
+      rank3: _selectedRanks.entries
+          .where((e) => e.value == 3)
+          .map((e) => e.key)
+          .toList(),
     );
 
     if (!mounted) return;
@@ -197,7 +210,8 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
         testTitle: '${widget.testTitle} / ${checklist.name}',
         items: checklist.questions,
         selections: selections,
-        processSequence: checklist.sequence == 0 ? _stageIndex + 1 : checklist.sequence,
+        processSequence:
+            checklist.sequence == 0 ? _stageIndex + 1 : checklist.sequence,
         deferNavigation: !isLastStage,
         existingResultId: _resultId,
       ),
@@ -275,10 +289,13 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
     final currentRank = _roundIndex + 1;
     final target = _roundTargets[_roundIndex];
     final checklist = _checklist!;
-    final currentSelections =
-        _selectedRanks.entries.where((e) => e.value == currentRank).map((e) => e.key).toList();
+    final currentSelections = _selectedRanks.entries
+        .where((e) => e.value == currentRank)
+        .map((e) => e.key)
+        .toList();
     final canProceed = currentSelections.length == target;
-    final stageLabel = '${_stageIndex + 1}/${_checklists.length} ${checklist.name}';
+    final stageLabel =
+        '${_stageIndex + 1}/${_checklists.length} ${checklist.name}';
 
     return PopScope(
       canPop: false,
@@ -299,44 +316,45 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
         ),
         body: Column(
           children: [
-          _StickyHeader(
-            brandRed: _brandRed,
-            roundLabel: _roundLabel(currentRank),
-            countLabel: '${currentSelections.length}/$target 선택',
-            criteria: '순서대로 ${target}개를 선택해주세요.',
-            reassurance: '',
-            slotCount: target,
-            selectedIds: currentSelections,
-            checklist: checklist,
-            onRemove: _removeFromCurrentRound,
-          ),
-          const Divider(height: 1),
-          Expanded(
-            child: ListView.separated(
-              itemCount: checklist.questions.length,
-              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
-              separatorBuilder: (_, __) => const SizedBox(height: 6),
-              itemBuilder: (context, index) {
-                final item = checklist.questions[index];
-                final rank = _selectedRanks[item.id];
-                final selected = rank == currentRank;
-                return _WpiItemCard(
-                  brandRed: _brandRed,
-                  number: index + 1,
-                  item: item,
-                  lockedRank: rank,
-                  selected: selected,
-                  onTap: () => _toggleSelect(item),
-                );
-              },
+            _StickyHeader(
+              brandRed: _brandRed,
+              roundLabel: _roundLabel(currentRank),
+              countLabel: '${currentSelections.length}/$target 선택',
+              criteria: '순서대로 ${target}개를 선택해주세요.',
+              reassurance: '',
+              slotCount: target,
+              selectedIds: currentSelections,
+              checklist: checklist,
+              onRemove: _removeFromCurrentRound,
             ),
-          ),
-          _BottomCta(
-            brandRed: _brandRed,
-            canProceed: canProceed,
-            primaryLabel: _roundIndex == 2 ? '확인하기' : '${_roundIndex + 2}순위로',
-            onNext: _goNext,
-          ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView.separated(
+                itemCount: checklist.questions.length,
+                padding:
+                    const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+                separatorBuilder: (_, __) => const SizedBox(height: 6),
+                itemBuilder: (context, index) {
+                  final item = checklist.questions[index];
+                  final rank = _selectedRanks[item.id];
+                  final selected = rank == currentRank;
+                  return _WpiItemCard(
+                    brandRed: _brandRed,
+                    number: index + 1,
+                    item: item,
+                    lockedRank: rank,
+                    selected: selected,
+                    onTap: () => _toggleSelect(item),
+                  );
+                },
+              ),
+            ),
+            _BottomCta(
+              brandRed: _brandRed,
+              canProceed: canProceed,
+              primaryLabel: _roundIndex == 2 ? '확인하기' : '${_roundIndex + 2}순위로',
+              onNext: _goNext,
+            ),
           ],
         ),
       ),
@@ -356,7 +374,10 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
         if (v is String) return int.tryParse(v);
         return null;
       }
-      return fromKey('result_id') ?? fromKey('RESULT_ID') ?? fromKey('resultId');
+
+      return fromKey('result_id') ??
+          fromKey('RESULT_ID') ??
+          fromKey('resultId');
     }
     return null;
   }
@@ -415,11 +436,14 @@ class _StickyHeader extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('선택 기준: ', style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w600)),
+                Text('선택 기준: ',
+                    style: AppTextStyles.bodySmall
+                        .copyWith(fontWeight: FontWeight.w600)),
                 Expanded(
                   child: Text(
                     criteria,
-                    style: AppTextStyles.bodySmall.copyWith(color: brandRed, fontWeight: FontWeight.w700),
+                    style: AppTextStyles.bodySmall
+                        .copyWith(color: brandRed, fontWeight: FontWeight.w700),
                   ),
                 ),
               ],
@@ -428,11 +452,14 @@ class _StickyHeader extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 reassurance,
-                style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                style: AppTextStyles.caption
+                    .copyWith(color: AppColors.textSecondary),
               ),
             ],
             const SizedBox(height: 14),
-            Text('현재 선택', style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w600)),
+            Text('현재 선택',
+                style: AppTextStyles.bodySmall
+                    .copyWith(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Container(
               height: 60,
@@ -448,12 +475,18 @@ class _StickyHeader extends StatelessWidget {
                 child: Row(
                   children: List.generate(slotCount, (index) {
                     final hasValue = index < selectedIds.length;
-                    final padding = EdgeInsets.only(right: index == slotCount - 1 ? 0 : 8);
+                    final padding =
+                        EdgeInsets.only(right: index == slotCount - 1 ? 0 : 8);
                     if (hasValue) {
                       final id = selectedIds[index];
-                      final questionIndex = checklist.questions.indexWhere((e) => e.id == id);
-                      final label = questionIndex >= 0 ? '${questionIndex + 1}' : '${index + 1}';
-                      final text = questionIndex >= 0 ? _cleanText(checklist.questions[questionIndex].text) : '';
+                      final questionIndex =
+                          checklist.questions.indexWhere((e) => e.id == id);
+                      final label = questionIndex >= 0
+                          ? '${questionIndex + 1}'
+                          : '${index + 1}';
+                      final text = questionIndex >= 0
+                          ? _cleanText(checklist.questions[questionIndex].text)
+                          : '';
                       return Padding(
                         padding: padding,
                         child: InputChip(
@@ -484,11 +517,13 @@ class _StickyHeader extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.grey.shade300, width: 1.2),
+                          border: Border.all(
+                              color: Colors.grey.shade300, width: 1.2),
                         ),
                         child: Text(
                           '${index + 1}',
-                          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                          style: AppTextStyles.bodySmall
+                              .copyWith(color: AppColors.textSecondary),
                         ),
                       ),
                     );
@@ -502,7 +537,8 @@ class _StickyHeader extends StatelessWidget {
     );
   }
 
-  String _cleanText(String text) => text.replaceAll(RegExp(r'\(.*?\)'), '').trim();
+  String _cleanText(String text) =>
+      text.replaceAll(RegExp(r'\(.*?\)'), '').trim();
 }
 
 class _WpiItemCard extends StatefulWidget {
@@ -535,8 +571,10 @@ class _WpiItemCardState extends State<_WpiItemCard> {
   }
 
   void _handleTap() {
-    final locked =
-        widget.lockedRank != null && widget.lockedRank! < 3 && widget.lockedRank! > 0 && !widget.selected;
+    final locked = widget.lockedRank != null &&
+        widget.lockedRank! < 3 &&
+        widget.lockedRank! > 0 &&
+        !widget.selected;
     if (locked) return;
     if (!widget.selected && !kIsWeb) {
       HapticFeedback.lightImpact();
@@ -546,8 +584,10 @@ class _WpiItemCardState extends State<_WpiItemCard> {
 
   @override
   Widget build(BuildContext context) {
-    final locked =
-        widget.lockedRank != null && widget.lockedRank! < 3 && widget.lockedRank! > 0 && !widget.selected;
+    final locked = widget.lockedRank != null &&
+        widget.lockedRank! < 3 &&
+        widget.lockedRank! > 0 &&
+        !widget.selected;
     return MouseRegion(
       cursor: locked ? SystemMouseCursors.basic : SystemMouseCursors.click,
       child: Material(
@@ -557,7 +597,8 @@ class _WpiItemCardState extends State<_WpiItemCard> {
           onTapDown: locked ? null : (_) => _setPressed(true),
           onTapCancel: locked ? null : () => _setPressed(false),
           onTapUp: locked ? null : (_) => _setPressed(false),
-          mouseCursor: locked ? SystemMouseCursors.basic : SystemMouseCursors.click,
+          mouseCursor:
+              locked ? SystemMouseCursors.basic : SystemMouseCursors.click,
           borderRadius: BorderRadius.circular(12),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -580,7 +621,9 @@ class _WpiItemCardState extends State<_WpiItemCard> {
                   child: Text(
                     '${widget.number}. ${_cleanText(widget.item.text)}',
                     style: AppTextStyles.bodyMedium.copyWith(
-                      color: locked ? AppColors.textSecondary : AppColors.textPrimary,
+                      color: locked
+                          ? AppColors.textSecondary
+                          : AppColors.textPrimary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -590,8 +633,9 @@ class _WpiItemCardState extends State<_WpiItemCard> {
                   onTap: locked ? null : _handleTap,
                   child: AnimatedScale(
                     scale: _isPressed ? 0.94 : 1,
-                    duration:
-                        _isPressed ? const Duration(milliseconds: 90) : const Duration(milliseconds: 240),
+                    duration: _isPressed
+                        ? const Duration(milliseconds: 90)
+                        : const Duration(milliseconds: 240),
                     curve: _isPressed ? Curves.easeOutQuad : Curves.elasticOut,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
@@ -603,9 +647,13 @@ class _WpiItemCardState extends State<_WpiItemCard> {
                         shape: BoxShape.circle,
                         color: widget.selected
                             ? widget.brandRed
-                            : (_isPressed ? Colors.grey.shade100 : Colors.white),
+                            : (_isPressed
+                                ? Colors.grey.shade100
+                                : Colors.white),
                         border: Border.all(
-                          color: widget.selected ? widget.brandRed : AppColors.border,
+                          color: widget.selected
+                              ? widget.brandRed
+                              : AppColors.border,
                           width: widget.selected ? 2 : 1.5,
                         ),
                         boxShadow: widget.selected
@@ -625,7 +673,8 @@ class _WpiItemCardState extends State<_WpiItemCard> {
                           scale: widget.selected ? 1 : 0.6,
                           duration: const Duration(milliseconds: 160),
                           curve: Curves.easeOutBack,
-                          child: const Icon(Icons.check, color: Colors.white, size: 22),
+                          child: const Icon(Icons.check,
+                              color: Colors.white, size: 22),
                         ),
                       ),
                     ),
@@ -639,7 +688,8 @@ class _WpiItemCardState extends State<_WpiItemCard> {
     );
   }
 
-  String _cleanText(String text) => text.replaceAll(RegExp(r'\(.*?\)'), '').trim();
+  String _cleanText(String text) =>
+      text.replaceAll(RegExp(r'\(.*?\)'), '').trim();
 }
 
 class _BottomCta extends StatelessWidget {

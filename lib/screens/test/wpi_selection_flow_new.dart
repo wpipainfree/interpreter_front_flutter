@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../services/auth_service.dart';
-import '../../services/psych_tests_service.dart';
+import '../../app/di/app_scope.dart';
+import '../../domain/model/psych_test_models.dart';
 import '../../router/app_routes.dart';
 import '../../test_flow/role_transition_screen.dart';
 import '../../test_flow/test_flow_models.dart';
@@ -37,8 +37,7 @@ class WpiSelectionFlowNew extends StatefulWidget {
 }
 
 class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
-  final AuthService _authService = AuthService();
-  final PsychTestsService _service = PsychTestsService();
+  final _repository = AppScope.instance.psychTestRepository;
   final ScrollController _listController = ScrollController();
   final GlobalKey _selectedAnchorKey = GlobalKey();
 
@@ -73,7 +72,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
   }
 
   Future<void> _init() async {
-    if (!_authService.isLoggedIn) {
+    if (!_repository.isLoggedIn) {
       final ok = await AuthUi.promptLogin(context: context);
       if (!ok && mounted) {
         _exitTestFlow();
@@ -95,13 +94,14 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       _error = null;
     });
     try {
-      final lists =
-          await AuthUi.withLoginRetry(context: context, action: () => _service.fetchChecklists(widget.testId));
+      final lists = await AuthUi.withLoginRetry(
+          context: context,
+          action: () => _repository.fetchChecklists(widget.testId));
       if (lists == null) {
         if (!mounted) return;
         setState(() {
           _loading = false;
-          _error = const AuthRequiredException().toString();
+          _error = 'Login is required.';
         });
         return;
       }
@@ -285,13 +285,13 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       final result = await AuthUi.withLoginRetry(
         context: context,
         action: () => _resultId == null
-            ? _service.submitResults(
+            ? _repository.submitResults(
                 testId: widget.testId,
                 selections: selections,
                 worry: widget.mindFocus,
                 processSequence: c.sequence == 0 ? _stageIndex + 1 : c.sequence,
               )
-            : _service.updateResults(
+            : _repository.updateResults(
                 resultId: _resultId!,
                 selections: selections,
                 processSequence: c.sequence == 0 ? _stageIndex + 1 : c.sequence,
@@ -316,21 +316,22 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
         _prepareStage(nextIndex);
       } else {
         final rid = _resultId ?? _extractResultId(result);
-          if (rid != null) {
-            if (widget.exitMode == FlowExitMode.popWithResult) {
-              Navigator.of(context).pop(
-                FlowCompletion(kind: widget.kind, resultId: rid.toString()),
-              );
-            } else {
-              Navigator.of(context).pushReplacementNamed(
-                AppRoutes.userResultDetail,
-                arguments: UserResultDetailArgs(resultId: rid, testId: widget.testId),
-              );
-            }
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('결과 ID를 확인할 수 없습니다.')),
+        if (rid != null) {
+          if (widget.exitMode == FlowExitMode.popWithResult) {
+            Navigator.of(context).pop(
+              FlowCompletion(kind: widget.kind, resultId: rid.toString()),
             );
+          } else {
+            Navigator.of(context).pushReplacementNamed(
+              AppRoutes.userResultDetail,
+              arguments:
+                  UserResultDetailArgs(resultId: rid, testId: widget.testId),
+            );
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('결과 ID를 확인할 수 없습니다.')),
+          );
         }
       }
     } catch (e) {
@@ -406,7 +407,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       );
     }
     if (_error != null) {
-      final loggedIn = _authService.isLoggedIn;
+      final loggedIn = _repository.isLoggedIn;
       return PopScope(
         canPop: false,
         child: Scaffold(
@@ -459,154 +460,154 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
           ],
         ),
         body: Column(
-        children: [
-          _SummaryBar(
-            selectedCount: _selectedIds.length,
-            totalTarget: total,
-            stageLabel: stageLabel,
-            onTap: _scrollToSelected,
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  checklist.question.isNotEmpty
-                      ? checklist.question
-                      : '순서대로 선택 후 제출해주세요.',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '1~${checklist.firstCount}개 1순위, 그 다음 ${checklist.secondCount}개 2순위, 나머지 3순위로 선택합니다.',
-                  style: AppTextStyles.bodySmall,
-                ),
-              ],
+          children: [
+            _SummaryBar(
+              selectedCount: _selectedIds.length,
+              totalTarget: total,
+              stageLabel: stageLabel,
+              onTap: _scrollToSelected,
             ),
-          ),
-          const Divider(height: 1),
-          Expanded(
-            child: CustomScrollView(
-              controller: _listController,
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                  sliver: SliverReorderableList(
-                    itemCount: selectedItems.length,
-                    onReorder: _handleReorder,
-                    proxyDecorator: (child, index, animation) {
-                      if (index < 0 || index >= selectedItems.length)
-                        return child;
-                      final item = selectedItems[index];
-                      final number = (_originalOrder[item.id] ?? index) + 1;
-                      return Material(
-                        elevation: 6,
-                        color: Colors.transparent,
-                        child: _SelectableTile(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    checklist.question.isNotEmpty
+                        ? checklist.question
+                        : '순서대로 선택 후 제출해주세요.',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '1~${checklist.firstCount}개 1순위, 그 다음 ${checklist.secondCount}개 2순위, 나머지 3순위로 선택합니다.',
+                    style: AppTextStyles.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: CustomScrollView(
+                controller: _listController,
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                    sliver: SliverReorderableList(
+                      itemCount: selectedItems.length,
+                      onReorder: _handleReorder,
+                      proxyDecorator: (child, index, animation) {
+                        if (index < 0 || index >= selectedItems.length)
+                          return child;
+                        final item = selectedItems[index];
+                        final number = (_originalOrder[item.id] ?? index) + 1;
+                        return Material(
+                          elevation: 6,
+                          color: Colors.transparent,
+                          child: _SelectableTile(
+                            number: number,
+                            text: _cleanText(item.text),
+                            onSelect: () {},
+                            onDeselect: () => _deselect(item),
+                            selected: true,
+                          ),
+                        );
+                      },
+                      itemBuilder: (context, index) {
+                        final item = selectedItems[index];
+                        final number = (_originalOrder[item.id] ?? index) + 1;
+                        final List<Widget> children = [];
+                        if (index == 0 && _selectedIds.isNotEmpty) {
+                          children.add(
+                              SizedBox(key: _selectedAnchorKey, height: 0));
+                          children.add(_rankLabel(
+                              '1순위 (${_checklist?.firstCount ?? 0})'));
+                        } else if (index == (_checklist?.firstCount ?? 0) &&
+                            index < _selectedIds.length) {
+                          children.add(_rankLabel(
+                              '2순위 (${_checklist?.secondCount ?? 0})'));
+                        } else if (index ==
+                                ((_checklist?.firstCount ?? 0) +
+                                    (_checklist?.secondCount ?? 0)) &&
+                            index < _selectedIds.length) {
+                          children.add(_rankLabel(
+                              '3순위 (${_checklist?.thirdCount ?? 0})'));
+                        }
+
+                        Widget tile = _SelectableTile(
                           number: number,
                           text: _cleanText(item.text),
                           onSelect: () {},
                           onDeselect: () => _deselect(item),
                           selected: true,
-                        ),
-                      );
-                    },
-                    itemBuilder: (context, index) {
-                      final item = selectedItems[index];
-                      final number = (_originalOrder[item.id] ?? index) + 1;
-                      final List<Widget> children = [];
-                      if (index == 0 && _selectedIds.isNotEmpty) {
-                        children
-                            .add(SizedBox(key: _selectedAnchorKey, height: 0));
-                        children.add(
-                            _rankLabel('1순위 (${_checklist?.firstCount ?? 0})'));
-                      } else if (index == (_checklist?.firstCount ?? 0) &&
-                          index < _selectedIds.length) {
-                        children.add(_rankLabel(
-                            '2순위 (${_checklist?.secondCount ?? 0})'));
-                      } else if (index ==
-                              ((_checklist?.firstCount ?? 0) +
-                                  (_checklist?.secondCount ?? 0)) &&
-                          index < _selectedIds.length) {
-                        children.add(
-                            _rankLabel('3순위 (${_checklist?.thirdCount ?? 0})'));
-                      }
+                        );
+                        tile = ReorderableDelayedDragStartListener(
+                          index: index,
+                          child: tile,
+                        );
+                        children.add(tile);
 
-                      Widget tile = _SelectableTile(
-                        number: number,
-                        text: _cleanText(item.text),
-                        onSelect: () {},
-                        onDeselect: () => _deselect(item),
-                        selected: true,
-                      );
-                      tile = ReorderableDelayedDragStartListener(
-                        index: index,
-                        child: tile,
-                      );
-                      children.add(tile);
-
-                      return Column(
-                        key: ValueKey(item.id),
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: children,
-                      );
-                    },
-                  ),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final item = availableItems[index];
-                        final number = (_originalOrder[item.id] ?? index) + 1;
-                        return _SelectableTile(
+                        return Column(
                           key: ValueKey(item.id),
-                          number: number,
-                          text: _cleanText(item.text),
-                          onSelect: () => _toggleSelect(item),
-                          onDeselect: () => _deselect(item),
-                          selected: false,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: children,
                         );
                       },
-                      childCount: availableItems.length,
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: ElevatedButton(
-                onPressed: canSubmit ? _submit : null,
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(52),
-                  backgroundColor:
-                      canSubmit ? AppColors.secondary : AppColors.disabled,
-                ),
-                child: _submitting
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Text('제출'),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final item = availableItems[index];
+                          final number = (_originalOrder[item.id] ?? index) + 1;
+                          return _SelectableTile(
+                            key: ValueKey(item.id),
+                            number: number,
+                            text: _cleanText(item.text),
+                            onSelect: () => _toggleSelect(item),
+                            onDeselect: () => _deselect(item),
+                            selected: false,
+                          );
+                        },
+                        childCount: availableItems.length,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                child: ElevatedButton(
+                  onPressed: canSubmit ? _submit : null,
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                    backgroundColor:
+                        canSubmit ? AppColors.secondary : AppColors.disabled,
+                  ),
+                  child: _submitting
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Text('제출'),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
     );
   }
 

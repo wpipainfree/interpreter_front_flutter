@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../app/di/app_scope.dart';
+import '../../domain/model/psych_test_models.dart';
 import '../../router/app_routes.dart';
-import '../../services/psych_tests_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/auth_ui.dart';
@@ -31,7 +32,7 @@ class WpiReviewScreen extends StatefulWidget {
 }
 
 class _WpiReviewScreenState extends State<WpiReviewScreen> {
-  final PsychTestsService _service = PsychTestsService();
+  final _repository = AppScope.instance.psychTestRepository;
   bool _submitting = false;
   DragSnapshot? _lastSwap;
 
@@ -41,9 +42,15 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
   void initState() {
     super.initState();
     _buckets = {
-      1: widget.items.where((e) => widget.selections.rank1.contains(e.id)).toList(),
-      2: widget.items.where((e) => widget.selections.rank2.contains(e.id)).toList(),
-      3: widget.items.where((e) => widget.selections.rank3.contains(e.id)).toList(),
+      1: widget.items
+          .where((e) => widget.selections.rank1.contains(e.id))
+          .toList(),
+      2: widget.items
+          .where((e) => widget.selections.rank2.contains(e.id))
+          .toList(),
+      3: widget.items
+          .where((e) => widget.selections.rank3.contains(e.id))
+          .toList(),
     };
   }
 
@@ -112,7 +119,9 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(title, style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
+              Text(title,
+                  style: AppTextStyles.bodyMedium
+                      .copyWith(fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
               ...list.map((item) => _DraggableTile(
                     item: item,
@@ -161,7 +170,8 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
   void _undoSwap() {
     final snap = _lastSwap;
     if (snap == null) return;
-    _handleSwap(DragData(itemId: snap.toId, rank: snap.toRank), snap.fromRank, snap.fromId);
+    _handleSwap(DragData(itemId: snap.toId, rank: snap.toRank), snap.fromRank,
+        snap.fromId);
     _lastSwap = null;
   }
 
@@ -177,9 +187,12 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
     final dy = localOffset.dy;
 
     if (dy < edgeDragWidth && position.pixels > position.minScrollExtent) {
-      position.jumpTo((position.pixels - scrollStep).clamp(position.minScrollExtent, position.maxScrollExtent));
-    } else if (dy > box.size.height - edgeDragWidth && position.pixels < position.maxScrollExtent) {
-      position.jumpTo((position.pixels + scrollStep).clamp(position.minScrollExtent, position.maxScrollExtent));
+      position.jumpTo((position.pixels - scrollStep)
+          .clamp(position.minScrollExtent, position.maxScrollExtent));
+    } else if (dy > box.size.height - edgeDragWidth &&
+        position.pixels < position.maxScrollExtent) {
+      position.jumpTo((position.pixels + scrollStep)
+          .clamp(position.minScrollExtent, position.maxScrollExtent));
     }
   }
 
@@ -194,17 +207,18 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
 
     Future<Map<String, dynamic>> send() {
       return widget.existingResultId == null
-          ? _service.submitResults(
+          ? _repository.submitResults(
               testId: widget.testId,
               selections: selections,
               processSequence: widget.processSequence ?? 99,
             )
-          : _service.updateResults(
+          : _repository.updateResults(
               resultId: widget.existingResultId!,
               selections: selections,
               processSequence: widget.processSequence ?? 99,
             );
     }
+
     try {
       final result = await AuthUi.withLoginRetry<Map<String, dynamic>>(
         context: context,
@@ -249,12 +263,14 @@ class _ReviewHeader extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               '필요하면 드래그로 순서를 바꿀 수 있습니다.',
-              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+              style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 4),
             Text(
               testTitle,
-              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+              style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -303,7 +319,8 @@ class _DraggableTile extends StatelessWidget {
     );
   }
 
-  Widget _tile(BuildContext context, {bool dragging = false, bool highlight = false}) {
+  Widget _tile(BuildContext context,
+      {bool dragging = false, bool highlight = false}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -333,7 +350,8 @@ class _DraggableTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          const Icon(Icons.drag_indicator_rounded, color: AppColors.textSecondary),
+          const Icon(Icons.drag_indicator_rounded,
+              color: AppColors.textSecondary),
         ],
       ),
     );
@@ -378,10 +396,13 @@ class _DraggableTile extends StatelessWidget {
     final local = box.globalToLocal(details.globalPosition);
 
     if (local.dy < edge && position.pixels > position.minScrollExtent) {
-      final newOffset = (position.pixels - step).clamp(position.minScrollExtent, position.maxScrollExtent);
+      final newOffset = (position.pixels - step)
+          .clamp(position.minScrollExtent, position.maxScrollExtent);
       position.jumpTo(newOffset);
-    } else if (local.dy > box.size.height - edge && position.pixels < position.maxScrollExtent) {
-      final newOffset = (position.pixels + step).clamp(position.minScrollExtent, position.maxScrollExtent);
+    } else if (local.dy > box.size.height - edge &&
+        position.pixels < position.maxScrollExtent) {
+      final newOffset = (position.pixels + step)
+          .clamp(position.minScrollExtent, position.maxScrollExtent);
       position.jumpTo(newOffset);
     }
   }

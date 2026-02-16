@@ -1,5 +1,5 @@
 import '../models/wpi_result.dart';
-import '../services/psych_tests_service.dart';
+import '../domain/model/psych_test_models.dart';
 import '../test_flow/test_flow_models.dart';
 
 typedef WpiEvaluationRole = EvaluationRole;
