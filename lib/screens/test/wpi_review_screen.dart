@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/di/app_scope.dart';
 import '../../domain/model/psych_test_models.dart';
 import '../../router/app_routes.dart';
+import '../../ui/test/wpi_review_view_model.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/auth_ui.dart';
@@ -32,8 +33,7 @@ class WpiReviewScreen extends StatefulWidget {
 }
 
 class _WpiReviewScreenState extends State<WpiReviewScreen> {
-  final _repository = AppScope.instance.psychTestRepository;
-  bool _submitting = false;
+  late final WpiReviewViewModel _viewModel;
   DragSnapshot? _lastSwap;
 
   late Map<int, List<PsychTestItem>> _buckets;
@@ -41,6 +41,8 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
   @override
   void initState() {
     super.initState();
+    _viewModel = WpiReviewViewModel(AppScope.instance.psychTestRepository)
+      ..addListener(_onViewModelChanged);
     _buckets = {
       1: widget.items
           .where((e) => widget.selections.rank1.contains(e.id))
@@ -52,6 +54,19 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
           .where((e) => widget.selections.rank3.contains(e.id))
           .toList(),
     };
+  }
+
+  @override
+  void dispose() {
+    _viewModel
+      ..removeListener(_onViewModelChanged)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _onViewModelChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   void _exitTestFlow() {
@@ -98,7 +113,7 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
               ),
             ),
             _BottomBar(
-              submitting: _submitting,
+              submitting: _viewModel.submitting,
               onConfirm: _submit,
             ),
           ],
@@ -197,7 +212,6 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
   }
 
   Future<void> _submit() async {
-    setState(() => _submitting = true);
     final selections = WpiSelections(
       checklistId: widget.selections.checklistId,
       rank1: _buckets[1]?.map((e) => e.id).toList() ?? [],
@@ -205,24 +219,15 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
       rank3: _buckets[3]?.map((e) => e.id).toList() ?? [],
     );
 
-    Future<Map<String, dynamic>> send() {
-      return widget.existingResultId == null
-          ? _repository.submitResults(
-              testId: widget.testId,
-              selections: selections,
-              processSequence: widget.processSequence ?? 99,
-            )
-          : _repository.updateResults(
-              resultId: widget.existingResultId!,
-              selections: selections,
-              processSequence: widget.processSequence ?? 99,
-            );
-    }
-
     try {
       final result = await AuthUi.withLoginRetry<Map<String, dynamic>>(
         context: context,
-        action: send,
+        action: () => _viewModel.submit(
+          testId: widget.testId,
+          selections: selections,
+          processSequence: widget.processSequence ?? 99,
+          existingResultId: widget.existingResultId,
+        ),
       );
       if (!mounted || result == null) return;
       if (widget.deferNavigation) {
@@ -236,10 +241,8 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
+        SnackBar(content: Text(_viewModel.errorMessage ?? e.toString())),
       );
-    } finally {
-      if (mounted) setState(() => _submitting = false);
     }
   }
 }
