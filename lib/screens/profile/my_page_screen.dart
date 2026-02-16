@@ -1,8 +1,12 @@
 import 'dart:io' show Platform;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import '../../services/auth_service.dart';
+
+import '../../app/di/app_scope.dart';
+import '../../domain/model/profile_models.dart';
 import '../../router/app_routes.dart';
+import '../../ui/profile/my_page_view_model.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/auth_ui.dart';
@@ -15,115 +19,64 @@ class MyPageScreen extends StatefulWidget {
 }
 
 class _MyPageScreenState extends State<MyPageScreen> {
-  final AuthService _authService = AuthService();
-  late final VoidCallback _authListener;
+  late final MyPageViewModel _viewModel;
 
-  UserInfo? get _user => _authService.currentUser;
-
-  /// 소셜 연동 상태 (백엔드 API에서 가져옴)
-  List<SocialProviderStatus> _socialProviderStatuses = [];
-  bool _isLoadingProviders = false;
+  ProfileUser? get _user => _viewModel.user;
+  bool get _isLoadingProviders => _viewModel.isLoadingProviders;
 
   @override
   void initState() {
     super.initState();
-    _authListener = () {
-      if (!mounted) return;
-      setState(() {});
-      // 로그인 상태 변경 시 연동 상태 새로고침
-      if (_authService.currentUser != null && _socialProviderStatuses.isEmpty) {
-        _loadSocialProviderStatuses();
-      }
-    };
-    _authService.addListener(_authListener);
-    // 이미 로그인된 상태면 연동 상태 로드
-    if (_authService.currentUser != null) {
-      _loadSocialProviderStatuses();
-    }
+    _viewModel = MyPageViewModel(AppScope.instance.profileRepository);
+    _viewModel.addListener(_handleViewModelChanged);
+    _viewModel.start();
   }
 
   @override
   void dispose() {
-    _authService.removeListener(_authListener);
+    _viewModel.removeListener(_handleViewModelChanged);
+    _viewModel.dispose();
     super.dispose();
   }
 
-  /// 소셜 연동 상태를 백엔드에서 가져옴
-  Future<void> _loadSocialProviderStatuses() async {
-    if (_authService.currentUser == null) return;
-
-    setState(() => _isLoadingProviders = true);
-    final statuses = await _authService.getSocialProvidersStatus();
+  void _handleViewModelChanged() {
     if (!mounted) return;
-    setState(() {
-      _socialProviderStatuses = statuses;
-      _isLoadingProviders = false;
-    });
+    setState(() {});
   }
 
   /// 특정 provider의 연동 상태 확인
   bool _isProviderLinked(String provider) {
-    final status = _socialProviderStatuses.firstWhere(
-      (s) => s.provider.toLowerCase() == provider.toLowerCase(),
-      orElse: () => SocialProviderStatus(
-        provider: provider,
-        providerName: provider,
-        isLinked: false,
-      ),
-    );
-    return status.isLinked;
+    return _viewModel.isProviderLinked(provider);
   }
-
-  final Map<String, bool> _linkingProviders = {};
 
   bool _isProviderLinking(String provider) {
-    return _linkingProviders[provider] ?? false;
+    return _viewModel.isProviderBusy(provider);
   }
 
-  Future<void> _handleLinkSocial(BuildContext context, String provider) async {
+  Future<void> _handleLinkSocial(String provider) async {
     if (_isProviderLinking(provider)) return;
-    setState(() => _linkingProviders[provider] = true);
-
-    // 카카오/구글/애플: SDK로 토큰 획득 후 백엔드에 연동 요청
-    final result = await _authService.linkSocialAccountWithSdk(provider);
+    final result = await _viewModel.linkSocialAccount(provider);
 
     if (!mounted) return;
-    setState(() => _linkingProviders[provider] = false);
-
-    final ctx = context;
-    if (!ctx.mounted) return;
     if (result.isSuccess) {
-      ScaffoldMessenger.of(ctx).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result.successMessage ??
-              '${_providerName(provider)} 계정이 연동되었습니다.'),
+          content:
+              Text(result.message ?? '${_providerName(provider)} 계정이 연동되었습니다.'),
           backgroundColor: Colors.green,
         ),
       );
-      // 연동 상태 새로고침
-      _loadSocialProviderStatuses();
     } else {
-      final isOAuthUrl = result.debugMessage?.startsWith('http') ?? false;
-      if (isOAuthUrl) {
-        ScaffoldMessenger.of(ctx).showSnackBar(
-          SnackBar(
-            content: Text(result.debugMessage ?? 'OAuth URL을 열어주세요.'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(ctx).showSnackBar(
-          SnackBar(
-            content: Text(result.errorMessage ?? '연동에 실패했습니다.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.errorMessage ?? '연동에 실패했습니다.'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
-  Future<void> _handleUnlinkSocial(
-      BuildContext context, String provider) async {
+  Future<void> _handleUnlinkSocial(String provider) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -144,9 +97,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
     if (confirm != true) return;
 
-    final result = await _authService.unlinkSocialAccount(provider);
+    final result = await _viewModel.unlinkSocialAccount(provider);
 
-    if (!context.mounted) return;
+    if (!mounted) return;
 
     if (result.isSuccess) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -155,8 +108,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
           backgroundColor: Colors.green,
         ),
       );
-      // 연동 상태 새로고침
-      _loadSocialProviderStatuses();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -209,7 +160,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
               onPressed: () async {
                 final ok = await AuthUi.promptLogin(context: context);
                 if (ok && mounted) {
-                  setState(() {});
+                  await _viewModel.reloadAfterLogin();
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -227,7 +178,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
   }
 
-  Widget _buildLoggedIn(BuildContext context, UserInfo user) {
+  Widget _buildLoggedIn(BuildContext context, ProfileUser user) {
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -253,27 +204,27 @@ class _MyPageScreenState extends State<MyPageScreen> {
               provider: 'kakao',
               isLinked: _isProviderLinked('kakao'),
               isLoading: _isProviderLinking('kakao'),
-              onLinkTap: () => _handleLinkSocial(context, 'kakao'),
-              onUnlinkTap: () => _handleUnlinkSocial(context, 'kakao'),
+              onLinkTap: () => _handleLinkSocial('kakao'),
+              onUnlinkTap: () => _handleUnlinkSocial('kakao'),
             ),
             _SocialAccountLinkTile(
               provider: 'google',
               isLinked: _isProviderLinked('google'),
               isLoading: _isProviderLinking('google'),
-              onLinkTap: () => _handleLinkSocial(context, 'google'),
-              onUnlinkTap: () => _handleUnlinkSocial(context, 'google'),
+              onLinkTap: () => _handleLinkSocial('google'),
+              onUnlinkTap: () => _handleUnlinkSocial('google'),
             ),
             _SocialAccountLinkTile(
               provider: 'apple',
               isLinked: _isProviderLinked('apple'),
               isLoading: _isProviderLinking('apple'),
-              isEnabled: !kIsWeb && Platform.isIOS, // Android??? ????
-              onLinkTap: () => _handleLinkSocial(context, 'apple'),
-              onUnlinkTap: () => _handleUnlinkSocial(context, 'apple'),
+              isEnabled: !kIsWeb && Platform.isIOS, // Apple 연동은 iOS 전용
+              onLinkTap: () => _handleLinkSocial('apple'),
+              onUnlinkTap: () => _handleUnlinkSocial('apple'),
             ),
           ],
           const Divider(height: 32),
-          _SectionTitle('결제 정보'),
+          const _SectionTitle('결제 정보'),
           _SettingTile(
             icon: Icons.receipt_long_outlined,
             title: '결제 내역',
@@ -282,7 +233,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
             },
           ),
           const Divider(height: 32),
-          _SectionTitle('설정'),
+          const _SectionTitle('설정'),
           _SettingTile(
             icon: Icons.notifications_outlined,
             title: '알림 설정',
@@ -326,7 +277,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 ),
               );
               if (confirm == true) {
-                await _authService.logout();
+                await _viewModel.logout();
                 if (!context.mounted) return;
                 Navigator.of(context).pushNamedAndRemoveUntil(
                   AppRoutes.entry,
@@ -343,7 +294,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
 }
 
 class _ProfileHeader extends StatelessWidget {
-  final UserInfo? user;
+  final ProfileUser? user;
   const _ProfileHeader({required this.user});
 
   @override
@@ -399,7 +350,7 @@ class _ProfileHeader extends StatelessWidget {
 }
 
 class _CounselingInfoCard extends StatelessWidget {
-  final CounselingClient client;
+  final CounselingClientInfo client;
   const _CounselingInfoCard({required this.client});
 
   @override
