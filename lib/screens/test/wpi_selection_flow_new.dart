@@ -5,6 +5,7 @@ import '../../domain/model/psych_test_models.dart';
 import '../../router/app_routes.dart';
 import '../../test_flow/role_transition_screen.dart';
 import '../../test_flow/test_flow_models.dart';
+import '../../ui/test/wpi_selection_flow_view_model.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/auth_ui.dart';
@@ -37,7 +38,7 @@ class WpiSelectionFlowNew extends StatefulWidget {
 }
 
 class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
-  final _repository = AppScope.instance.psychTestRepository;
+  late final WpiSelectionFlowViewModel _viewModel;
   final ScrollController _listController = ScrollController();
   final GlobalKey _selectedAnchorKey = GlobalKey();
 
@@ -67,12 +68,14 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
   @override
   void initState() {
     super.initState();
+    _viewModel =
+        WpiSelectionFlowViewModel(AppScope.instance.psychTestRepository);
     _resultId = widget.existingResultId;
     _init();
   }
 
   Future<void> _init() async {
-    if (!_repository.isLoggedIn) {
+    if (!_viewModel.isLoggedIn) {
       final ok = await AuthUi.promptLogin(context: context);
       if (!ok && mounted) {
         _exitTestFlow();
@@ -95,8 +98,9 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     });
     try {
       final lists = await AuthUi.withLoginRetry(
-          context: context,
-          action: () => _repository.fetchChecklists(widget.testId));
+        context: context,
+        action: () => _viewModel.loadChecklists(widget.testId),
+      );
       if (lists == null) {
         if (!mounted) return;
         setState(() {
@@ -108,11 +112,13 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       if (lists.isEmpty) {
         throw const PsychTestException('No checklist data.');
       }
-      final sorted = _sortChecklists(lists);
       _checklists
         ..clear()
-        ..addAll(sorted);
-      _prepareStage(_resolveInitialIndex(sorted));
+        ..addAll(lists);
+      _prepareStage(_viewModel.resolveInitialIndex(
+        checklists: lists,
+        initialRole: widget.initialRole,
+      ));
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -120,18 +126,6 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
         _error = e.toString();
       });
     }
-  }
-
-  int _resolveInitialIndex(List<PsychTestChecklist> checklists) {
-    final role = widget.initialRole;
-    if (role == null || role == EvaluationRole.self) return 0;
-
-    final byRole = checklists.indexWhere((c) => c.role == role);
-    if (byRole != -1) return byRole;
-
-    // Fallback: assume the second checklist is "other" when roles are ambiguous.
-    if (checklists.length > 1) return 1;
-    return 0;
   }
 
   void _prepareStage(int index) {
@@ -284,21 +278,16 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     try {
       final result = await AuthUi.withLoginRetry(
         context: context,
-        action: () => _resultId == null
-            ? _repository.submitResults(
-                testId: widget.testId,
-                selections: selections,
-                worry: widget.mindFocus,
-                processSequence: c.sequence == 0 ? _stageIndex + 1 : c.sequence,
-              )
-            : _repository.updateResults(
-                resultId: _resultId!,
-                selections: selections,
-                processSequence: c.sequence == 0 ? _stageIndex + 1 : c.sequence,
-              ),
+        action: () => _viewModel.submitSelection(
+          testId: widget.testId,
+          selections: selections,
+          mindFocus: widget.mindFocus,
+          processSequence: c.sequence == 0 ? _stageIndex + 1 : c.sequence,
+          resultId: _resultId,
+        ),
       );
       if (result == null) return;
-      _resultId ??= _extractResultId(result);
+      _resultId ??= _viewModel.extractResultId(result);
       if (!mounted) return;
       final hasNext = _stageIndex + 1 < _checklists.length;
       if (hasNext) {
@@ -315,7 +304,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
             _checklists[_stageIndex], _checklists[nextIndex]);
         _prepareStage(nextIndex);
       } else {
-        final rid = _resultId ?? _extractResultId(result);
+        final rid = _resultId ?? _viewModel.extractResultId(result);
         if (rid != null) {
           if (widget.exitMode == FlowExitMode.popWithResult) {
             Navigator.of(context).pop(
@@ -341,28 +330,6 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       );
     } finally {
       if (mounted) setState(() => _submitting = false);
-    }
-  }
-
-  List<PsychTestChecklist> _sortChecklists(List<PsychTestChecklist> source) {
-    final indexed = List.generate(source.length, (i) => MapEntry(i, source[i]));
-    indexed.sort((a, b) {
-      final priorityA = _rolePriority(a.value.role);
-      final priorityB = _rolePriority(b.value.role);
-      if (priorityA != priorityB) return priorityA.compareTo(priorityB);
-      return a.key.compareTo(b.key);
-    });
-    return indexed.map((e) => e.value).toList();
-  }
-
-  int _rolePriority(EvaluationRole role) {
-    switch (role) {
-      case EvaluationRole.self:
-        return 0;
-      case EvaluationRole.other:
-        return 1;
-      case EvaluationRole.unknown:
-        return 2;
     }
   }
 
@@ -407,7 +374,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       );
     }
     if (_error != null) {
-      final loggedIn = _repository.isLoggedIn;
+      final loggedIn = _viewModel.isLoggedIn;
       return PopScope(
         canPop: false,
         child: Scaffold(
@@ -617,25 +584,6 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
 
     final cleaned = trimmed.replaceAll(RegExp(r'\(.*?\)'), '').trim();
     return cleaned.isEmpty ? trimmed : cleaned;
-  }
-
-  int? _extractResultId(dynamic res) {
-    if (res == null) return null;
-    if (res is int) return res;
-    if (res is String) return int.tryParse(res);
-    if (res is Map<String, dynamic>) {
-      int? fromKey(String key) {
-        final v = res[key];
-        if (v is int) return v;
-        if (v is String) return int.tryParse(v);
-        return null;
-      }
-
-      return fromKey('result_id') ??
-          fromKey('RESULT_ID') ??
-          fromKey('resultId');
-    }
-    return null;
   }
 }
 
