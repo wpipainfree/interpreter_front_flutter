@@ -180,6 +180,53 @@ void main() {
       expect(fake.lastUpdateProcessSequence, 2);
     });
 
+    test('loadChecklists rethrows repository error', () async {
+      final fake = FakePsychTestRepository()
+        ..checklistsError = Exception('flow-load-failed');
+      final viewModel = WpiSelectionFlowViewModel(fake);
+
+      await expectLater(
+        viewModel.loadChecklists(1),
+        throwsA(isA<Exception>()),
+      );
+      expect(fake.fetchChecklistsCallCount, 1);
+    });
+
+    test('submitSelection rethrows submitResults error', () async {
+      final fake = FakePsychTestRepository()
+        ..submitError = Exception('flow-submit-failed');
+      final viewModel = WpiSelectionFlowViewModel(fake);
+
+      await expectLater(
+        viewModel.submitSelection(
+          testId: 1,
+          selections: const WpiSelections(checklistId: 10, rank1: [1, 2, 3]),
+          processSequence: 1,
+        ),
+        throwsA(isA<Exception>()),
+      );
+      expect(fake.submitCallCount, 1);
+      expect(fake.updateCallCount, 0);
+    });
+
+    test('submitSelection rethrows updateResults error', () async {
+      final fake = FakePsychTestRepository()
+        ..updateError = Exception('flow-update-failed');
+      final viewModel = WpiSelectionFlowViewModel(fake);
+
+      await expectLater(
+        viewModel.submitSelection(
+          testId: 1,
+          selections: const WpiSelections(checklistId: 10, rank1: [1, 2, 3]),
+          processSequence: 1,
+          resultId: 999,
+        ),
+        throwsA(isA<Exception>()),
+      );
+      expect(fake.submitCallCount, 0);
+      expect(fake.updateCallCount, 1);
+    });
+
     test('extractResultId supports int/string/map formats', () {
       final viewModel = WpiSelectionFlowViewModel(FakePsychTestRepository());
 

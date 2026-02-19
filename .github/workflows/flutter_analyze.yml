@@ -1,11 +1,11 @@
-name: Flutter Analyze
+name: Flutter Quality Gate
 
 on:
   pull_request:
   push:
 
 jobs:
-  analyze:
+  quality_gate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,6 +18,12 @@ jobs:
       - name: Pub get
         run: flutter pub get
 
+      - name: UI-Service Boundary Check
+        run: dart run tool/check_ui_service_boundary.dart --all
+
       - name: Analyze (fatal warnings only)
         run: flutter analyze --no-fatal-infos
+
+      - name: Run tests
+        run: flutter test
 

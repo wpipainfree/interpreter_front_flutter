@@ -128,10 +128,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       // 4. 결제 WebView 열기
       if (!mounted) return;
+      final paymentId = int.tryParse(payment.paymentId);
+      if (paymentId == null) {
+        throw FormatException('Invalid payment id format: ${payment.paymentId}');
+      }
       final result = await PaymentWebViewScreen.open(
         context,
         webviewUrl: payment.webviewUrl,
-        paymentId: payment.paymentId,
+        paymentId: paymentId,
       );
 
       // 5. 결과 처리

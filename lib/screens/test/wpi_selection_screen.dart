@@ -147,7 +147,7 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
       messenger
           .showSnackBar(
             SnackBar(
-              content: Text('최대 ${target}개까지 선택할 수 있습니다. 다른 항목을 해제해주세요.'),
+              content: Text('최대 $target개까지 선택할 수 있습니다. 다른 항목을 해제해주세요.'),
               duration: const Duration(seconds: 2),
             ),
           )
@@ -319,7 +319,7 @@ class _WpiSelectionScreenState extends State<WpiSelectionScreen> {
               brandRed: _brandRed,
               roundLabel: _roundLabel(currentRank),
               countLabel: '${currentSelections.length}/$target 선택',
-              criteria: '순서대로 ${target}개를 선택해주세요.',
+              criteria: '순서대로 $target개를 선택해주세요.',
               reassurance: '',
               slotCount: target,
               selectedIds: currentSelections,
@@ -478,7 +478,7 @@ class _StickyHeader extends StatelessWidget {
                             ),
                           ),
                           onDeleted: () => onRemove(id),
-                          backgroundColor: brandRed.withOpacity(0.08),
+                          backgroundColor: brandRed.withValues(alpha: 0.08),
                           deleteIconColor: brandRed,
                           labelStyle: AppTextStyles.bodySmall.copyWith(
                             color: brandRed,
@@ -588,7 +588,7 @@ class _WpiItemCardState extends State<_WpiItemCard> {
               border: Border.all(color: Colors.grey.shade200),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
+                  color: Colors.black.withValues(alpha: 0.02),
                   blurRadius: 6,
                   offset: const Offset(0, 2),
                 ),
@@ -639,7 +639,8 @@ class _WpiItemCardState extends State<_WpiItemCard> {
                         boxShadow: widget.selected
                             ? [
                                 BoxShadow(
-                                  color: widget.brandRed.withOpacity(0.18),
+                                  color:
+                                      widget.brandRed.withValues(alpha: 0.18),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),
@@ -694,7 +695,7 @@ class _BottomCta extends StatelessWidget {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, -2),
             ),

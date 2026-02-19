@@ -57,5 +57,41 @@ void main() {
       expect(fake.lastSubmitSelections?.checklistId, 10);
       expect(find.text('raw-result-screen'), findsOneWidget);
     });
+
+    testWidgets('shows error snackbar when submit fails', (tester) async {
+      final fake = FakePsychTestRepository()
+        ..isLoggedInValue = true
+        ..submitError = Exception('review-submit-failed');
+      final viewModel = WpiReviewViewModel(fake);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: WpiReviewScreen(
+            testId: 1,
+            testTitle: 'WPI',
+            items: const [
+              PsychTestItem(id: 1, text: 'Q1'),
+              PsychTestItem(id: 2, text: 'Q2'),
+              PsychTestItem(id: 3, text: 'Q3'),
+            ],
+            selections: const WpiSelections(
+              checklistId: 10,
+              rank1: [1],
+              rank2: [2],
+              rank3: [3],
+            ),
+            deferNavigation: false,
+            viewModel: viewModel,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(ElevatedButton));
+      await tester.pumpAndSettle();
+
+      expect(fake.submitCallCount, 1);
+      expect(find.textContaining('review-submit-failed'), findsOneWidget);
+    });
   });
 }

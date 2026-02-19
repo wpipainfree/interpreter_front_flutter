@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/di/app_scope.dart';
 import '../../domain/model/psych_test_models.dart';
+import '../../domain/model/wpi_flow_state.dart';
 import '../../router/app_routes.dart';
 import '../../ui/test/wpi_review_view_model.dart';
 import '../../utils/app_colors.dart';
@@ -36,6 +37,7 @@ class WpiReviewScreen extends StatefulWidget {
 
 class _WpiReviewScreenState extends State<WpiReviewScreen> {
   late final WpiReviewViewModel _viewModel;
+  WpiFlowState _flowState = const WpiFlowState(loading: false);
   DragSnapshot? _lastSwap;
 
   late Map<int, List<PsychTestItem>> _buckets;
@@ -46,6 +48,11 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
     _viewModel = (widget.viewModel ??
         WpiReviewViewModel(AppScope.instance.psychTestRepository))
       ..addListener(_onViewModelChanged);
+    _flowState = _flowState.copyWith(
+      resultId: widget.existingResultId,
+      submitting: _viewModel.submitting,
+      error: _viewModel.errorMessage,
+    );
     _buckets = {
       1: widget.items
           .where((e) => widget.selections.rank1.contains(e.id))
@@ -69,7 +76,12 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
 
   void _onViewModelChanged() {
     if (!mounted) return;
-    setState(() {});
+    setState(() {
+      _flowState = _flowState.copyWith(
+        submitting: _viewModel.submitting,
+        error: _viewModel.errorMessage,
+      );
+    });
   }
 
   void _exitTestFlow() {
@@ -116,7 +128,7 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
               ),
             ),
             _BottomBar(
-              submitting: _viewModel.submitting,
+              submitting: _flowState.submitting,
               onConfirm: _submit,
             ),
           ],
@@ -233,6 +245,10 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
         ),
       );
       if (!mounted || result == null) return;
+      final parsedResultId = _extractResultId(result);
+      if (parsedResultId != null) {
+        _flowState = _flowState.copyWith(resultId: parsedResultId);
+      }
       if (widget.deferNavigation) {
         Navigator.of(context).pop(result);
       } else {
@@ -244,9 +260,20 @@ class _WpiReviewScreenState extends State<WpiReviewScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_viewModel.errorMessage ?? e.toString())),
+        SnackBar(content: Text(_flowState.error ?? e.toString())),
       );
     }
+  }
+
+  int? _extractResultId(Map<String, dynamic> result) {
+    int? fromKey(String key) {
+      final value = result[key];
+      if (value is int) return value;
+      if (value is String) return int.tryParse(value);
+      return null;
+    }
+
+    return fromKey('result_id') ?? fromKey('RESULT_ID') ?? fromKey('resultId');
   }
 }
 
@@ -331,13 +358,15 @@ class _DraggableTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: highlight ? AppColors.secondary.withOpacity(0.08) : Colors.white,
+        color: highlight
+            ? AppColors.secondary.withValues(alpha: 0.08)
+            : Colors.white,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: dragging
             ? [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
+                  color: Colors.black.withValues(alpha: 0.08),
                   blurRadius: 8,
                   offset: const Offset(0, 4),
                 ),
@@ -374,7 +403,7 @@ class _DraggableTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
@@ -432,7 +461,7 @@ class _BottomBar extends StatelessWidget {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, -2),
             ),

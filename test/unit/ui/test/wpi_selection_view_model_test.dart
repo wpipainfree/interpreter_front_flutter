@@ -40,6 +40,18 @@ void main() {
       );
     });
 
+    test('loadChecklists rethrows repository error', () async {
+      final fake = FakePsychTestRepository()
+        ..checklistsError = Exception('selection-load-failed');
+      final viewModel = WpiSelectionViewModel(fake);
+
+      await expectLater(
+        viewModel.loadChecklists(10),
+        throwsA(isA<Exception>()),
+      );
+      expect(fake.fetchChecklistsCallCount, 1);
+    });
+
     test('createSelections maps selected ranks into rank buckets', () {
       final viewModel = WpiSelectionViewModel(FakePsychTestRepository());
       final selectedRanks = <int, int>{

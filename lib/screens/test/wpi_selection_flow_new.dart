@@ -140,8 +140,8 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     _allItems
       ..clear()
       ..addAll(checklist.questions);
-    _originalOrder..clear();
-    _itemById..clear();
+    _originalOrder.clear();
+    _itemById.clear();
     for (var i = 0; i < _allItems.length; i++) {
       final item = _allItems[i];
       _originalOrder[item.id] = i;
@@ -158,7 +158,9 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
         error: null,
         submitting: false,
       );
-      if (index == 0) _shownOtherTransition = false;
+      if (index == 0) {
+        _shownOtherTransition = false;
+      }
       _selectedIds.clear();
       _limitSnackArmed = true;
     });
@@ -362,7 +364,9 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
   ) async {
     if (_shownOtherTransition) return;
     if (current.role != EvaluationRole.self ||
-        next.role != EvaluationRole.other) return;
+        next.role != EvaluationRole.other) {
+      return;
+    }
     _shownOtherTransition = true;
     if (!mounted) return;
     await RoleTransitionScreen.show(context);
@@ -490,8 +494,9 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
                       itemCount: selectedItems.length,
                       onReorder: _handleReorder,
                       proxyDecorator: (child, index, animation) {
-                        if (index < 0 || index >= selectedItems.length)
+                        if (index < 0 || index >= selectedItems.length) {
                           return child;
+                        }
                         final item = selectedItems[index];
                         final number = (_originalOrder[item.id] ?? index) + 1;
                         return Material(
@@ -644,7 +649,7 @@ class _SummaryBar extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '선택 ${selectedCount}/$totalTarget',
+                  '선택 $selectedCount/$totalTarget',
                   style: AppTextStyles.bodyLarge.copyWith(
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
@@ -684,13 +689,14 @@ class _SelectableTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tile = Card(
-      color: selected ? AppColors.secondary.withOpacity(0.08) : Colors.white,
+      color:
+          selected ? AppColors.secondary.withValues(alpha: 0.08) : Colors.white,
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: AppColors.secondary.withOpacity(0.12),
+          backgroundColor: AppColors.secondary.withValues(alpha: 0.12),
           foregroundColor: AppColors.secondary,
           child: Text('$number',
               style: AppTextStyles.bodySmall
