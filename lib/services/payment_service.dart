@@ -97,25 +97,108 @@ class PaymentHistoryItem {
   });
 
   factory PaymentHistoryItem.fromJson(Map<String, dynamic> json) {
+    dynamic pick(List<String> keys) {
+      for (final key in keys) {
+        if (!json.containsKey(key)) continue;
+        final value = json[key];
+        if (value != null) return value;
+      }
+      return null;
+    }
+
+    final status = pick(['status', 'STATUS'])?.toString() ?? '';
+    final paymentType = _asNullableInt(
+      pick(['payment_type', 'paymentType', 'TYPE', 'type']),
+    );
+    final createdAt = _parseDate(
+          pick([
+            'created_at',
+            'createdAt',
+            'create_date',
+            'CREATE_DATE',
+            'payment_date',
+            'PAYMENT_DATE',
+          ]),
+        ) ??
+        DateTime.now();
+
     return PaymentHistoryItem(
-      paymentId: json['payment_id'] as int,
-      orderId: json['order_id'] as String?,
-      testId: json['test_id'] as int?,
-      testName: json['test_name'] as String?,
-      amount: json['amount'] as int? ?? 0,
-      status: json['status'] as String? ?? '',
-      statusText: json['status_text'] as String? ?? '',
-      paymentType: json['payment_type'] as int?,
-      paymentTypeName: json['payment_type_name'] as String? ?? '',
-      paymentDate: json['payment_date'] != null
-          ? DateTime.tryParse(json['payment_date'] as String)
-          : null,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      paymentId: _asInt(pick(['payment_id', 'paymentId', 'ID', 'id'])),
+      orderId: pick(['order_id', 'orderId', 'ORDER_ID'])?.toString(),
+      testId: _asNullableInt(pick(['test_id', 'testId', 'TEST_ID'])),
+      testName: pick(['test_name', 'testName', 'TEST_NAME'])?.toString(),
+      amount: _asInt(pick(['amount', 'AMOUNT'])),
+      status: status,
+      statusText: pick(['status_text', 'statusText'])?.toString() ??
+          _statusTextFromStatus(status),
+      paymentType: paymentType,
+      paymentTypeName: pick(['payment_type_name', 'paymentTypeName'])
+              ?.toString() ??
+          _paymentTypeName(paymentType),
+      paymentDate: _parseDate(
+        pick(['payment_date', 'paymentDate', 'PAYMENT_DATE']),
+      ),
+      createdAt: createdAt,
     );
   }
 
   bool get isCompleted => status == '2';
   bool get isCancelled => status == '5';
+
+  static int _asInt(dynamic value, {int fallback = 0}) {
+    if (value == null) return fallback;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString()) ?? fallback;
+  }
+
+  static int? _asNullableInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
+  }
+
+  static DateTime? _parseDate(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    final raw = value.toString().trim();
+    if (raw.isEmpty || raw.toLowerCase() == 'null') return null;
+    return DateTime.tryParse(raw);
+  }
+
+  static String _statusTextFromStatus(String status) {
+    switch (status) {
+      case '2':
+      case 'paid':
+      case 'success':
+        return '결제완료';
+      case '5':
+      case 'cancelled':
+      case 'failed':
+        return '결제실패/취소';
+      case '0':
+      case '1':
+      case 'pending':
+      case 'ready':
+        return '결제대기';
+      default:
+        return status.isNotEmpty ? status : '상태확인중';
+    }
+  }
+
+  static String _paymentTypeName(int? paymentType) {
+    switch (paymentType) {
+      case 20:
+        return '신용카드';
+      case 21:
+        return '실시간이체';
+      case 22:
+        return '가상계좌';
+      default:
+        return '기타';
+    }
+  }
 }
 
 /// 결제 내역 응답 모델
@@ -135,16 +218,39 @@ class PaymentHistoryResponse {
   });
 
   factory PaymentHistoryResponse.fromJson(Map<String, dynamic> json) {
-    return PaymentHistoryResponse(
-      items: (json['items'] as List<dynamic>?)
-              ?.map((e) => PaymentHistoryItem.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
-      total: json['total'] as int? ?? 0,
-      page: json['page'] as int? ?? 1,
-      pageSize: json['page_size'] as int? ?? 20,
-      hasMore: json['has_more'] as bool? ?? false,
+    final rawItems = (json['items'] is List)
+        ? (json['items'] as List)
+        : (json['data'] is List)
+            ? (json['data'] as List)
+            : const [];
+    final items = rawItems
+        .whereType<Map<String, dynamic>>()
+        .map(PaymentHistoryItem.fromJson)
+        .toList();
+    final page = _asInt(json['page'], fallback: 1);
+    final pageSize = _asInt(json['page_size'], fallback: 20);
+    final total = _asInt(
+      json['total'] ?? json['total_count'] ?? json['count'],
+      fallback: items.length,
     );
+    final hasMore = (json['has_more'] as bool?) ??
+        (json['has_next'] as bool?) ??
+        (page * pageSize < total);
+
+    return PaymentHistoryResponse(
+      items: items,
+      total: total,
+      page: page,
+      pageSize: pageSize,
+      hasMore: hasMore,
+    );
+  }
+
+  static int _asInt(dynamic value, {required int fallback}) {
+    if (value == null) return fallback;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString()) ?? fallback;
   }
 }
 
@@ -295,6 +401,7 @@ class PaymentService {
     }
 
     final uri = _uri('/api/v1/mobile-payments/history');
+    final currentUserId = int.tryParse(_authService.currentUser?.id ?? '');
     _log('getPaymentHistory', 'Requesting page $page to $uri');
 
     try {
@@ -303,6 +410,7 @@ class PaymentService {
         queryParameters: {
           'page': page,
           'page_size': pageSize,
+          if (currentUserId != null) 'user_id': currentUserId,
         },
         options: Options(
           headers: {'Authorization': authHeader},
@@ -320,9 +428,62 @@ class PaymentService {
       throw Exception(_extractErrorMessage(response));
     } on DioException catch (e) {
       _logError('getPaymentHistory', e);
+      if (e.response != null) {
+        _log('getPaymentHistory', 'Error Response Data: ${e.response?.data}');
+      }
+
+      // Fallback for environments that expose history via psych-test accounts.
+      if (e.response?.statusCode == 422 && currentUserId != null) {
+        _log(
+          'getPaymentHistory',
+          'Fallback to /api/v1/psych-tests/accounts/$currentUserId',
+        );
+        try {
+          return await _getPaymentHistoryFromAccounts(
+            authHeader: authHeader,
+            userId: currentUserId,
+            page: page,
+            pageSize: pageSize,
+          );
+        } catch (fallbackError) {
+          _logError('getPaymentHistoryFallback', fallbackError);
+        }
+      }
+
       final message = _extractErrorMessage(e.response) ?? e.message;
-      throw Exception('결제 내역 조회 오류: $message');
+      throw Exception('Payment history lookup error: $message');
     }
+  }
+
+  Future<PaymentHistoryResponse> _getPaymentHistoryFromAccounts({
+    required String authHeader,
+    required int userId,
+    required int page,
+    required int pageSize,
+  }) async {
+    final uri = _uri('/api/v1/psych-tests/accounts/$userId');
+    final response = await _dio.get(
+      uri.toString(),
+      queryParameters: {
+        'page': page,
+        'page_size': pageSize,
+      },
+      options: Options(
+        headers: {'Authorization': authHeader},
+        responseType: ResponseType.json,
+      ),
+    );
+
+    _log(
+      '_getPaymentHistoryFromAccounts',
+      'Response Status: ${response.statusCode}',
+    );
+    if (response.statusCode != 200) {
+      throw Exception(_extractErrorMessage(response));
+    }
+
+    final data = _asJsonMap(response.data);
+    return PaymentHistoryResponse.fromJson(data);
   }
 
   Uri _uri(String path) {
