@@ -105,8 +105,8 @@ class _TermsAgreementSettingsScreenState
     result.when(
       success: (summary) {
         final message = summary.message ??
-            'ë™ì˜ ì„¤ì •ì´ ì €ìž¥ë˜ì—ˆìŠµë‹ˆë‹¤. '
-                '(ì‹ ê·œ ${summary.insertedCount}ê±´, ë³€ê²½ ${summary.updatedCount}ê±´)';
+            '동의 설정이 저장되었습니다. '
+                '(신규 ${summary.insertedCount}건, 변경 ${summary.updatedCount}건)';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),
@@ -186,7 +186,7 @@ class _TermsAgreementSettingsScreenState
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Text(
-                    'ë²„ì „ ${term.termsVerId} Â· ì‹œí–‰ì¼ ${term.effectiveYmd}',
+                    '버전 ${term.termsVerId} · 시행일 ${term.effectiveYmd}',
                     style: AppTextStyles.captionSmall
                         .copyWith(color: AppColors.textSecondary),
                   ),
@@ -202,11 +202,11 @@ class _TermsAgreementSettingsScreenState
   String _termTitle(String type) {
     switch (type.toUpperCase()) {
       case 'TERMS':
-        return 'ì´ìš©ì•½ê´€';
+        return '이용약관';
       case 'PRIVACY':
-        return 'ê°œì¸ì •ë³´ ì²˜ë¦¬ë°©ì¹¨';
+        return '개인정보 처리방침';
       case 'MARKETING':
-        return 'ë§ˆì¼€íŒ… ì •ë³´ ìˆ˜ì‹  ë™ì˜';
+        return '마케팅 정보 수신 동의';
       default:
         return type;
     }
@@ -243,7 +243,7 @@ class _TermsAgreementSettingsScreenState
         backgroundColor: AppColors.backgroundLight,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
-        title: Text('ì•½ê´€ ë™ì˜ ê´€ë¦¬', style: AppTextStyles.h4),
+        title: Text('약관 동의 관리', style: AppTextStyles.h4),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -271,15 +271,15 @@ class _TermsAgreementSettingsScreenState
                         border: Border.all(color: AppColors.border),
                       ),
                       child: Text(
-                        'í˜„ìž¬ ìŠ¤ì½”í”„: $_serviceCode / $_channelCode\n'
-                        'ë™ì˜ ìƒíƒœë¥¼ ë³€ê²½ í›„ ì €ìž¥í•˜ë©´ ì„œë²„ì— ì¦‰ì‹œ ë°˜ì˜ë©ë‹ˆë‹¤.',
+                        '현재 스코프: $_serviceCode / $_channelCode\n'
+                        '동의 상태를 변경 후 저장하면 서버에 즉시 반영됩니다.',
                         style: AppTextStyles.bodySmall
                             .copyWith(color: AppColors.textSecondary),
                       ),
                     ),
                     const SizedBox(height: 12),
                     _AgreementSwitchTile(
-                      title: 'ì´ìš©ì•½ê´€',
+                      title: '이용약관',
                       requiredYn: true,
                       value: _termsAgreed,
                       enabled: !_isSaving,
@@ -290,7 +290,7 @@ class _TermsAgreementSettingsScreenState
                     ),
                     const SizedBox(height: 8),
                     _AgreementSwitchTile(
-                      title: 'ê°œì¸ì •ë³´ ì²˜ë¦¬ë°©ì¹¨',
+                      title: '개인정보 처리방침',
                       requiredYn: true,
                       value: _privacyAgreed,
                       enabled: !_isSaving,
@@ -302,7 +302,7 @@ class _TermsAgreementSettingsScreenState
                     ),
                     const SizedBox(height: 8),
                     _AgreementSwitchTile(
-                      title: 'ë§ˆì¼€íŒ… ì •ë³´ ìˆ˜ì‹  ë™ì˜',
+                      title: '마케팅 정보 수신 동의',
                       requiredYn: false,
                       value: _marketingAgreed,
                       enabled: !_isSaving,
@@ -315,7 +315,7 @@ class _TermsAgreementSettingsScreenState
                     if (requiredUnchecked) ...[
                       const SizedBox(height: 10),
                       Text(
-                        'í•„ìˆ˜ í•­ëª©ì„ ë¯¸ë™ì˜ë¡œ ì €ìž¥í•˜ë©´ ì„œë¹„ìŠ¤ ì´ìš©ì— ì œí•œì´ ìƒê¸¸ ìˆ˜ ìžˆìŠµë‹ˆë‹¤.',
+                        '필수 항목을 미동의로 저장하면 서비스 이용에 제한이 생길 수 있습니다.',
                         style: AppTextStyles.captionSmall
                             .copyWith(color: AppColors.error),
                       ),
@@ -337,7 +337,7 @@ class _TermsAgreementSettingsScreenState
                                 ),
                               )
                             : Text(
-                                'ë™ì˜ ì„¤ì • ì €ìž¥',
+                                '동의 설정 저장',
                                 style: AppTextStyles.buttonMedium,
                               ),
                       ),
@@ -391,7 +391,7 @@ class _AgreementSwitchTile extends StatelessWidget {
                         .copyWith(fontWeight: FontWeight.w600),
                     children: [
                       TextSpan(
-                        text: requiredYn ? ' (í•„ìˆ˜)' : ' (ì„ íƒ)',
+                        text: requiredYn ? ' (필수)' : ' (선택)',
                         style: AppTextStyles.captionSmall.copyWith(
                           color: requiredYn
                               ? AppColors.primary
@@ -416,7 +416,7 @@ class _AgreementSwitchTile extends StatelessWidget {
           if (onView != null)
             TextButton(
               onPressed: onView,
-              child: const Text('ë³´ê¸°'),
+              child: const Text('보기'),
             ),
           Switch.adaptive(
             value: value,
@@ -446,14 +446,14 @@ class _EmptyTermsView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'í˜„ìž¬ ì ìš© ê°€ëŠ¥í•œ ì•½ê´€ì„ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤.',
+            '현재 적용 가능한 약관을 찾을 수 없습니다.',
             style: AppTextStyles.bodySmall
                 .copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 10),
           OutlinedButton(
             onPressed: onRetry,
-            child: const Text('ë‹¤ì‹œ ì‹œë„'),
+            child: const Text('다시 시도'),
           ),
         ],
       ),
