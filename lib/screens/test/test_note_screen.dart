@@ -48,19 +48,39 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
     await _tryStart(text);
   }
 
-  Future<void> _tryStart(String mindFocus) async {
-    final permission = await _viewModel.getStartPermission(widget.testId);
+  Future<void> _tryStart(
+    String mindFocus, {
+    int? testId,
+    String? testTitle,
+  }) async {
+    final resolvedTestId = testId ?? widget.testId;
+    final resolvedTestTitle = testTitle ?? _defaultTestTitle(resolvedTestId);
+
+    final permission = await _viewModel.getStartPermission(resolvedTestId);
     if (!mounted) return;
     if (!permission.canStart) {
-      await _handleStartBlocked(permission, mindFocus: mindFocus);
+      await _handleStartBlocked(
+        permission,
+        mindFocus: mindFocus,
+        testId: resolvedTestId,
+        testTitle: resolvedTestTitle,
+      );
       return;
     }
 
     final coordinator = TestFlowCoordinator();
+    if (resolvedTestId == 3) {
+      await coordinator.startIdealOnly(
+        context,
+        mindFocus: mindFocus,
+      );
+      return;
+    }
+
     await coordinator.startRealityThenMaybeIdeal(
       context,
-      realityTestId: widget.testId,
-      realityTestTitle: widget.testTitle,
+      realityTestId: resolvedTestId,
+      realityTestTitle: resolvedTestTitle,
       mindFocus: mindFocus,
     );
   }
@@ -68,6 +88,8 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
   Future<void> _handleStartBlocked(
     TestStartPermission permission, {
     required String mindFocus,
+    required int testId,
+    required String testTitle,
   }) async {
     if (!mounted) return;
 
@@ -75,7 +97,11 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
       final ok = await AuthUi.promptLogin(context: context);
       if (!ok || !mounted) return;
       if (!_viewModel.isLoggedIn) return;
-      await _tryStart(mindFocus);
+      await _tryStart(
+        mindFocus,
+        testId: testId,
+        testTitle: testTitle,
+      );
       return;
     }
 
@@ -106,10 +132,10 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
       await Navigator.of(context).pushReplacementNamed(
         AppRoutes.wpiSelectionFlow,
         arguments: WpiSelectionFlowArgs(
-          testId: widget.testId,
-          testTitle: widget.testTitle,
+          testId: testId,
+          testTitle: testTitle,
           mindFocus: mindFocus,
-          kind: _kindForTest(widget.testId),
+          kind: _kindForTest(testId),
           exitMode: FlowExitMode.openResultDetail,
           existingResultId: resultId,
           initialRole: EvaluationRole.other,
@@ -119,7 +145,10 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
     }
 
     if (_isPaymentRequired(permission.reason)) {
-      await _promptPaymentAndOpen(mindFocus: mindFocus);
+      await _startPaymentFlow(
+        mindFocus: mindFocus,
+        preferredTestId: testId,
+      );
       return;
     }
 
@@ -131,34 +160,14 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
 
   bool _isPaymentRequired(TestStartBlockReason reason) {
     return reason == TestStartBlockReason.noEntitlement ||
+        reason == TestStartBlockReason.pendingPayment ||
         reason == TestStartBlockReason.cancelledOrRefunded;
   }
 
-  Future<void> _promptPaymentAndOpen({required String mindFocus}) async {
-    final openPayment = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('결제가 필요합니다'),
-            content: const Text('검사를 진행하려면 결제를 먼저 완료해 주세요.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('닫기'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('결제하기'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-
-    if (!openPayment || !mounted) return;
-    await _startPaymentFlow(mindFocus: mindFocus);
-  }
-
-  Future<void> _startPaymentFlow({required String mindFocus}) async {
+  Future<void> _startPaymentFlow({
+    required String mindFocus,
+    required int preferredTestId,
+  }) async {
     final dashboardRepository = AppScope.instance.dashboardRepository;
 
     if (!dashboardRepository.isLoggedIn) {
@@ -175,8 +184,9 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
       return;
     }
 
-    final paymentType = await _showPaymentMethodDialog();
-    if (paymentType == null || !mounted) return;
+    final paymentSelection =
+        await _showPaymentDialog(initialTestId: preferredTestId);
+    if (paymentSelection == null || !mounted) return;
 
     final userId = int.tryParse(currentUser.id);
     if (userId == null) {
@@ -185,6 +195,9 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
       );
       return;
     }
+
+    final selectedTestId = paymentSelection.testId;
+    final selectedPaymentType = paymentSelection.paymentType;
 
     var loadingOpened = false;
     try {
@@ -198,9 +211,9 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
 
       final payment = await dashboardRepository.createPayment(
         userId: userId,
-        testId: widget.testId,
-        paymentType: paymentType,
-        productName: _paymentProductName(widget.testId),
+        testId: selectedTestId,
+        paymentType: selectedPaymentType,
+        productName: _paymentProductName(selectedTestId),
         buyerName: currentUser.displayName,
         buyerEmail: currentUser.email.isNotEmpty
             ? currentUser.email
@@ -233,7 +246,11 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        await _tryStart(mindFocus);
+        await _tryStart(
+          mindFocus,
+          testId: selectedTestId,
+          testTitle: _defaultTestTitle(selectedTestId),
+        );
       } else if (result.message != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(result.message!)),
@@ -250,17 +267,64 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
     }
   }
 
-  Future<int?> _showPaymentMethodDialog() async {
+  Future<_PaymentSelection?> _showPaymentDialog({
+    required int initialTestId,
+  }) async {
+    int selectedTestId = initialTestId == 3 ? 3 : 1;
     int? selectedPaymentType;
 
-    return showDialog<int>(
+    return showDialog<_PaymentSelection>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('결제 수단 선택'),
+          title: const Text('결제 옵션 선택'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const Text(
+                '검사 유형',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade400),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: DropdownButton<int>(
+                  isExpanded: true,
+                  value: selectedTestId,
+                  underline: const SizedBox(),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 1,
+                      child: Text('WPI 현실검사'),
+                    ),
+                    DropdownMenuItem(
+                      value: 3,
+                      child: Text('WPI 이상검사'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => selectedTestId = value);
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                '결제 수단',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
               ListTile(
                 leading: const Icon(Icons.credit_card, color: Colors.blue),
                 title: const Text('신용카드'),
@@ -302,7 +366,12 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
             ElevatedButton(
               onPressed: selectedPaymentType == null
                   ? null
-                  : () => Navigator.of(context).pop(selectedPaymentType),
+                  : () => Navigator.of(context).pop(
+                        _PaymentSelection(
+                          testId: selectedTestId,
+                          paymentType: selectedPaymentType!,
+                        ),
+                      ),
               child: const Text('확인'),
             ),
           ],
@@ -314,6 +383,11 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
   String _paymentProductName(int testId) {
     if (testId == 3) return 'WPI 이상검사';
     return 'WPI 현실검사';
+  }
+
+  String _defaultTestTitle(int testId) {
+    if (testId == 3) return 'WPI 이상 검사';
+    return 'WPI 현실 검사';
   }
 
   WpiTestKind _kindForTest(int testId) {
@@ -410,4 +484,14 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
       ),
     );
   }
+}
+
+class _PaymentSelection {
+  const _PaymentSelection({
+    required this.testId,
+    required this.paymentType,
+  });
+
+  final int testId;
+  final int paymentType;
 }

@@ -23,6 +23,7 @@ class _TodayMindReadFlowScreenState extends State<TodayMindReadFlowScreen> {
 
   bool _loading = true;
   bool _submitting = false;
+  bool _openingTest = false;
   String? _error;
   int _stepIndex = 0;
 
@@ -203,6 +204,26 @@ class _TodayMindReadFlowScreenState extends State<TodayMindReadFlowScreen> {
     }
   }
 
+  Future<void> _openTestNote(int testId) async {
+    if (_openingTest) return;
+    setState(() => _openingTest = true);
+    try {
+      await Navigator.of(context).pushNamed(
+        AppRoutes.testNote,
+        arguments: TestNoteArgs(
+          testId: testId,
+          testTitle: _defaultTestTitle(testId),
+        ),
+      );
+      if (!mounted) return;
+      await _load();
+    } finally {
+      if (mounted) {
+        setState(() => _openingTest = false);
+      }
+    }
+  }
+
   void _showMessage(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -228,6 +249,11 @@ class _TodayMindReadFlowScreenState extends State<TodayMindReadFlowScreen> {
     if (testId == 1) return 'WPI 현실 검사';
     if (testId == 3) return 'WPI 이상 검사';
     return 'WPI 검사';
+  }
+
+  String _defaultTestTitle(int testId) {
+    if (testId == 3) return 'WPI 이상 검사';
+    return 'WPI 현실 검사';
   }
 
   String? _resultType(ResultAccount item) {
@@ -471,6 +497,29 @@ class _TodayMindReadFlowScreenState extends State<TodayMindReadFlowScreen> {
       );
     }
     if (_stepIndex == 1) {
+      if (_realityItems.isEmpty) {
+        return SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _openingTest ? null : () => _openTestNote(1),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(52),
+            ),
+            child: _openingTest
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Text('현실 검사 진행하기'),
+          ),
+        );
+      }
       return SizedBox(
         width: double.infinity,
         child: ElevatedButton(
@@ -481,6 +530,29 @@ class _TodayMindReadFlowScreenState extends State<TodayMindReadFlowScreen> {
             minimumSize: const Size.fromHeight(52),
           ),
           child: const Text('다음'),
+        ),
+      );
+    }
+    if (_idealItems.isEmpty) {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: _openingTest ? null : () => _openTestNote(3),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            minimumSize: const Size.fromHeight(52),
+          ),
+          child: _openingTest
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                )
+              : const Text('이상 검사 진행하기'),
         ),
       );
     }
