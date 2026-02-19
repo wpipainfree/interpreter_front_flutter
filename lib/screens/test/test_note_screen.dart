@@ -9,6 +9,7 @@ import '../../ui/test/wpi_selection_flow_view_model.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../utils/auth_ui.dart';
+import '../payment/payment_webview_screen.dart';
 
 class TestNoteScreen extends StatefulWidget {
   const TestNoteScreen({
@@ -44,29 +45,39 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
       setState(() => _errorText = '1~2줄로만 간단히 적어주세요.');
       return;
     }
+    await _tryStart(text);
+  }
 
-    final permission = await AuthUi.withLoginRetry(
-      context: context,
-      action: () => _viewModel.getStartPermission(widget.testId),
-    );
-    if (permission == null || !mounted) return;
+  Future<void> _tryStart(String mindFocus) async {
+    final permission = await _viewModel.getStartPermission(widget.testId);
+    if (!mounted) return;
     if (!permission.canStart) {
-      await _handleStartBlocked(permission);
+      await _handleStartBlocked(permission, mindFocus: mindFocus);
       return;
     }
 
-    if (!mounted) return;
     final coordinator = TestFlowCoordinator();
     await coordinator.startRealityThenMaybeIdeal(
       context,
       realityTestId: widget.testId,
       realityTestTitle: widget.testTitle,
-      mindFocus: text,
+      mindFocus: mindFocus,
     );
   }
 
-  Future<void> _handleStartBlocked(TestStartPermission permission) async {
+  Future<void> _handleStartBlocked(
+    TestStartPermission permission, {
+    required String mindFocus,
+  }) async {
     if (!mounted) return;
+
+    if (permission.reason == TestStartBlockReason.loginRequired) {
+      final ok = await AuthUi.promptLogin(context: context);
+      if (!ok || !mounted) return;
+      if (!_viewModel.isLoggedIn) return;
+      await _tryStart(mindFocus);
+      return;
+    }
 
     if (permission.canResumeExisting) {
       final shouldResume = await showDialog<bool>(
@@ -97,7 +108,7 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
         arguments: WpiSelectionFlowArgs(
           testId: widget.testId,
           testTitle: widget.testTitle,
-          mindFocus: _controller.text.trim(),
+          mindFocus: mindFocus,
           kind: _kindForTest(widget.testId),
           exitMode: FlowExitMode.openResultDetail,
           existingResultId: resultId,
@@ -107,10 +118,202 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
       return;
     }
 
+    if (_isPaymentRequired(permission.reason)) {
+      await _promptPaymentAndOpen(mindFocus: mindFocus);
+      return;
+    }
+
     final message = permission.message ?? '검사를 시작할 수 없습니다.';
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
+  }
+
+  bool _isPaymentRequired(TestStartBlockReason reason) {
+    return reason == TestStartBlockReason.noEntitlement ||
+        reason == TestStartBlockReason.cancelledOrRefunded;
+  }
+
+  Future<void> _promptPaymentAndOpen({required String mindFocus}) async {
+    final openPayment = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('결제가 필요합니다'),
+            content: const Text('검사를 진행하려면 결제를 먼저 완료해 주세요.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('닫기'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('결제하기'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!openPayment || !mounted) return;
+    await _startPaymentFlow(mindFocus: mindFocus);
+  }
+
+  Future<void> _startPaymentFlow({required String mindFocus}) async {
+    final dashboardRepository = AppScope.instance.dashboardRepository;
+
+    if (!dashboardRepository.isLoggedIn) {
+      final ok = await AuthUi.promptLogin(context: context);
+      if (!ok || !mounted) return;
+    }
+    if (!mounted) return;
+
+    final currentUser = dashboardRepository.currentUser;
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('사용자 정보를 확인할 수 없습니다.')),
+      );
+      return;
+    }
+
+    final paymentType = await _showPaymentMethodDialog();
+    if (paymentType == null || !mounted) return;
+
+    final userId = int.tryParse(currentUser.id);
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('결제 사용자 정보를 확인할 수 없습니다.')),
+      );
+      return;
+    }
+
+    var loadingOpened = false;
+    try {
+      if (!mounted) return;
+      loadingOpened = true;
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final payment = await dashboardRepository.createPayment(
+        userId: userId,
+        testId: widget.testId,
+        paymentType: paymentType,
+        productName: _paymentProductName(widget.testId),
+        buyerName: currentUser.displayName,
+        buyerEmail: currentUser.email.isNotEmpty
+            ? currentUser.email
+            : 'user@wpiapp.com',
+      );
+
+      if (loadingOpened && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        loadingOpened = false;
+      }
+
+      final paymentId = int.tryParse(payment.paymentId);
+      if (paymentId == null) {
+        throw FormatException(
+            'Invalid payment id format: ${payment.paymentId}');
+      }
+      if (!mounted) return;
+
+      final result = await PaymentWebViewScreen.open(
+        context,
+        webviewUrl: payment.webviewUrl,
+        paymentId: paymentId,
+      );
+      if (!mounted || result == null) return;
+
+      if (result.success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('결제가 완료되었습니다. 검사를 다시 시작합니다.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        await _tryStart(mindFocus);
+      } else if (result.message != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.message!)),
+        );
+      }
+    } catch (e) {
+      if (loadingOpened && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('결제 오류: $e')),
+      );
+    }
+  }
+
+  Future<int?> _showPaymentMethodDialog() async {
+    int? selectedPaymentType;
+
+    return showDialog<int>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('결제 수단 선택'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.credit_card, color: Colors.blue),
+                title: const Text('신용카드'),
+                subtitle: const Text('신용/체크카드로 결제'),
+                selected: selectedPaymentType == 20,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(
+                    color: selectedPaymentType == 20
+                        ? Colors.blue
+                        : Colors.grey.shade300,
+                  ),
+                ),
+                onTap: () => setState(() => selectedPaymentType = 20),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const Icon(Icons.account_balance, color: Colors.green),
+                title: const Text('가상계좌'),
+                subtitle: const Text('무통장 입금'),
+                selected: selectedPaymentType == 22,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(
+                    color: selectedPaymentType == 22
+                        ? Colors.green
+                        : Colors.grey.shade300,
+                  ),
+                ),
+                onTap: () => setState(() => selectedPaymentType = 22),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('취소'),
+            ),
+            ElevatedButton(
+              onPressed: selectedPaymentType == null
+                  ? null
+                  : () => Navigator.of(context).pop(selectedPaymentType),
+              child: const Text('확인'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _paymentProductName(int testId) {
+    if (testId == 3) return 'WPI 이상검사';
+    return 'WPI 현실검사';
   }
 
   WpiTestKind _kindForTest(int testId) {

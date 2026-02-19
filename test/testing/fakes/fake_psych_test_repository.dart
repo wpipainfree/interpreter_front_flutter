@@ -6,6 +6,7 @@ class FakePsychTestRepository implements PsychTestRepository {
   bool isLoggedInValue = false;
 
   List<PsychTestChecklist> checklistsResult = const [];
+  List<TestStartPermission> startPermissionResults = const [];
   TestStartPermission startPermissionResult =
       const TestStartPermission.allowed();
   Map<String, dynamic> submitResult = const {};
@@ -65,6 +66,13 @@ class FakePsychTestRepository implements PsychTestRepository {
     startPermissionCallCount += 1;
     lastStartPermissionTestId = testId;
     if (startPermissionError != null) throw startPermissionError!;
+    if (startPermissionResults.isNotEmpty) {
+      final index = startPermissionCallCount - 1;
+      final boundedIndex = index < startPermissionResults.length
+          ? index
+          : startPermissionResults.length - 1;
+      return startPermissionResults[boundedIndex];
+    }
     return startPermissionResult;
   }
 
