@@ -21,6 +21,10 @@ class WpiSelectionFlowViewModel {
     return _useCase.sortChecklistsByRolePriority(lists);
   }
 
+  Future<TestStartPermission> getStartPermission(int testId) {
+    return _repository.getStartPermission(testId);
+  }
+
   int resolveInitialIndex({
     required List<PsychTestChecklist> checklists,
     EvaluationRole? initialRole,

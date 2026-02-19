@@ -53,6 +53,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
   bool _limitSnackVisible = false;
   bool _limitSnackArmed = true;
   bool _shownOtherTransition = false;
+  TestStartPermission? _blockedStartPermission;
 
   PsychTestChecklist? get _checklist => _flowState.currentChecklist;
 
@@ -72,6 +73,15 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
   }
 
   Future<void> _init() async {
+    if (!mounted) return;
+    setState(() {
+      _flowState = _flowState.copyWith(
+        loading: true,
+        error: null,
+      );
+      _blockedStartPermission = null;
+    });
+
     if (!_viewModel.isLoggedIn) {
       final ok = await AuthUi.promptLogin(context: context);
       if (!ok && mounted) {
@@ -79,6 +89,47 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
         return;
       }
     }
+    if (!mounted) return;
+
+    if (widget.existingResultId == null) {
+      try {
+        final permission = await AuthUi.withLoginRetry(
+          context: context,
+          action: () => _viewModel.getStartPermission(widget.testId),
+        );
+        if (permission == null) {
+          if (!mounted) return;
+          setState(() {
+            _flowState = _flowState.copyWith(
+              loading: false,
+              error: 'Login is required.',
+            );
+          });
+          return;
+        }
+        if (!permission.canStart) {
+          if (!mounted) return;
+          setState(() {
+            _flowState = _flowState.copyWith(
+              loading: false,
+              error: permission.message ?? '검사를 시작할 수 없습니다.',
+            );
+            _blockedStartPermission = permission;
+          });
+          return;
+        }
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _flowState = _flowState.copyWith(
+            loading: false,
+            error: e.toString(),
+          );
+        });
+        return;
+      }
+    }
+
     await _load();
   }
 
@@ -94,6 +145,7 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
         loading: true,
         error: null,
       );
+      _blockedStartPermission = null;
     });
     try {
       final lists = await AuthUi.withLoginRetry(
@@ -380,6 +432,28 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
     });
   }
 
+  Future<void> _resumeBlockedStart() async {
+    final blocked = _blockedStartPermission;
+    final resultId = blocked?.resumeResultId;
+    if (resultId == null || !mounted) {
+      _exitTestFlow();
+      return;
+    }
+
+    await Navigator.of(context).pushReplacementNamed(
+      AppRoutes.wpiSelectionFlow,
+      arguments: WpiSelectionFlowArgs(
+        testId: widget.testId,
+        testTitle: widget.testTitle,
+        mindFocus: widget.mindFocus,
+        kind: widget.kind,
+        exitMode: widget.exitMode,
+        existingResultId: resultId,
+        initialRole: EvaluationRole.other,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_flowState.loading) {
@@ -401,6 +475,39 @@ class _WpiSelectionFlowNewState extends State<WpiSelectionFlowNew> {
       );
     }
     if (_flowState.error != null) {
+      final blocked = _blockedStartPermission;
+      if (blocked != null) {
+        return PopScope(
+          canPop: false,
+          child: Scaffold(
+            appBar: AppBar(
+              title: const Text('WPI'),
+              automaticallyImplyLeading: false,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: _exitTestFlow,
+                ),
+              ],
+            ),
+            body: AppErrorView(
+              title: '검사를 시작할 수 없어요',
+              message: _flowState.error!,
+              primaryActionLabel: blocked.canResumeExisting ? '이어하기' : '닫기',
+              primaryActionStyle: blocked.canResumeExisting
+                  ? AppErrorPrimaryActionStyle.filled
+                  : AppErrorPrimaryActionStyle.outlined,
+              secondaryActionLabel: blocked.canResumeExisting ? '닫기' : null,
+              onSecondaryAction:
+                  blocked.canResumeExisting ? _exitTestFlow : null,
+              onPrimaryAction: blocked.canResumeExisting
+                  ? () => _resumeBlockedStart()
+                  : _exitTestFlow,
+            ),
+          ),
+        );
+      }
+
       final loggedIn = _viewModel.isLoggedIn;
       return PopScope(
         canPop: false,

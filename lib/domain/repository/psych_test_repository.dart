@@ -11,6 +11,8 @@ abstract interface class PsychTestRepository {
 
   Future<List<PsychTestChecklist>> fetchChecklists(int testId);
 
+  Future<TestStartPermission> getStartPermission(int testId);
+
   Future<Map<String, dynamic>> submitResults({
     required int testId,
     required WpiSelections selections,

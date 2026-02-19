@@ -56,6 +56,23 @@ void main() {
       expect(fake.lastFetchTestId, 99);
     });
 
+    test('getStartPermission delegates to repository', () async {
+      final fake = FakePsychTestRepository()
+        ..startPermissionResult = const TestStartPermission(
+          canStart: false,
+          reason: TestStartBlockReason.noEntitlement,
+          message: '결제 필요',
+        );
+      final viewModel = WpiSelectionFlowViewModel(fake);
+
+      final permission = await viewModel.getStartPermission(3);
+
+      expect(permission.canStart, isFalse);
+      expect(permission.reason, TestStartBlockReason.noEntitlement);
+      expect(fake.startPermissionCallCount, 1);
+      expect(fake.lastStartPermissionTestId, 3);
+    });
+
     test('resolveInitialIndex returns role index when present', () {
       final viewModel = WpiSelectionFlowViewModel(FakePsychTestRepository());
       const checklists = [
@@ -207,6 +224,19 @@ void main() {
       );
       expect(fake.submitCallCount, 1);
       expect(fake.updateCallCount, 0);
+    });
+
+    test('getStartPermission rethrows repository error', () async {
+      final fake = FakePsychTestRepository()
+        ..startPermissionError = Exception('start-permission-failed');
+      final viewModel = WpiSelectionFlowViewModel(fake);
+
+      await expectLater(
+        viewModel.getStartPermission(1),
+        throwsA(isA<Exception>()),
+      );
+      expect(fake.startPermissionCallCount, 1);
+      expect(fake.lastStartPermissionTestId, 1);
     });
 
     test('submitSelection rethrows updateResults error', () async {

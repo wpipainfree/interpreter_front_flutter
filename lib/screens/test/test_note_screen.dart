@@ -1,17 +1,26 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+
+import '../../app/di/app_scope.dart';
+import '../../domain/model/psych_test_models.dart';
+import '../../router/app_routes.dart';
 import '../../test_flow/test_flow_coordinator.dart';
+import '../../test_flow/test_flow_models.dart';
+import '../../ui/test/wpi_selection_flow_view_model.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
+import '../../utils/auth_ui.dart';
 
 class TestNoteScreen extends StatefulWidget {
   const TestNoteScreen({
     super.key,
     required this.testId,
     required this.testTitle,
+    this.viewModel,
   });
 
   final int testId;
   final String testTitle;
+  final WpiSelectionFlowViewModel? viewModel;
 
   @override
   State<TestNoteScreen> createState() => _TestNoteScreenState();
@@ -19,11 +28,14 @@ class TestNoteScreen extends StatefulWidget {
 
 class _TestNoteScreenState extends State<TestNoteScreen> {
   final TextEditingController _controller = TextEditingController();
+  late final WpiSelectionFlowViewModel _viewModel;
   String? _errorText;
 
   @override
   void initState() {
     super.initState();
+    _viewModel = widget.viewModel ??
+        WpiSelectionFlowViewModel(AppScope.instance.psychTestRepository);
   }
 
   Future<void> _submit() async {
@@ -32,6 +44,17 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
       setState(() => _errorText = '1~2줄로만 간단히 적어주세요.');
       return;
     }
+
+    final permission = await AuthUi.withLoginRetry(
+      context: context,
+      action: () => _viewModel.getStartPermission(widget.testId),
+    );
+    if (permission == null || !mounted) return;
+    if (!permission.canStart) {
+      await _handleStartBlocked(permission);
+      return;
+    }
+
     if (!mounted) return;
     final coordinator = TestFlowCoordinator();
     await coordinator.startRealityThenMaybeIdeal(
@@ -40,6 +63,59 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
       realityTestTitle: widget.testTitle,
       mindFocus: text,
     );
+  }
+
+  Future<void> _handleStartBlocked(TestStartPermission permission) async {
+    if (!mounted) return;
+
+    if (permission.canResumeExisting) {
+      final shouldResume = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('진행 중인 검사'),
+              content: Text(permission.message ?? '이미 시작한 검사가 있습니다.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('닫기'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('이어하기'),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+
+      if (!shouldResume || !mounted) return;
+      final resultId = permission.resumeResultId;
+      if (resultId == null) return;
+
+      await Navigator.of(context).pushReplacementNamed(
+        AppRoutes.wpiSelectionFlow,
+        arguments: WpiSelectionFlowArgs(
+          testId: widget.testId,
+          testTitle: widget.testTitle,
+          mindFocus: _controller.text.trim(),
+          kind: _kindForTest(widget.testId),
+          exitMode: FlowExitMode.openResultDetail,
+          existingResultId: resultId,
+          initialRole: EvaluationRole.other,
+        ),
+      );
+      return;
+    }
+
+    final message = permission.message ?? '검사를 시작할 수 없습니다.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  WpiTestKind _kindForTest(int testId) {
+    if (testId == 3) return WpiTestKind.ideal;
+    return WpiTestKind.reality;
   }
 
   @override
@@ -119,7 +195,8 @@ class _TestNoteScreenState extends State<TestNoteScreen> {
                     ),
                     child: const Text(
                       '검사 진행하기',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),

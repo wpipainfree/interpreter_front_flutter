@@ -67,6 +67,54 @@ class WpiSelections {
       ];
 }
 
+enum TestStartBlockReason {
+  none,
+  loginRequired,
+  noEntitlement,
+  pendingPayment,
+  inProgressResume,
+  cancelledOrRefunded,
+}
+
+class TestStartPermission {
+  const TestStartPermission({
+    required this.canStart,
+    this.reason = TestStartBlockReason.none,
+    this.message,
+    this.resumeResultId,
+  });
+
+  const TestStartPermission.allowed({this.message})
+      : canStart = true,
+        reason = TestStartBlockReason.none,
+        resumeResultId = null;
+
+  final bool canStart;
+  final TestStartBlockReason reason;
+  final String? message;
+  final int? resumeResultId;
+
+  bool get canResumeExisting => !canStart && resumeResultId != null;
+}
+
+class PsychTestAccountSnapshot {
+  const PsychTestAccountSnapshot({
+    this.status,
+    this.useFlag,
+    this.resultId,
+    this.paymentDate,
+    this.createDate,
+    this.modifyDate,
+  });
+
+  final String? status;
+  final String? useFlag;
+  final int? resultId;
+  final String? paymentDate;
+  final String? createDate;
+  final String? modifyDate;
+}
+
 class PsychTestException implements Exception {
   const PsychTestException(this.message, {this.debug});
 

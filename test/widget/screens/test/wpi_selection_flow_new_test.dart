@@ -164,6 +164,36 @@ void main() {
       expect(find.byType(AppErrorView), findsOneWidget);
       expect(find.textContaining('load-failed'), findsOneWidget);
     });
+
+    testWidgets('shows blocked error when start permission is denied',
+        (tester) async {
+      final fake = FakePsychTestRepository()
+        ..isLoggedInValue = true
+        ..startPermissionResult = const TestStartPermission(
+          canStart: false,
+          reason: TestStartBlockReason.noEntitlement,
+          message: '결제된 검사권이 없습니다.',
+        );
+      final viewModel = WpiSelectionFlowViewModel(fake);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: WpiSelectionFlowNew(
+            testId: 1,
+            testTitle: 'WPI',
+            kind: WpiTestKind.reality,
+            exitMode: FlowExitMode.popWithResult,
+            viewModel: viewModel,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AppErrorView), findsOneWidget);
+      expect(find.textContaining('결제된 검사권이 없습니다'), findsOneWidget);
+      expect(fake.startPermissionCallCount, 1);
+      expect(fake.fetchChecklistsCallCount, 0);
+    });
   });
 }
 
